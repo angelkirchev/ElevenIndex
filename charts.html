@@ -8,290 +8,383 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 __THEME__
+  /* ---- the controls in the top bar ---- */
   .bar { flex-wrap: wrap; }
-  .seg { display: flex; gap: 3px; align-items: center; margin-bottom: 8px; }
-  .seg .lbl { color: var(--dim); margin-right: 4px; }
-  .seg button { font: 600 12px var(--body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
-                padding: 3px 9px; cursor: pointer; }
-  .seg button:hover:not(.on) { background: var(--hover); }
-  .seg button.on { color: #fff; background: var(--accent-strong); border-color: var(--blue); }
-  select { font: 500 12px var(--body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; }
+  .ctl { display: flex; gap: 3px; align-items: center; margin: 6px 0; }
+  .ctl .name { margin-right: 4px; color: #d8efeb; font-weight: 600; }  /* on the teal bar */
+  .ctl button { padding: 3px 9px; color: var(--fg); font: 600 12px var(--body); background: var(--bg); border: 1px solid var(--line);
+                border-radius: 5px; cursor: pointer; }
+  .ctl button:hover:not(.on) { background: var(--hover); }
+  .ctl button.on { color: #fff; background: var(--accent-strong); border-color: var(--blue); }
+  select { padding: 3px 6px; color: var(--fg); font: 500 12px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
   select:focus { outline: 1px solid var(--blue); }
-  .legend { display: flex; gap: 14px; color: var(--dim); margin-left: auto; }
-  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
-  .tile { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; box-shadow: 0 2px 10px #0004; }
-  .ttitle { color: var(--fg); font: 700 17px/1.2 var(--head); text-transform: uppercase; letter-spacing: .02em; margin-bottom: 2px; }
-  .tsub { color: var(--dim); font-size: 12px; margin-bottom: 4px; }
-  .tsub b { color: var(--fg); font-weight: normal; }
-  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
-  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .key { display: flex; gap: 8px; margin-left: auto; color: var(--fg); }
+  .key > span { padding: 3px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; }
+  .key i { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: 0; }
+  .key .them i { border: 1.6px solid var(--blue); border-radius: 50%; }
+  .key .us i { background: var(--orange); border-radius: 1px; transform: rotate(45deg); }
+
+  /* ---- the chart panels ---- */
+  .pair { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 10px; }
+  @media (max-width: 900px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+  .tile { min-width: 0; padding: 14px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 2px 10px #0004; }
+  .ttitle { margin-bottom: 2px; color: var(--fg); font: 700 17px/1.2 var(--head); text-transform: uppercase; letter-spacing: .02em; }
+  .subtitle { margin-bottom: 8px; color: var(--dim); font-size: 12px; }
+  /* how to read the chart, under it */
+  .howto { position: relative; margin-top: 10px; padding: 8px 10px 8px 36px; color: var(--dim); font-size: 12px; line-height: 1.55;
+           background: var(--row); border-radius: 8px; }
+  .howto::before { content: "i"; position: absolute; left: 10px; top: 9px; width: 18px; height: 18px; color: var(--bg);
+                   font: 700 12px/18px var(--body); text-align: center; background: var(--blue); border-radius: 50%; }
+  .howto b { color: var(--fg); font-weight: 600; }
+  .howto .us { color: var(--orange); font-weight: 600; } .howto .them { color: #ff7ab5; font-weight: 600; }
+  .howto .good { color: var(--green); font-weight: 600; } .howto .bad { color: var(--red); font-weight: 600; }
+  .note { margin-bottom: 4px; color: var(--dim); font-size: 12px; }
+  .note b { color: var(--fg); font-weight: normal; }
   svg { display: block; width: 100%; overflow: visible; font: 11px var(--body); }
-  .axis text { fill: var(--dim); } .axis line, .axis path { stroke: var(--line); }
-  .grid-line { stroke: var(--line); stroke-opacity: .45; }
-  .row-label { fill: var(--purple); font-size: 12px; cursor: pointer; } .row-label.on { fill: var(--cyan); font-weight: 700; }
-  .row-n { fill: var(--dim); }
-  .dot { stroke: var(--bg); stroke-width: 1.5; cursor: pointer; }
-  .dot.league { fill: var(--bg); stroke: var(--blue); stroke-width: 1.6; }
-  .dot.league.rug { fill: var(--blue); fill-opacity: .55; stroke: none; }
-  .dot.squad { fill: var(--orange); stroke: #1a1020; stroke-width: 1.5; }
-  .band-row { fill: #ffffff05; }
-  .range { stroke: #b794ff66; stroke-width: 2; }
-  .iqr { fill: #9b5cff40; stroke: #9b5cff; stroke-width: 1; }
-  .row-diff { font-weight: 700; font-size: 12px; } .row-diff.up { fill: var(--green); } .row-diff.down { fill: var(--red); }
-  .quad.good { fill: #4ade8014; } .quad.bad { fill: #f8717112; }
-  .quad-line { stroke: var(--line); stroke-dasharray: 2 4; }
-  .quad-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-  .quad-label.good { fill: #4ade80aa; } .quad-label.bad { fill: #f87171aa; }
-  .dot.hl { stroke: var(--fg); stroke-width: 2; fill-opacity: 1; }
-  .hit { fill: transparent; cursor: pointer; }
-  .median { fill: #fff; }
-  .median-label { fill: var(--fg); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; pointer-events: none; }
-  .trend { stroke: var(--dim); stroke-width: 2; stroke-dasharray: 5 4; fill: none; }
-  .squad-label { fill: var(--orange); font-size: 10px; pointer-events: none; }
-  #tip { position: fixed; pointer-events: none; background: var(--desk); border: 1px solid var(--line); padding: 6px 10px;
-         display: none; z-index: 5; font-size: 12px; line-height: 1.5; white-space: nowrap; }
-  #tip .nm { color: var(--fg); font-weight: 700; } #tip .d { color: var(--dim); }
+  .ticks text { fill: var(--dim); }
+  .gridline { stroke: var(--line); stroke-opacity: .45; }
+  .pos { fill: var(--purple); font-size: 12px; cursor: pointer; }
+  .pos.on { fill: var(--cyan); font-weight: 700; }
+  .count { fill: var(--dim); }
+  .lead { font-size: 12px; font-weight: 700; } .lead.up { fill: var(--green); } .lead.down { fill: var(--red); }
+  .stripe { fill: #ffffff05; }
+  .spread { stroke: #ff7ab566; stroke-width: 2; }
+  .middle-half { fill: #ff3d9640; stroke: #ff3d96; stroke-width: 1; }
+  .middle { fill: #fff; }
+  .middle-value { fill: var(--fg); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; pointer-events: none; }
+  /* markers: the compared players as rings (ticks under a range), yours as orange diamonds; ringed white on hover */
+  .mark { cursor: pointer; }
+  .mark.them { fill: var(--bg); stroke: var(--blue); stroke-width: 1.6; }
+  .mark.tick { fill: var(--blue); fill-opacity: .55; stroke: none; }
+  .mark.us { fill: var(--orange); stroke: #141414; stroke-width: 1.5; }
+  .mark.lit { fill-opacity: 1; stroke: var(--fg); stroke-width: 2; }
+  .name-tag { fill: var(--orange); font-size: 10px; pointer-events: none; }
+  .name-tag.them { fill: var(--fg); }
+  .zone.good { fill: #4ade8014; } .zone.bad { fill: #f8717112; }
+  .zone-line { stroke: var(--line); stroke-dasharray: 2 4; }
+  .zone-name { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .zone-name.good { fill: #4ade80aa; } .zone-name.bad { fill: #f87171aa; }
+  #tip { position: fixed; z-index: 5; display: none; padding: 10px 12px; font-size: 12px; line-height: 1.6; white-space: nowrap;
+         background: #17191d; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px #000a; pointer-events: none; }
+  #tip .who { color: var(--fg); font-size: 14px; font-weight: 700; }
+  #tip .faint { color: var(--dim); }
+  #tip .best { color: var(--cyan); font-weight: 600; }
+  #tip .scores span { display: inline-block; margin: 2px 6px 2px 0; color: var(--dim); }
+  #tip .scores b { color: var(--fg); font-weight: 600; }
+  #tip .scores .top { padding: 0 6px; color: #fff; background: var(--accent-strong); border-radius: 5px; }
+  #tip .scores .top b { color: #fff; }
 </style>
 </head>
 <body>
 <div class="bar">
   <span class="pages">__NAV__</span>
-  <span class="seg"><span class="lbl">compare with</span><select id="division"></select></span>
-  <span class="seg" id="pos"><span class="lbl">position</span></span>
-  <span class="seg"><span class="lbl">attribute</span><select id="speed"></select></span>
-  <span class="legend"><span><i style="background:transparent;border:1.6px solid var(--blue)"></i><span id="lLeague"></span> <span id="nLeague"></span></span><span><i style="background:var(--orange);border-radius:1px;transform:rotate(45deg)"></i><span id="lClub"></span> <span id="nSquad"></span></span></span>
+  <span class="ctl"><span class="name">compare with</span><select id="against"></select></span>
+  <span class="ctl" id="positions"><span class="name">position</span></span>
+  <span class="ctl"><span class="name">attribute</span><select id="attribute"></select></span>
+  <span class="key"><span class="them"><i></i><span id="themName"></span> <span id="themCount"></span></span><span class="us"><i></i><span id="usName"></span> <span id="usCount"></span></span></span>
 </div>
-<div class="grid">
-  <div class="tile"><div class="ttitle">Role score by position</div><div id="strip-score"></div></div>
-  <div class="tile"><div class="ttitle" id="t-strip-speed"></div><div id="strip-speed"></div></div>
+<div class="pair">
+  <div class="tile"><div class="ttitle">Role score by position</div><div class="subtitle">How good your players are at each position, against the others</div>
+    <div id="scoreChart"></div><div class="howto" id="scoreHow"></div></div>
+  <div class="tile"><div class="ttitle" id="attributeTitle"></div><div class="subtitle" id="attributeSub"></div>
+    <div id="attributeChart"></div><div class="howto" id="attributeHow"></div></div>
 </div>
-<div class="grid" id="scatters"></div>
+<div class="pair" id="plots"></div>
 <div id="tip"></div>
 <script>
-const { positions: POSITIONS, players: DATA, managed: MANAGED, division: HOME_DIVISION, tops: TOPS } = __DATA__;
-// Divisions with a league-wide search: a few stray players from other searches don't make one
-const MIN_DIVISION = 20, perDivision = {};
-for (const p of DATA) if (p.division) perDivision[p.division] = (perDivision[p.division] || 0) + 1;
-// What the squad is compared with: the latest import (as on the Last page), everyone imported, or a division
-const LAST = "Last player import", ALL = "All imported players";
-const REAL_DIVISIONS = Object.keys(perDivision).filter(d => perDivision[d] >= MIN_DIVISION).sort();
-const DIVISIONS = [...(DATA.some(p => !p.squad && p.last) ? [LAST] : []), ...(DATA.some(p => !p.squad) ? [ALL] : []), ...REAL_DIVISIONS];
-const short = d => d.replace(/^Sky Bet /, "");
-// The attribute menu: the chosen position's top attributes by weight (top 8 outfield, top 5 GK)
-const attrsFor = pos => TOPS[pos] || [];
-const STORE = "fm:__SAVE__:charts", SITE = __SITE__;
-let state = { pos: POSITIONS.find(p => p !== "GK") || POSITIONS[0], speed: "Acceleration",
-              division: DIVISIONS[0], club: MANAGED };
-try { Object.assign(state, JSON.parse(localStorage.getItem(STORE) || "{}")); } catch (e) {}
-if (!POSITIONS.includes(state.pos)) state.pos = POSITIONS[0];
-if (!attrsFor(state.pos).includes(state.speed)) state.speed = attrsFor(state.pos)[0];
-if (!DIVISIONS.includes(state.division)) state.division = DIVISIONS[0];
-state.club = MANAGED;  // an older version let you pick another club
-// The division's players are the baseline; the club's are highlighted (the managed club: its squad screen)
-const inLeague = p => !p.squad && (state.division === ALL || (state.division === LAST ? p.last : p.division === state.division));
-const isHl = p => p.squad;  // your squad, always: the charts rank what you've imported against it
-let VIEW = [];
-// Axes span every division (and the highlighted club), so switching division doesn't move them
-const AXIS_POOL = () => DATA.filter(p => inLeague(p) || p.hl);
-const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {} };
+// ---- the data: every player (yours flagged squad), each position's most important attributes ----
+const MARKET = __DATA__, SITE = __SITE__;
+const POSITIONS = MARKET.positions, PLAYERS = MARKET.players, CLUB = MARKET.managed;
+const topAttributes = pos => MARKET.tops[pos] || [];
 
-const money = v => SITE.currency + (v >= 1e6 ? +(v / 1e6).toFixed(2) + "M" : v >= 1e3 ? +(v / 1e3).toFixed(2) + "K" : v);
-// Keepers have no Pace or Jumping Reach, and only keepers have Agility: players without one drop out of its charts
-const speed = p => p.attrs[state.speed];
-const inGroup = (p, pos) => p.scores[pos] != null && p.best === pos;  // each player in their best role
-const jitter = name => { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) | 0; return ((h >>> 0) % 1000) / 1000 - 0.5; };
-const median = vs => { const s = [...vs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-const NS = "http://www.w3.org/2000/svg";
-const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent?.appendChild(e); return e; };
+// whom yours are compared with: the latest import, everyone imported, or a division with a league-wide search (20+ rated)
+const LATEST = "Last player import", EVERYONE = "All imported players", LEAGUE_SIZE = 20;
+const perDivision = {};
+for (const p of PLAYERS) if (p.division) perDivision[p.division] = (perDivision[p.division] || 0) + 1;
+const CHOICES = [
+  ...(PLAYERS.some(p => !p.squad && p.last) ? [LATEST] : []),
+  ...(PLAYERS.some(p => !p.squad) ? [EVERYONE] : []),
+  ...Object.keys(perDivision).filter(d => perDivision[d] >= LEAGUE_SIZE).sort(),
+];
+const shortName = d => d.replace(/^Sky Bet /, "");
 
-function niceTicks(lo, hi, n = 5) {
-  const step = [1, 2, 2.5, 5, 10].map(m => m * 10 ** Math.floor(Math.log10((hi - lo) / n))).find(s => (hi - lo) / s <= n) || (hi - lo);
-  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+// ---- what's chosen, kept between visits ----
+const KEPT = "fm:__SAVE__:charts";
+const choice = { pos: POSITIONS.find(p => p !== "GK") || POSITIONS[0], attr: "Acceleration", against: CHOICES[0] };
+try {
+  const old = JSON.parse(localStorage.getItem(KEPT) || "{}");  // an older version called these speed and division
+  Object.assign(choice, { pos: old.pos ?? choice.pos, attr: old.attr ?? old.speed ?? choice.attr, against: old.against ?? old.division ?? choice.against });
+} catch (e) {}
+if (!POSITIONS.includes(choice.pos)) choice.pos = POSITIONS[0];
+if (!CHOICES.includes(choice.against)) choice.against = CHOICES[0];
+function choose(key, value) {
+  choice[key] = value;
+  try { localStorage.setItem(KEPT, JSON.stringify(choice)); } catch (e) {}
+  draw();
+}
+const compared = p => !p.squad && (choice.against === EVERYONE || (choice.against === LATEST ? p.last : p.division === choice.against));
+const shown = () => PLAYERS.filter(p => p.squad || compared(p));
+const atBest = (p, pos) => p.best === pos && p.scores[pos] != null;  // each player counts at his best position
+
+// ---- small helpers ----
+const wageText = v => SITE.currency + (v >= 1e6 ? `${+(v / 1e6).toFixed(2)}M` : v >= 1e3 ? `${+(v / 1e3).toFixed(2)}K` : v);
+const middleOf = values => quantile([...values].sort((a, b) => a - b), 0.5);
+function quantile(sorted, f) {  // sorted ascending; f from 0 to 1, between neighbours where it falls between them
+  const at = (sorted.length - 1) * f, lo = Math.floor(at), hi = Math.min(lo + 1, sorted.length - 1);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (at - lo);
+}
+function wobble(text) {  // a steady -0.5..0.5 per name, to spread markers that would sit on top of each other
+  let h = 7;
+  for (const ch of text) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+  return (h % 997) / 997 - 0.5;
+}
+function svgEl(tag, attrs, parent) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (parent) parent.appendChild(node);
+  return node;
+}
+function correlation(points) {  // Pearson's r, or null with too few points or no spread
+  if (points.length < 3) return null;
+  const n = points.length, mx = points.reduce((s, [a]) => s + a, 0) / n, my = points.reduce((s, [, b]) => s + b, 0) / n;
+  let sab = 0, saa = 0, sbb = 0;
+  for (const [a, b] of points) { sab += (a - mx) * (b - my); saa += (a - mx) ** 2; sbb += (b - my) ** 2; }
+  return saa && sbb ? sab / Math.sqrt(saa * sbb) : null;
+}
+
+// ---- scales: value -> pixel, with tick values and how to write them ----
+function padded(values, share) {
+  const lo = Math.min(...values), hi = Math.max(...values), pad = (hi - lo) * share || 1;
+  return [lo - pad, hi + pad];
+}
+function roundTicks(lo, hi, wanted = 5) {  // about `wanted` round numbers (steps of 1, 2, 2.5 or 5 × a power of ten)
+  const base = 10 ** Math.floor(Math.log10((hi - lo) / wanted));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * base).find(s => (hi - lo) / s <= wanted) || hi - lo;
+  const out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
   return out;
 }
-function extent(vs, pad) { const lo = Math.min(...vs), hi = Math.max(...vs), d = (hi - lo) * pad || 1; return [lo - d, hi + d]; }
-function linear([d0, d1], [r0, r1], step) {
-  const f = v => r0 + (v - d0) / (d1 - d0) * (r1 - r0); f.domain = [d0, d1]; f.fmt = v => +v.toFixed(2);
-  f.ticks = () => step ? Array.from({ length: Math.floor(d1 / step) - Math.ceil(d0 / step) + 1 }, (_, i) => (Math.ceil(d0 / step) + i) * step) : niceTicks(d0, d1);
-  return f;
+function straightScale(from, to, step) {
+  const [a, b] = from, [p, q] = to;
+  const scale = v => p + (v - a) / (b - a) * (q - p);
+  scale.range = from;
+  scale.label = v => String(+v.toFixed(2));
+  scale.marks = () => {
+    if (!step) return roundTicks(a, b);
+    const marks = [];
+    for (let v = Math.ceil(a / step) * step; v <= b + 1e-9; v += step) marks.push(v);
+    return marks;
+  };
+  return scale;
 }
-function logScale([d0, d1], [r0, r1]) {
-  const f = v => r0 + (Math.log(v) - Math.log(d0)) / (Math.log(d1) - Math.log(d0)) * (r1 - r0);
-  f.domain = [d0, d1]; f.ticks = () => [250, 500, 1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5].filter(t => t >= d0 && t <= d1); f.fmt = money; return f;
+function wageScale(from, to) {  // wages spread over orders of magnitude: a log scale
+  const [a, b] = from.map(Math.log), [p, q] = to;
+  const scale = v => p + (Math.log(v) - a) / (b - a) * (q - p);
+  scale.range = from;
+  scale.label = wageText;
+  scale.marks = () => [250, 500, 1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5].filter(t => t >= from[0] && t <= from[1]);
+  return scale;
+}
+// tick marks and grid lines along one edge; `along` = the scale, `edge` = where the axis sits, `across` = how far lines reach
+function ticks(svg, along, horizontal, edge, across, title) {
+  const g = svgEl("g", { class: "ticks" }, svg);
+  for (const t of along.marks()) {
+    const at = along(t);
+    if (horizontal) {
+      svgEl("line", { x1: at, x2: at, y1: edge - across, y2: edge, class: "gridline" }, g);
+      svgEl("text", { x: at, y: edge + 14, "text-anchor": "middle" }, g).textContent = along.label(t);
+    } else {
+      svgEl("line", { x1: edge, x2: edge + across, y1: at, y2: at, class: "gridline" }, g);
+      svgEl("text", { x: edge - 6, y: at + 4, "text-anchor": "end" }, g).textContent = along.label(t);
+    }
+  }
+  if (!title) return;
+  const end = along(along.range[1]);
+  svgEl("text", horizontal ? { x: end, y: edge + 28, "text-anchor": "end" } : { x: edge - 34, y: end - 8, "text-anchor": "start" }, g).textContent = title;
 }
 
-// Hover: one tooltip, and the hovered player ringed on every chart
+// ---- hover: a tooltip, and the player lit up on every chart ----
 const tip = document.getElementById("tip");
-function hover(p, e) {
-  document.querySelectorAll(".dot.hl").forEach(d => d.classList.remove("hl"));
+function point(p, e) {
+  document.querySelectorAll(".mark.lit").forEach(m => m.classList.remove("lit"));
   if (!p) { tip.style.display = "none"; return; }
-  document.querySelectorAll(`.dot[data-name="${CSS.escape(p.name)}"]`).forEach(d => { d.classList.add("hl"); d.parentNode.appendChild(d); });
-  const sc = Object.entries(p.scores).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(" · ");
-  tip.innerHTML = `<div class="nm">${p.name}</div><div class="d">${p.club} · ${p.age} · ${p.wage == null ? "–" : money(p.wage) + " p/w"}</div>` +
-    `<div>${sc} <span class="d">(best ${p.best})</span></div>` +
-    `<div>${p.rating == null ? "" : `rating ${p.rating.toFixed(2)} <span class="d">in ${p.minutes} mins</span> · `}${attrsFor(state.pos).slice(0, 4).map(a => `${a.toLowerCase()} ${p.attrs[a] ?? "–"}`).join(" · ")}</div>`;
+  document.querySelectorAll(`.mark[data-name="${CSS.escape(p.name)}"]`).forEach(m => { m.classList.add("lit"); m.parentNode.appendChild(m); });
+  const scores = Object.entries(p.scores).map(([pos, v]) =>
+    `<span class="${pos === p.best ? "top" : ""}">${pos} <b>${v.toFixed(1)}</b></span>`).join("");
+  const attrs = topAttributes(choice.pos).slice(0, 4).map(a => `${a.toLowerCase()} ${p.attrs[a] ?? "–"}`).join(" · ");
+  tip.innerHTML = `<div class="who">${p.name}</div><div class="faint">${p.club} · ${p.age} · ${p.wage == null ? "–" : `${wageText(p.wage)} p/w`}` +
+    ` · <span class="best">best as ${p.best}</span></div>` +
+    `<div class="scores">${scores}</div>` +
+    `<div>${p.rating == null ? "" : `rating ${p.rating.toFixed(2)} <span class="faint">in ${p.minutes} mins</span> · `}${attrs}</div>`;
   tip.style.display = "block";
-  const x = e.clientX + 14, y = e.clientY + 14, w = tip.offsetWidth, h = tip.offsetHeight;
-  tip.style.left = Math.min(x, innerWidth - w - 8) + "px"; tip.style.top = (y + h > innerHeight ? e.clientY - h - 10 : y) + "px";
+  const w = tip.offsetWidth, h = tip.offsetHeight, x = e.clientX + 14, y = e.clientY + 14;
+  tip.style.left = `${Math.min(x, innerWidth - w - 8)}px`;
+  tip.style.top = `${y + h > innerHeight ? e.clientY - h - 10 : y}px`;
 }
-function dot(svg, p, cx, cy, small) {
-  const c = p.hl ? el("rect", { x: cx - 5, y: cy - 5, width: 10, height: 10, rx: 1.5, transform: `rotate(45 ${cx} ${cy})`,
-                                class: "dot squad", "data-name": p.name }, svg)
-                 : el("circle", { cx, cy, r: small ? 2.6 : 4, class: "dot league" + (small ? " rug" : ""), "data-name": p.name }, svg);
-  c.addEventListener("mousemove", e => hover(p, e)); c.addEventListener("mouseleave", () => hover(null));
-  return c;
-}
-function axis(svg, scale, horizontal, at, span, label) {
-  const g = el("g", { class: "axis" }, svg);
-  for (const t of scale.ticks()) {
-    const v = scale(t);
-    if (horizontal) { el("line", { x1: v, x2: v, y1: at - span, y2: at, class: "grid-line" }, g); el("text", { x: v, y: at + 14, "text-anchor": "middle" }, g).textContent = scale.fmt(t); }
-    else { el("line", { x1: at, x2: at + span, y1: v, y2: v, class: "grid-line" }, g); el("text", { x: at - 6, y: v + 4, "text-anchor": "end" }, g).textContent = scale.fmt(t); }
-  }
-  if (label) {
-    const t = horizontal ? el("text", { x: scale(scale.domain[1]), y: at + 28, "text-anchor": "end" }, g)
-                         : el("text", { x: at - 34, y: scale(scale.domain[1]) - 8, "text-anchor": "start" }, g);
-    t.textContent = label;
-  }
+function marker(svg, p, x, y, asTick) {
+  const node = p.squad
+    ? svgEl("rect", { x: x - 5, y: y - 5, width: 10, height: 10, rx: 1.5, transform: `rotate(45 ${x} ${y})`, class: "mark us", "data-name": p.name }, svg)
+    : svgEl("circle", { cx: x, cy: y, r: asTick ? 2.6 : 4, class: `mark them${asTick ? " tick" : ""}`, "data-name": p.name }, svg);
+  node.addEventListener("mousemove", e => point(p, e));
+  node.addEventListener("mouseleave", () => point(null));
+  return node;
 }
 
-// One row per position: the compared players as a range (lowest to highest, the middle half shaded, the middle marked
-// and labelled) with a tick for each underneath; your players as diamonds on top; at the right, your best minus their middle.
-// min: where the axis starts; values below it sit on the axis's left edge
-function strip(id, value, label, groupFor, step, showMedian, min) {
-  const box = document.getElementById(id); box.innerHTML = "";
-  const W = box.clientWidth, rowH = 46, L = 64, R = 50, H = POSITIONS.length * rowH + 30;
-  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H }, box);
-  const rows = POSITIONS.map(pos => ({ pos, ps: VIEW.filter(p => groupFor(p, pos) && value(p, pos) != null) }));
-  const all = POSITIONS.flatMap(pos => AXIS_POOL().filter(p => groupFor(p, pos)).map(p => value(p, pos)).filter(v => v != null));
-  if (!rows.some(r => r.ps.length)) return;
-  const [lo, hi] = extent(all, 0.04), sx = linear([min ?? lo, hi], [L, W - R], step), x = v => sx(Math.max(v, sx.domain[0]));
-  axis(svg, sx, true, H - 24, H - 24, label);
-  const q = (s, f) => { const k = (s.length - 1) * f, a = Math.floor(k); return s[a] + (s[Math.min(a + 1, s.length - 1)] - s[a]) * (k - a); };
-  rows.forEach(({ pos, ps }, i) => {
-    const cy = i * rowH + rowH / 2, league = ps.filter(inLeague), mine = ps.filter(p => p.hl);
-    if (i % 2) el("rect", { x: L - 6, y: cy - rowH / 2, width: W - L - R + 12, height: rowH, class: "band-row" }, svg);
-    const t = el("text", { x: 0, y: cy + 4, class: "row-label" + (pos === state.pos ? " on" : "") }, svg); t.textContent = pos;
-    t.addEventListener("click", () => set("pos", pos));
-    if (league.length) {
-      const s = league.map(p => value(p, pos)).sort((a, b) => a - b), m = q(s, 0.5);
-      el("line", { x1: x(s[0]), x2: x(s[s.length - 1]), y1: cy, y2: cy, class: "range" }, svg);
-      el("rect", { x: x(q(s, 0.25)), y: cy - 7, width: Math.max(2, x(q(s, 0.75)) - x(q(s, 0.25))), height: 14, rx: 4, class: "iqr" }, svg);
-      el("rect", { x: x(m) - 1.5, y: cy - 10, width: 3, height: 20, rx: 1.5, class: "median" }, svg);
-      if (showMedian) el("text", { x: x(m), y: cy - 13, "text-anchor": "middle", class: "median-label" }, svg).textContent = m.toFixed(1);
-      for (const p of league) dot(svg, p, x(value(p, pos)), cy + 15, true);
-      if (mine.length) {
-        const d = Math.max(...mine.map(p => value(p, pos))) - m;
-        el("text", { x: W, y: cy + 4, "text-anchor": "end", class: "row-diff " + (d >= 0 ? "up" : "down") }, svg).textContent = (d >= 0 ? "+" : "−") + Math.abs(d).toFixed(1);
-      } else el("text", { x: W, y: cy + 4, "text-anchor": "end", class: "row-n" }, svg).textContent = `${league.length}`;
-    } else el("text", { x: W, y: cy + 4, "text-anchor": "end", class: "row-n" }, svg).textContent = "–";
-    mine.forEach(p => dot(svg, p, x(value(p, pos)), cy));
+// ---- by position: per position a range of the compared players and your players on it ----
+// value(p, pos); counts(p, pos): whether p belongs in pos's row; floor: where the scale starts (lower values sit at it)
+function byPosition(boxId, value, title, counts, step, labelMiddle, floor) {
+  const box = document.getElementById(boxId);
+  box.innerHTML = "";
+  const width = box.clientWidth, row = 46, left = 64, right = 50, height = POSITIONS.length * row + 30;
+  const everyone = shown();
+  const lines = POSITIONS.map(pos => ({ pos, people: everyone.filter(p => counts(p, pos) && value(p, pos) != null) }));
+  if (!lines.some(l => l.people.length)) return;
+  const values = POSITIONS.flatMap(pos => everyone.filter(p => counts(p, pos)).map(p => value(p, pos))).filter(v => v != null);
+  const [lo, hi] = padded(values, 0.04), scale = straightScale([floor ?? lo, hi], [left, width - right], step);
+  const x = v => scale(Math.max(v, scale.range[0]));
+  const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height }, box);
+  ticks(svg, scale, true, height - 24, height - 24, title);
+  const endText = (y, text, cls) => { svgEl("text", { x: width, y: y + 4, "text-anchor": "end", class: cls }, svg).textContent = text; };
+  lines.forEach(({ pos, people }, i) => {
+    const y = i * row + row / 2, them = people.filter(p => !p.squad), us = people.filter(p => p.squad);
+    if (i % 2) svgEl("rect", { x: left - 6, y: y - row / 2, width: width - left - right + 12, height: row, class: "stripe" }, svg);
+    const name = svgEl("text", { x: 0, y: y + 4, class: `pos${pos === choice.pos ? " on" : ""}` }, svg);
+    name.textContent = pos;
+    name.addEventListener("click", () => choose("pos", pos));
+    if (!them.length) endText(y, "–", "count");
+    else {
+      const sorted = them.map(p => value(p, pos)).sort((a, b) => a - b), mid = quantile(sorted, 0.5);
+      const q1 = x(quantile(sorted, 0.25)), q3 = x(quantile(sorted, 0.75));
+      svgEl("line", { x1: x(sorted[0]), x2: x(sorted[sorted.length - 1]), y1: y, y2: y, class: "spread" }, svg);
+      svgEl("rect", { x: q1, y: y - 7, width: Math.max(2, q3 - q1), height: 14, rx: 4, class: "middle-half" }, svg);
+      svgEl("rect", { x: x(mid) - 1.5, y: y - 10, width: 3, height: 20, rx: 1.5, class: "middle" }, svg);
+      if (labelMiddle) svgEl("text", { x: x(mid), y: y - 13, "text-anchor": "middle", class: "middle-value" }, svg).textContent = mid.toFixed(1);
+      them.forEach(p => marker(svg, p, x(value(p, pos)), y + 15, true));
+      if (us.length) {
+        const lead = Math.max(...us.map(p => value(p, pos))) - mid;
+        endText(y, `${lead >= 0 ? "+" : "−"}${Math.abs(lead).toFixed(1)}`, `lead ${lead >= 0 ? "up" : "down"}`);
+      } else endText(y, String(them.length), "count");
+    }
+    us.forEach(p => marker(svg, p, x(value(p, pos)), y));
   });
 }
 
-function fit(pts) {
-  const n = pts.length; if (n < 3) return null;
-  const mx = pts.reduce((s, p) => s + p[0], 0) / n, my = pts.reduce((s, p) => s + p[1], 0) / n;
-  let sxy = 0, sxx = 0, syy = 0; for (const [a, b] of pts) { sxy += (a - mx) * (b - my); sxx += (a - mx) ** 2; syy += (b - my) ** 2; }
-  return sxx && syy ? { slope: sxy / sxx, icpt: my - sxy / sxx * mx, r: sxy / Math.sqrt(sxx * syy) } : null;
-}
-function scatter(spec) {
-  const tile = document.createElement("div"); tile.className = "tile";
-  document.getElementById("scatters").appendChild(tile);
-  const ps = VIEW.filter(p => inGroup(p, state.pos) && spec.x(p) != null && spec.y(p) != null);
-  const league = ps.filter(inLeague), rest = ps.filter(p => !p.hl), hl = ps.filter(p => p.hl), log = spec.log;
-  // log fit for wage, so the line is straight on the log axis
-  const f = fit(league.map(p => [log ? Math.log(spec.x(p)) : spec.x(p), spec.y(p)]));
-  tile.innerHTML = `<div class="ttitle">${spec.title}</div><div class="tsub">${rest.length} ${short(state.division)}${hl.length ? ` + ${hl.length} ${state.club}` : ""}` +
-    `${f ? ` · r = <b>${f.r.toFixed(2)}</b>` : ""}</div>`;
-  if (!ps.length) return;
-  const box = document.createElement("div"); tile.appendChild(box);
-  const W = box.clientWidth, H = Math.max(240, Math.min(360, W * 0.62)), L = 40, B = 34, T = 14, R = 10;
-  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H }, box);
-  const pool = AXIS_POOL().filter(p => inGroup(p, state.pos) && spec.x(p) != null && spec.y(p) != null);
-  const xs = pool.map(spec.x), ys = pool.map(spec.y);
-  const x = log ? logScale([Math.min(...xs) / 1.25, Math.max(...xs) * 1.25], [L, W - R]) : linear(extent(xs, 0.05), [L, W - R]);
-  const y = linear(extent(ys, 0.06), [H - B, T]);
-  axis(svg, x, true, H - B, H - B - T, spec.xl); axis(svg, y, false, L, W - L - R, spec.yl);
-  // Four quadrants, split at the compared players' middle: better and cheaper (top left) is where the value is
-  if (league.length >= 3) {
-    const mx = x(median(league.map(spec.x))), my = y(median(league.map(spec.y)));
-    el("rect", { x: L, y: T, width: Math.max(0, mx - L), height: Math.max(0, my - T), class: "quad good" }, svg);
-    el("rect", { x: mx, y: my, width: Math.max(0, W - R - mx), height: Math.max(0, H - B - my), class: "quad bad" }, svg);
-    el("line", { x1: mx, x2: mx, y1: T, y2: H - B, class: "quad-line" }, svg);
-    el("line", { x1: L, x2: W - R, y1: my, y2: my, class: "quad-line" }, svg);
-    const [good, bad] = spec.quads || ["better and cheaper", "worse and dearer"];
-    el("text", { x: L + 6, y: T + 12, class: "quad-label good" }, svg).textContent = good;
-    el("text", { x: W - R - 6, y: H - B - 6, "text-anchor": "end", class: "quad-label bad" }, svg).textContent = bad;
+// ---- two values against each other, at the chosen position ----
+function plot({ title, x: getX, y: getY, xTitle, yTitle, wages, zones, spreadX, howto }) {
+  const panel = document.createElement("div");
+  panel.className = "tile";
+  document.getElementById("plots").appendChild(panel);
+  const has = p => atBest(p, choice.pos) && getX(p) != null && getY(p) != null;
+  const people = shown().filter(has), them = people.filter(p => !p.squad), us = people.filter(p => p.squad);
+  const r = correlation(them.filter(compared).map(p => [wages ? Math.log(getX(p)) : getX(p), getY(p)]));
+  panel.innerHTML = `<div class="ttitle">${title}</div><div class="note">${them.length} ${shortName(choice.against)}` +
+    `${us.length ? ` + ${us.length} ${CLUB}` : ""}${r == null ? "" : ` · r = <b>${r.toFixed(2)}</b>`}</div>`;
+  if (!people.length) return;
+  const box = document.createElement("div");
+  panel.appendChild(box);
+  if (howto) {  // how to read it, under the chart
+    const how = document.createElement("div");
+    how.className = "howto";
+    how.innerHTML = howto;
+    panel.appendChild(how);
   }
-  const jx = spec.jitter ? (p => spec.jitter * jitter(p.name)) : (() => 0), jy = spec.jitterY ? (p => spec.jitterY * jitter(p.name + "y")) : (() => 0);
-  for (const p of [...rest, ...hl]) dot(svg, p, x(spec.x(p) + jx(p)), y(spec.y(p) + jy(p)));
-  // Name the division's top three on this chart's y, and every club player: right of the dot, else left, else not at all
-  const top = new Set([...rest].sort((a, b) => spec.y(b) - spec.y(a)).slice(0, 3)), placed = [];
-  for (const p of [...hl, ...top]) {
-    const cx = x(spec.x(p) + jx(p)), cy = y(spec.y(p) + jy(p)), text = p.name.split(" ").slice(-1)[0], w = text.length * 6.2 + 2;
-    const box = [[cx + 7, cx + 7 + w], [cx - 7 - w, cx - 7]].find(([a, b]) => a >= L && b <= W &&
-      !placed.some(([pa, pb, py]) => a < pb && b > pa && Math.abs(py - cy) < 11));
-    if (!box) continue;
-    placed.push([...box, cy]);
-    el("text", { x: box[0], y: cy + 3, class: "squad-label", style: p.hl ? "" : "fill: var(--fg)" }, svg).textContent = text;
+  const width = box.clientWidth, height = Math.max(240, Math.min(360, width * 0.62)), left = 40, bottom = 34, top = 14, right = 10;
+  const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height }, box);
+  const xs = people.map(getX), ys = people.map(getY);
+  const sx = wages ? wageScale([Math.min(...xs) / 1.25, Math.max(...xs) * 1.25], [left, width - right]) : straightScale(padded(xs, 0.05), [left, width - right]);
+  const sy = straightScale(padded(ys, 0.06), [height - bottom, top]);
+  ticks(svg, sx, true, height - bottom, height - bottom - top, xTitle);
+  ticks(svg, sy, false, left, width - left - right, yTitle);
+  if (zones && them.length >= 3) {  // four zones split at the compared players' middle: top left is the value
+    const mx = sx(middleOf(them.map(getX))), my = sy(middleOf(them.map(getY)));
+    svgEl("rect", { x: left, y: top, width: Math.max(0, mx - left), height: Math.max(0, my - top), class: "zone good" }, svg);
+    svgEl("rect", { x: mx, y: my, width: Math.max(0, width - right - mx), height: Math.max(0, height - bottom - my), class: "zone bad" }, svg);
+    svgEl("line", { x1: mx, x2: mx, y1: top, y2: height - bottom, class: "zone-line" }, svg);
+    svgEl("line", { x1: left, x2: width - right, y1: my, y2: my, class: "zone-line" }, svg);
+    svgEl("text", { x: left + 6, y: top + 12, class: "zone-name good" }, svg).textContent = zones[0];
+    svgEl("text", { x: width - right - 6, y: height - bottom - 6, "text-anchor": "end", class: "zone-name bad" }, svg).textContent = zones[1];
+  }
+  const px = p => sx(getX(p) + (spreadX ? spreadX * wobble(p.name) : 0)), py = p => sy(getY(p));
+  [...them, ...us].forEach(p => marker(svg, p, px(p), py(p)));
+  // names: all of yours and the compared players' best three, beside the marker where there's room
+  const best = [...them].sort((a, b) => getY(b) - getY(a)).slice(0, 3), taken = [];
+  for (const p of [...us, ...best]) {
+    const cx = px(p), cy = py(p), text = p.name.split(" ").pop(), w = text.length * 6.2 + 2;
+    const spot = [[cx + 7, cx + 7 + w], [cx - 7 - w, cx - 7]].find(([a, b]) => a >= left && b <= width &&
+      !taken.some(([ta, tb, ty]) => a < tb && b > ta && Math.abs(ty - cy) < 11));
+    if (!spot) continue;
+    taken.push([...spot, cy]);
+    svgEl("text", { x: spot[0], y: cy + 3, class: `name-tag${p.squad ? "" : " them"}` }, svg).textContent = text;
   }
 }
 
-function render() {
-  VIEW = DATA.filter(p => inLeague(p) || isHl(p));
-  for (const p of DATA) p.hl = isHl(p);
-  for (const [id, opts] of [["division", DIVISIONS.map(d => [d, short(d)])]]) {
-    const s = document.getElementById(id);
-    s.innerHTML = opts.map(([v, l]) => `<option value="${v}"${v === state[id] ? " selected" : ""}>${l}</option>`).join("");
-    s.onchange = () => set(id, s.value);
+// ---- putting the page together ----
+function fillSelect(id, options, current, key) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = options.map(([value, text]) => `<option value="${value}"${value === current ? " selected" : ""}>${text}</option>`).join("");
+  sel.onchange = () => choose(key, sel.value);
+}
+function draw() {
+  fillSelect("against", CHOICES.map(c => [c, shortName(c)]), choice.against, "against");
+  const attrs = topAttributes(choice.pos);
+  if (!attrs.includes(choice.attr)) choice.attr = attrs[0];
+  fillSelect("attribute", attrs.map((a, i) => [a, `${i + 1}. ${a}`]), choice.attr, "attr");
+  const bar = document.getElementById("positions");
+  bar.querySelectorAll("button").forEach(b => b.remove());
+  for (const pos of POSITIONS) {
+    const b = document.createElement("button");
+    b.textContent = pos;
+    b.className = pos === choice.pos ? "on" : "";
+    b.onclick = () => choose("pos", pos);
+    bar.appendChild(b);
   }
-  // [value, label] pairs, not objects: "9" and "10" would jump the queue as integer keys
-  if (!attrsFor(state.pos).includes(state.speed)) state.speed = attrsFor(state.pos)[0];
-  const sel = document.getElementById("speed");
-  sel.innerHTML = attrsFor(state.pos).map((a, i) => `<option value="${a}"${a === state.speed ? " selected" : ""}>${i + 1}. ${a}</option>`).join("");
-  sel.onchange = () => set("speed", sel.value);
-  for (const [id, opts, key] of [["pos", POSITIONS.map(p => [p, p]), "pos"]]) {
-    const seg = document.getElementById(id); seg.querySelectorAll("button").forEach(b => b.remove());
-    for (const [v, l] of opts) {
-      const b = document.createElement("button"); b.textContent = l; b.className = state[key] === v ? "on" : "";
-      b.onclick = () => set(key, v); seg.appendChild(b);
-    }
-  }
-  document.getElementById("lLeague").textContent = short(state.division);
-  document.getElementById("lClub").textContent = state.club;
-  document.getElementById("nLeague").textContent = VIEW.filter(p => !p.hl).length;
-  document.getElementById("nSquad").textContent = VIEW.filter(p => p.hl).length;
-  const sp = state.speed;
-  document.getElementById("t-strip-speed").textContent = `${sp} attribute by position`;
-  strip("strip-score", (p, pos) => p.scores[pos], "role score", inGroup, undefined, true, 10);
-  strip("strip-speed", p => speed(p), sp, (p, pos) => p.best === pos, 2);
-  document.getElementById("scatters").innerHTML = "";
-  const pos = state.pos, score = p => p.scores[pos], rating = p => p.rating, spd = p => speed(p);
-  scatter({ title: `${pos} score vs wage`, x: p => p.wage || null, y: score, xl: "wage p/w (log)", yl: `${pos} score`, log: true,
-            quads: ["better and cheaper", "worse and dearer"] });
-  if (VIEW.some(p => p.rating != null)) {
-    scatter({ title: `${pos} score vs average rating`, x: rating, y: score, xl: "average rating", yl: `${pos} score` });
-    scatter({ title: `${sp} vs average rating`, x: spd, y: rating, xl: sp, yl: "rating", jitter: 0.35 });
-  } else {  // the rating charts need a league search with Average Rating and Minutes
-    const tile = document.createElement("div"); tile.className = "tile";
-    tile.innerHTML = `<div class="ttitle">Score vs average rating</div><div class="tsub">These charts appear once you import a whole ` +
+  const people = shown();
+  document.getElementById("themName").textContent = shortName(choice.against);
+  document.getElementById("themCount").textContent = people.filter(p => !p.squad).length;
+  document.getElementById("usName").textContent = CLUB;
+  document.getElementById("usCount").textContent = people.filter(p => p.squad).length;
+  const attr = choice.attr, pos = choice.pos, attrOf = p => p.attrs[attr], scoreOf = p => p.scores[pos];
+  document.getElementById("attributeTitle").textContent = `${attr} by position`;
+  document.getElementById("attributeSub").textContent = `Your players' ${attr.toLowerCase()} at each position, against the others (pick the attribute at the top)`;
+  const them = `<span class="them">${shortName(choice.against)}</span>`, us = `<span class="us">◆ your players</span>`;
+  document.getElementById("scoreHow").innerHTML = `Each row is a position. The pink bar is ${them}: the line runs from the worst to the best, ` +
+    `the box holds the middle half, and the white mark and number are the middle player. ${us} sit on top: right of the white mark = ` +
+    `better than most of them. The number at the far right is your best minus their middle (<span class="good">green</span> = you're ahead).`;
+  document.getElementById("attributeHow").innerHTML = `Read it like the chart beside it, for one attribute: further right = more ${attr.toLowerCase()}. ` +
+    `Pick another attribute in the menu at the top; hover a mark for the player.`;
+  byPosition("scoreChart", (p, at) => p.scores[at], "role score", atBest, undefined, true, 10);
+  byPosition("attributeChart", p => attrOf(p), attr, (p, at) => p.best === at, 2);
+  document.getElementById("plots").innerHTML = "";
+  plot({ title: `${pos} score vs wage`, x: p => p.wage || null, y: scoreOf, xTitle: "wage p/w (log)", yTitle: `${pos} score`, wages: true,
+         zones: ["better and cheaper", "worse and dearer"],
+         howto: `Every player at ${pos}: <b>higher = better</b>, <b>further left = cheaper</b>. The dashed lines are the middle of the others. ` +
+                `<span class="good">Top left</span>: better and cheaper than most (good value: worth a look). ` +
+                `<span class="bad">Bottom right</span>: worse and dearer. Hover a mark for the player.` });
+  if (people.some(p => p.rating != null)) {
+    plot({ title: `${pos} score vs average rating`, x: p => p.rating, y: scoreOf, xTitle: "average rating", yTitle: `${pos} score`,
+           howto: `Does a higher score mean better matches? Marks rising to the right (r near 1) say yes; a flat cloud (r near 0) says the score misses something.` });
+    plot({ title: `${attr} vs average rating`, x: attrOf, y: p => p.rating, xTitle: attr, yTitle: "rating", spreadX: 0.35,
+           howto: `Does more ${attr.toLowerCase()} go with better match ratings at ${pos}? The higher r, the more it does.` });
+  } else {
+    const panel = document.createElement("div");
+    panel.className = "tile";
+    panel.innerHTML = `<div class="ttitle">Score vs average rating</div><div class="note">These charts appear once you import a whole ` +
       `division with Division, Minutes and Average Rating columns (rename the export after the league, e.g. league-one.csv).</div>`;
-    document.getElementById("scatters").appendChild(tile);
+    document.getElementById("plots").appendChild(panel);
   }
 }
-function set(k, v) { state[k] = v; save(); render(); }
-
 document.addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === "SELECT") return;
-  if (SITE.pages[e.key] && SITE.pages[e.key] !== "charts") location.href = SITE.pages[e.key] + ".html";
-  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-    const i = POSITIONS.indexOf(state.pos) + (e.key === "ArrowRight" ? 1 : -1);
-    set("pos", POSITIONS[(i + POSITIONS.length) % POSITIONS.length]);
+  const page = SITE.pages[e.key];
+  if (page && page !== "charts") location.href = `${page}.html`;
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {  // the previous or next position, round the end
+    const n = POSITIONS.length, i = POSITIONS.indexOf(choice.pos) + (e.key === "ArrowRight" ? 1 : -1);
+    choose("pos", POSITIONS[(i + n) % n]);
   }
 });
-let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 150); });
-render();
+let redraw;
+addEventListener("resize", () => { clearTimeout(redraw); redraw = setTimeout(draw, 150); });
+draw();
 </script>
 </body>
 </html>

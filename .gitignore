@@ -1,11 +1,14 @@
-out/
-~$*
-.DS_Store
-__pycache__/
+# your data: settings, saves and the pages built from them stay on your computer
 config.toml
 saves/
+out/
 .backup/
-.claude/settings.local.json
-dist/
+# building the .exe
 build/
+dist/
 *.spec
+# Python, editors and the OS
+__pycache__/
+.claude/settings.local.json
+.DS_Store
+~$*

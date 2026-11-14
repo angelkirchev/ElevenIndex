@@ -8,10 +8,8 @@ Press **F8** on a list in FM, click **Import file…** in the app, and your page
 
 **[⬇ Download FMAnalyst.exe](https://github.com/angelkirchev/FMAnalyst/releases/latest/download/FMAnalyst.exe)** · Windows 10/11 · free
 
-Also for FM27, usable on their own: **[views](https://github.com/angelkirchev/FMAnalyst/tree/main/views)** ·
-**[player search filters](https://github.com/angelkirchev/FMAnalyst/tree/main/player%20search%20filters)** ·
-**[staff search filters](https://github.com/angelkirchev/FMAnalyst/tree/main/staff%20search%20filters)**
-(all the views and filters in one [ZIP](https://github.com/angelkirchev/FMAnalyst/archive/refs/heads/main.zip))
+Also for FM27, usable on their own: the **[views](https://github.com/angelkirchev/FMAnalyst/tree/main/views)** that give FM's
+lists the right columns (all in one [ZIP](https://github.com/angelkirchev/FMAnalyst/archive/refs/heads/main.zip)).
 
 - [What it looks like](#what-it-looks-like)
 - [Installation](#installation)
@@ -25,29 +23,42 @@ Also for FM27, usable on their own: **[views](https://github.com/angelkirchev/FM
 
 *From a demo save. Your own club and players will differ.*
 
-**Your squad**, scored at FM's 10 position groups. **Best** is each player's strongest position, **vs Age** how they
-compare with what's typical for their age. Green is strong, orange weak.
+**Squad**: your lineup by position (starter, backup, surplus and youth) beside how well your squad fits 20 common
+formations, and below them every player scored at FM's 10 position groups. **Best** is each player's strongest position,
+**vs Age** how he compares with what's normal at his age.
 
-![Squad page: every player scored at each position](docs/screenshots/squad.png)
+![Squad page: the lineup, the formations and every player](docs/screenshots/squad.png)
 
-**Right after an import**: the **Last player import** page shows only the list you just imported, and a message confirms it.
+**A player's profile** (click any name): a scout report, every score at every squad export with its change, and each
+attribute over time.
 
-![Last page after an import](docs/screenshots/import.png)
+![A player's profile](docs/screenshots/profile.png)
+
+**Analysis**: your team position by position, ranked by speed or any attribute, against the players you've imported.
+
+![Analysis page](docs/screenshots/analysis.png)
+
+**Development**: how your players changed between two squad exports: risers, fallers, attributes up and down.
+
+![Development page](docs/screenshots/development.png)
+
+**Market**: your squad (orange diamonds) against the players you've imported, position by position, and who's good value
+for his wage.
+
+![Market page](docs/screenshots/market.png)
 
 **Player search**: your best players per position, and the minimums (**Search ≥**) to type into FM's player search to find
 better ones.
 
 ![Player search page](docs/screenshots/filters.png)
 
-**Saves**: switch between saves or start a new one. **Clear old lists** tidies up **All players**, everyone you've imported.
-
-![Saves panel](docs/screenshots/saves.png)
-
-![All players page with Clear old lists](docs/screenshots/clear.png)
-
 **Staff**, scored for every job: manager, each coaching group, scout, physio and more.
 
 ![Staff page](docs/screenshots/staff.png)
+
+**Attributes**: how much each attribute counts at each position, to change and save as your own, or export to Excel.
+
+![Attributes page](docs/screenshots/attributes.png)
 
 ---
 
@@ -115,12 +126,12 @@ Click **Start**.
 The views give FM's lists the right columns.
 
 1. **[Download the project ZIP](https://github.com/angelkirchev/FMAnalyst/archive/refs/heads/main.zip)** and extract it.
-   You need its **`views`** folder (and, if you like, `player search filters` and `staff search filters`).
+   You need its **`views`** folder.
 2. Quit FM, then open `Documents\Sports Interactive\Football Manager 27` (inside OneDrive if your Documents are there).
 3. Copy the files from the project's `views` folder into FM's `views` folder. Copy the files, not the folder, and
    choose **Skip** if Windows asks about replacing your own views.
-4. Start FM. On your **squad** screen pick the **`attribs_outfield`** view; on **player search**, **`player_search_outfield`**;
-   on **staff search**, **`staff_everything`**.
+4. Start FM. On your **squad** screen pick the **`Squad - Outfield Players View`**; on **player search**, **`Search - Outfield Players View`**;
+   on **staff search**, **`Search - Staff View`**.
 5. On each of the two player views, point at the list and press **Ctrl + F8** once, so every attribute shows,
    goalkeeping ones included.
 6. Recommended: add the **Position** column to both player views too (the view's menu → **Customise View…** →
@@ -142,8 +153,8 @@ On your squad screen, point at the list and press **F8**. In the app, click **Im
 |---|---|
 | Your squad (file starts `First Team` or `Squad`) | Your squad. Players missing from a newer squad export count as gone. |
 | A search or shortlist | A list of its own, shown on **Last player import** (key 6) and kept on **All players** (key 5) |
-| Staff from a staff search (the `staff_everything` view) | Staff, shown on **Last staff import** (key 9) and kept on **All staff** (key 8) |
-| A whole division, with Division, Minutes and Average Rating columns | Adds the division and the rating charts to **Charts** (key 7). Rename the file first, e.g. `league-one.csv`. |
+| Staff from a staff search (the `Search - Staff View`) | Staff, shown on **Last staff import** (key 9) and kept on **All staff** (key 8) |
+| A whole division, with Division, Minutes and Average Rating columns | Adds the division and the rating charts to **Market** (key 4). Rename the file first, e.g. `league-one.csv`. |
 
 **The pages:** press the number keys to switch, **?** for all shortcuts. Click a column to sort, double-click a player
 for their history, and type in the filter box, e.g. `age<=21 best=DC`.
@@ -204,8 +215,8 @@ and FM27 Exporter must be in **`BepInEx\plugins`**. `BepInEx\LogOutput.log` show
 **The window stays blank.** The app needs Microsoft's WebView2, built into Windows 11 and up-to-date Windows 10.
 Install the **Evergreen Runtime** from Microsoft's [WebView2 page](https://developer.microsoft.com/microsoft-edge/webview2/).
 
-**What does Charts compare?** Your squad (orange) with the players in **compare with** at the top: your **Last
-import** (the default), **All imported players**, or a whole division if you've imported one. The two average-rating
+**What does Market compare?** Your squad (orange) with the players in **compare with** at the top: your **Last
+player import** (the default), **All imported players**, or a whole division if you've imported one. The two average-rating
 charts need a division export with Minutes and Average Rating columns.
 
 **What does Staff search show?** For each job, the best staff you've imported from staff searches and the minimums
@@ -216,14 +227,10 @@ names start with the export's date), and start the app again.
 
 **Something else went wrong.** `app.log` in your data folder says what happened.
 
-**Can I use just the views or search filters?** Yes, without the app:
-
-Browse the [views](https://github.com/angelkirchev/FMAnalyst/tree/main/views),
-  [player search filters](https://github.com/angelkirchev/FMAnalyst/tree/main/player%20search%20filters) and
-  [staff search filters](https://github.com/angelkirchev/FMAnalyst/tree/main/staff%20search%20filters), or get them all in
-  the [project ZIP](https://github.com/angelkirchev/FMAnalyst/archive/refs/heads/main.zip). Copy the files into FM's folders
-  of the same names, as in step 4 (create a folder if FM doesn't have it yet). They appear under their file names in
-FM's view options and search screens.
+**Can I use just the views?** Yes, without the app: copy the files from the
+[views](https://github.com/angelkirchev/FMAnalyst/tree/main/views) folder (or the
+[project ZIP](https://github.com/angelkirchev/FMAnalyst/archive/refs/heads/main.zip)) into FM's `views` folder, as in step 4.
+They appear under their names in FM's view options.
 
 ---
 

@@ -280,7 +280,7 @@ class App:
         score.with_positions(self.current_weights(), positions)  # the same checks as saving
         chosen = self.window.create_file_dialog(webview.FileDialog.SAVE, directory=str(Path.home() / "Documents"),
                                                 save_filename=f"{self.save}-weights.txt",
-                                                file_types=("Text, tab-separated (*.txt)", "Spreadsheet, comma-separated (*.csv)"))
+                                                file_types=("Text table (*.txt)", "Excel table (*.csv)"))  # pywebview takes only letters and spaces in a name
         if not chosen:
             return None
         path = Path(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)
@@ -492,18 +492,18 @@ class MainApi:
 
 
 SETUP_HTML = """<!doctype html><html><head><meta charset="utf-8"><style>
-body { font: 15px Inter, 'Segoe UI', system-ui, sans-serif; background: #1f0d36; color: #f3ecff; margin: 0; display: flex; justify-content: center; }
+body { font: 15px Inter, 'Segoe UI', system-ui, sans-serif; background: #16181c; color: #f4f4f2; margin: 0; display: flex; justify-content: center; }
 .box { width: 560px; max-width: 92vw; margin: 48px 0; }
-h1 { font-size: 22px; margin: 0 0 6px; } .lead { color: #b8a9e8; margin: 0 0 22px; line-height: 1.5; }
-label { display: block; margin: 14px 0 5px; } .hint { color: #a48fc4; font-size: 13px; margin-top: 4px; }
-input, select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #472a6e; border-radius: 6px;
-  background: #26123f; color: #f3ecff; font: inherit; }
+h1 { font-size: 22px; margin: 0 0 6px; } .lead { color: #c9cfd8; margin: 0 0 22px; line-height: 1.5; }
+label { display: block; margin: 14px 0 5px; } .hint { color: #a0a6b0; font-size: 13px; margin-top: 4px; }
+input, select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #33363e; border-radius: 6px;
+  background: #1c1e23; color: #f4f4f2; font: inherit; }
 .row { display: flex; gap: 8px; } .row input { flex: 1; }
 button { padding: 8px 16px; border: 0; border-radius: 6px; font: 600 14px Inter, 'Segoe UI', system-ui, sans-serif; cursor: pointer;
-  background: #472a6e; color: #f3ecff; }
-button.go { background: #7b2ff7; color: #fff; padding: 10px 22px; font-size: 15px; margin-top: 22px; }
+  background: #33363e; color: #f4f4f2; }
+button.go { background: #e0187a; color: #fff; padding: 10px 22px; font-size: 15px; margin-top: 22px; }
 .check { display: flex; gap: 8px; align-items: center; margin-top: 16px; } .check input { width: auto; }
-.error { color: #f87171; min-height: 1.3em; margin-top: 12px; } .home { color: #a48fc4; font-size: 13px; margin-top: 26px; }
+.error { color: #f87171; min-height: 1.3em; margin-top: 12px; } .home { color: #a0a6b0; font-size: 13px; margin-top: 26px; }
 </style></head><body><div class="box">
 <h1>Welcome to FMAnalyst</h1>
 <p class="lead">A few details about your Football Manager save, and you're ready. You can add more saves later with
@@ -536,7 +536,7 @@ $("go").onclick = go;
 document.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
 </script></body></html>"""
 
-START_HTML = """<!doctype html><html><body style="font: 15px Inter, 'Segoe UI', system-ui; background: #1f0d36; color: #f3ecff; padding: 40px">
+START_HTML = """<!doctype html><html><body style="font: 15px Inter, 'Segoe UI', system-ui; background: #16181c; color: #f4f4f2; padding: 40px">
 <h2>No players yet</h2><p>In FM, point at a player list and press F8 (Ctrl+F8 first, to add every attribute).</p>
 <p>Then click <b>Import file…</b> at the bottom right and choose the export.</p></body></html>"""
 
@@ -544,16 +544,16 @@ TOOLBAR_JS = """(() => {
   if (document.getElementById("fm-import")) return;
   const bar = document.createElement("div");
   bar.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;gap:6px;align-items:center;" +
-    "padding:6px;border-radius:8px;background:#1f0d36;box-shadow:0 2px 8px #0008;font:14px Inter,'Segoe UI',system-ui,sans-serif";
+    "padding:6px;border-radius:8px;background:#16181c;box-shadow:0 2px 8px #0008;font:14px Inter,'Segoe UI',system-ui,sans-serif";
   const b = document.createElement("button");
   b.id = "fm-import"; b.textContent = "Import file…"; b.title = "Choose an FM27 Exporter file to import";
   // each button gets its own colours (reading cssText back gives rgb(), so it can't be edited by search and replace)
   const BUTTON = "padding:7px 16px;border:0;border-radius:6px;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer;";
-  b.style.cssText = BUTTON + "background:#7b2ff7;color:#fff";
+  b.style.cssText = BUTTON + "background:#e0187a;color:#fff";
   b.onclick = () => window.pywebview && pywebview.api.pick_file();
   const sv = document.createElement("button");
   sv.id = "fm-saves-button"; sv.textContent = "Saves"; sv.title = "Switch to another save, or start a new one";
-  sv.style.cssText = BUTTON + "background:#472a6e;color:#f3ecff";
+  sv.style.cssText = BUTTON + "background:#33363e;color:#f4f4f2";
   sv.onclick = () => window.fmSaves();
   bar.append(b, sv);
 
@@ -565,7 +565,7 @@ TOOLBAR_JS = """(() => {
     c.id = "fm-clear"; c.title = "Move old search lists to the archive (not deleted). Keeps your squad and your latest list.";
     const idle = "Clear old lists";
     c.textContent = idle;
-    c.style.cssText = BUTTON + "background:#3b1f33;color:#f87171";
+    c.style.cssText = BUTTON + "background:#33292e;color:#f87171";
     let armed = null;
     c.onclick = async () => {
       if (armed) { clearTimeout(armed); armed = null; c.textContent = "Clearing…"; return pywebview.api.clear_lists(kind); }
@@ -581,7 +581,7 @@ TOOLBAR_JS = """(() => {
   // The Saves panel: switch to a save, or create one. Typing in it isn't a page shortcut.
   const css = (el, s) => (el.style.cssText = s, el);
   const make = (tag, text) => { const e = document.createElement(tag); if (text) e.textContent = text; return e; };
-  const field = "padding:7px;border:1px solid #472a6e;border-radius:6px;background:#26123f;color:#f3ecff;font:inherit;width:100%;box-sizing:border-box";
+  const field = "padding:7px;border:1px solid #33363e;border-radius:6px;background:#1c1e23;color:#f4f4f2;font:inherit;width:100%;box-sizing:border-box";
   window.fmSaves = async () => {
     document.getElementById("fm-saves")?.remove();
     const saves = await pywebview.api.saves();
@@ -589,21 +589,21 @@ TOOLBAR_JS = """(() => {
     shade.id = "fm-saves";
     shade.onclick = e => { if (e.target === shade) shade.remove(); };
     shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
-    const box = css(make("div"), "background:#1f0d36;color:#f3ecff;border:1px solid #472a6e;border-radius:10px;padding:20px 22px;width:440px;max-width:90vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000");
+    const box = css(make("div"), "background:#16181c;color:#f4f4f2;border:1px solid #33363e;border-radius:10px;padding:20px 22px;width:440px;max-width:90vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000");
     const error = css(make("div"), "color:#f87171;min-height:1.2em;margin-top:8px");
     const run = async (call) => { error.textContent = "Working…"; const r = await call(); if (r && r.error) error.textContent = r.error; else shade.remove(); };
 
     box.append(css(make("h3", "Your saves"), "margin:0 0 10px;font-size:16px"));
     for (const s of saves) {
       const row = css(make("button"), "display:flex;justify-content:space-between;gap:12px;width:100%;margin:4px 0;padding:9px 12px;border-radius:6px;cursor:pointer;font:inherit;text-align:left;" +
-        "border:1px solid " + (s.current ? "#9b5cff" : "#472a6e") + ";background:" + (s.current ? "#26123f" : "transparent") + ";color:#f3ecff");
-      row.append(make("span", s.club + "  (" + s.name + ")"), css(make("span", s.current ? "open now" : (s.date ? "up to " + s.date : "no players yet")), "color:#a48fc4;white-space:nowrap"));
+        "border:1px solid " + (s.current ? "#ff3d96" : "#33363e") + ";background:" + (s.current ? "#1c1e23" : "transparent") + ";color:#f4f4f2");
+      row.append(make("span", s.club + "  (" + s.name + ")"), css(make("span", s.current ? "open now" : (s.date ? "up to " + s.date : "no players yet")), "color:#a0a6b0;white-space:nowrap"));
       if (!s.current) row.onclick = () => run(() => pywebview.api.switch_save(s.name));
       box.append(row);
     }
 
     box.append(css(make("h3", "New save"), "margin:20px 0 4px;font-size:16px"),
-      css(make("div", "Your old saves stay as they are: switch back to them here any time."), "color:#a48fc4;margin-bottom:8px"));
+      css(make("div", "Your old saves stay as they are: switch back to them here any time."), "color:#a0a6b0;margin-bottom:8px"));
     const input = (labelText, placeholder) => {
       const l = css(make("label", labelText), "display:block;margin:8px 0 4px");
       const i = css(make("input"), field); i.placeholder = placeholder; box.append(l, i); return i;
@@ -612,8 +612,8 @@ TOOLBAR_JS = """(() => {
     const name = input("Name for this save (optional)", "made from the club's name");
     club.oninput = () => { name.placeholder = club.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "made from the club's name"; };
     const buttons = css(make("div"), "display:flex;gap:8px;justify-content:flex-end;margin-top:14px");
-    const cancel = css(make("button", "Close"), "padding:7px 16px;border:0;border-radius:6px;background:#472a6e;color:#f3ecff;font:inherit;cursor:pointer");
-    const create = css(make("button", "Create and switch to it"), "padding:7px 16px;border:0;border-radius:6px;background:#7b2ff7;color:#fff;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
+    const cancel = css(make("button", "Close"), "padding:7px 16px;border:0;border-radius:6px;background:#33363e;color:#f4f4f2;font:inherit;cursor:pointer");
+    const create = css(make("button", "Create and switch to it"), "padding:7px 16px;border:0;border-radius:6px;background:#e0187a;color:#fff;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
     cancel.onclick = () => shade.remove();
     create.onclick = () => run(() => pywebview.api.new_save(club.value, "", name.value));
     buttons.append(cancel, create);
@@ -626,7 +626,7 @@ TOOLBAR_JS = """(() => {
     if (!n) { n = document.createElement("div"); n.id = "fm-notice"; document.body.append(n); }
     n.textContent = text;
     n.style.cssText = "position:fixed;right:16px;bottom:68px;z-index:9999;max-width:440px;padding:10px 14px;" +
-      "border-radius:6px;font:14px Inter,'Segoe UI',system-ui,sans-serif;box-shadow:0 2px 8px #0008;color:#1f0d36;" +
+      "border-radius:6px;font:14px Inter,'Segoe UI',system-ui,sans-serif;box-shadow:0 2px 8px #0008;color:#16181c;" +
       "background:" + (error ? "#f87171" : "#4ade80");
     clearTimeout(window.fmNoticeTimer);
     window.fmNoticeTimer = setTimeout(() => n.remove(), error ? 15000 : 6000);

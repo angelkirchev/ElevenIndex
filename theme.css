@@ -1,38 +1,43 @@
-  /* FM27-style theme: shared by template.html and charts.html (score.py inlines it into each page).
-     The colour names are kept from the old theme so every page recolours together: --blue is the accent (FM's purple),
-     --purple the column headings, --cyan the titles and highlights. */
-  :root { --bg: #26123f; --desk: #19092c; --fg: #f3ecff; --line: #472a6e; --hover: #3a1f5c; --dim: #a48fc4;
-          --blue: #9b5cff; --purple: #b8a9e8; --cyan: #e2d6ff;
+  /* FMAnalyst's theme, after FM27: a teal club bar on top, charcoal panels, magenta for what's selected. Shared by
+     template.html and charts.html (score.py inlines it). The names: --bg panels, --desk the page, --row every other row,
+     --blue the accent (magenta), --purple the text columns, --cyan the highlights (mint), --club the top bar. */
+  :root { --bg: #1c1e23; --desk: #121316; --fg: #f4f4f2; --line: #33363e; --hover: #2a2d34; --dim: #a0a6b0;
+          --blue: #ff3d96; --purple: #c9cfd8; --cyan: #8fe3cf;
           --green: #4ade80; --yellow: #fbd13d; --orange: #fb923c; --red: #f87171;
-          --row: #2e1849; --accent-strong: #7b2ff7;
+          --row: #222429; --accent-strong: #e0187a;
+          --club: #2b7a73; --club-dark: #1d5953; --club-ink: #ffffff;
           --head: "Barlow Condensed", "Bahnschrift SemiCondensed", "Arial Narrow", sans-serif;
           --body: "Inter", "Segoe UI", system-ui, sans-serif; }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 0 14px 14px; color: var(--fg); font: 13px/1.5 var(--body);
-         background: radial-gradient(1100px 560px at 85% -10%, #5a1a86 0%, transparent 62%), var(--desk); min-height: 100vh; }
-  /* The top bar: deep black with a purple line along the bottom, the menu as bordered buttons in light text; the current
-     page filled solid purple, the one under the mouse light lavender */
-  .bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; margin: 0 -14px 14px; padding: 11px 14px;
-         background: #0c0b10; border-bottom: 2px solid transparent;
-         border-image: linear-gradient(90deg, #7b2ff7, #9b5cff 40%, #2a2338) 1; box-shadow: 0 3px 12px #000a; }
-  .pages { display: flex; align-items: center; flex-wrap: nowrap; gap: 4px; }
-  .pages a { color: #ddd5f0; text-decoration: none; padding: 6px 7px; font: 600 14px/1.15 var(--head); white-space: nowrap;
-             text-transform: uppercase; letter-spacing: .02em; background: #18161f; border: 1px solid #36313f; border-radius: 6px;
-             transition: background .12s, color .12s, border-color .12s; }
-  .pages a b { color: #b794ff; font-weight: 700; margin-right: 4px; }
-  .pages a.on { color: #fff; background: #7b2ff7; border-color: #a97bff; box-shadow: 0 0 0 1px #7b2ff755, 0 2px 8px #7b2ff766; }
-  .pages a.on b { color: #fff; opacity: .8; }
-  .pages a:hover:not(.on) { color: #120f18; background: #e9e1ff; border-color: #e9e1ff; }
-  .pages a:hover:not(.on) b { color: #6a2ad6; }
-  .pages .sep { width: 1px; align-self: stretch; background: #3a3446; margin: 2px 3px; }
-  /* The app's name and icon, left of the menu */
-  .pages .brand { display: flex; align-items: center; gap: 8px; padding: 0 10px 0 0;
-                  color: #fff; font: 500 22px/1 var(--head); letter-spacing: .01em; white-space: nowrap; }
-  /* the shield on a light badge, so it stands out on the dark bar */
-  .pages .brand svg { width: 38px; height: 38px; flex: none; padding: 4px; border-radius: 9px;
-                      background: linear-gradient(160deg, #ffffff, #e6dcff); box-shadow: 0 0 0 1px #ffffff55, 0 2px 8px #7b2ff766; }
-  .pages .brand > span { color: #c9b6ff; }  /* "Analyst" lavender, "FM" white */
-  .pages .brand b { color: #fff; font-weight: 700; margin: 0; }
-  /* The logo, large and faint, in the bottom-right corner: over the page but too faint to get in the way, and clicks pass through */
-  .watermark { position: fixed; right: -40px; bottom: -50px; width: 360px; height: 360px; z-index: 5; pointer-events: none;
-               background: center / contain no-repeat; opacity: .045; }
+  body { min-height: 100vh; margin: 0; padding: 0 14px 14px; color: var(--fg); font: 13px/1.5 var(--body);
+         background: linear-gradient(180deg, #1b1d22 0, var(--desk) 420px) fixed, var(--desk); }
+
+  /* ---- the top bar, like FM's: the club colour, bold dark menu, the current page underlined ---- */
+  .bar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 0 -14px 14px; padding: 0 14px;
+         color: var(--club-ink); background: linear-gradient(180deg, #33887f, var(--club)); border-bottom: 1px solid var(--club-dark);
+         box-shadow: 0 2px 10px #0008; }
+  .pages { display: flex; flex-wrap: nowrap; gap: 2px; align-items: stretch; align-self: stretch; }
+  .pages a { display: flex; align-items: center; padding: 14px 7px 11px; color: var(--club-ink); font: 700 15px/1 var(--head);
+             letter-spacing: .02em; text-transform: uppercase; text-decoration: none; white-space: nowrap;
+             border-bottom: 3px solid transparent; transition: background .12s; }
+  .pages a b { margin-right: 5px; color: #a9ddd5; font-weight: 700; }
+  .pages a:hover:not(.on) { background: #ffffff14; }
+  .pages a.on { background: #0000001f; border-bottom-color: var(--club-ink); }
+  .pages a.on b { color: var(--club-ink); }
+  .pages .sep { width: 1px; margin: 12px 4px; background: #ffffff33; }
+  /* the app's name and icon, at the left */
+  .pages .brand { display: flex; gap: 8px; align-items: center; padding: 6px 12px 6px 0; color: var(--club-ink);
+                  font: 500 22px/1 var(--head); letter-spacing: .01em; white-space: nowrap; }
+  .pages .brand svg { flex: none; width: 38px; height: 38px; padding: 4px; background: #fff; border-radius: 50%;
+                      box-shadow: 0 0 0 2px var(--club-dark), 0 2px 6px #0004; }
+  .pages .brand > span { color: #bfe9e2; }  /* "Analyst"; "FM" in bold ink */
+  .pages .brand b { margin: 0; color: var(--club-ink); font-weight: 700; }
+  /* the search box and count, on the bar: light, like FM's search */
+  .bar #filter { color: #fff; background: #ffffff1f; border-color: #ffffff3d; }
+  .bar #filter::placeholder { color: #cde9e4; }
+  .bar #filter:focus { background: #ffffff2e; border-color: #fff; }
+  .bar #count { color: #d8efeb; }
+
+  /* the logo, large and faint, in the bottom-right corner (clicks pass through) */
+  .watermark { position: fixed; right: -40px; bottom: -50px; z-index: 5; width: 360px; height: 360px; opacity: .04;
+               background: center / contain no-repeat; pointer-events: none; }

@@ -35,7 +35,7 @@ OUTFIELD_ONLY = {"Finishing", "Tackling", "Marking", "Heading", "Dribbling", "Cr
 # An export needs some of these to be scored (a scouting view with only Recommendation etc. has none)
 ATTRIBUTE_CHECK = GK_ATTRS | OUTFIELD_ONLY | {"Acceleration", "Pace", "Passing", "Decisions", "Composure", "Strength"}
 
-# Staff exports (the staff_everything view): FM's abbreviated headers -> the attribute names in the weights file.
+# Staff exports (the Search - Staff View): FM's abbreviated headers -> the attribute names in the weights file.
 # The exporter names staff files "Player Search ..." too, so a staff export is told apart by its Person/Preferred Job columns.
 STAFF_RENAME = {
     "Person": "Name", "Preferred Job": "Job", "Club Job": "Job",
@@ -250,7 +250,7 @@ def import_staff(headers, rows, date, source, club, save_toml, cfg):
         else:
             skipped.append(new["Name"])
     if not out:
-        raise ValueError("No staff with attributes found in the export: use the staff_everything view in FM.")
+        raise ValueError("No staff with attributes found in the export: use the Search - Staff View in FM.")
     staff_dir = save_toml.parent / "staff"
     staff_dir.mkdir(exist_ok=True)
     path = write_obs(staff_dir, f"{date}_{source}.csv", out, STAFF_META_ORDER, add_columns=True)
@@ -263,7 +263,7 @@ def drop_unscorable(converted, obs_dir, cfg):
     imports (it would stop on them). Returns (converted without them, their names)."""
     w = score.load_weights(cfg, obs_dir.parent)
     aliases = cfg.get("aliases", {})
-    known, _ = score.load_players(obs_dir, aliases)
+    known, _ = score.read_observations(obs_dir, aliases)
     kept, skipped = {}, []
     for view, vrows in converted.items():
         kept[view] = []

@@ -1,6 +1,4 @@
-# Settings for this computer: copy to config.toml, or run `python3 score.py init`.
-# The settings page (key 9) shows them.
-active_save = "my-club"            # saves/<this>/save.toml
-screenshots_dir = "~/Desktop"      # where your screenshots are saved (Windows: "~/Pictures/Screenshots")
-currency = "£"                     # the money symbol FM shows
-# exports_dir = "~/Documents/Sports Interactive/Football Manager 27/exports"  # app.py: FM27 Exporter's folder (found automatically)
+# FMAnalyst's settings for this computer, normally written by the app's setup screen (config.toml, in the data folder).
+active_save = "my-club"   # the save in use: saves/<this>/
+currency = "£"            # the money sign FM shows
+# exports_dir = "C:/Users/me/Documents/Sports Interactive/Football Manager 27/exports"   # FM27 Exporter's folder, if not found by itself

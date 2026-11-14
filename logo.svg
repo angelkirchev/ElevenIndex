@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" shape-rendering="geometricPrecision">
-  <!-- FMAnalyst's icon for the pages' dark top bar (score.py inlines it): a purple shield, the rising line and ball in
+  <!-- FMAnalyst's icon for the pages' dark top bar (score.py inlines it): a magenta shield, the rising line and ball in
        white. docs/logo-icon.svg is the navy original, docs/FMAnalyst.ico the .exe's icon, docs/logo.png the README's. -->
   <defs>
     <path id="logo-shield" d="M14 16 Q50 6 86 16 L86 50 Q84 78 50 95 Q16 78 14 50 Z"/>
@@ -7,17 +7,17 @@
     <polyline id="logo-line" points="5,88 33,61 46,70 80,32" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
     <polygon id="logo-head" points="94,14 70,22 86,38"/>
   </defs>
-  <use href="#logo-shield" fill="#7b2ff7"/>
-  <!-- outside the shield the line is purple, inside it's white -->
-  <use href="#logo-line" stroke="#9b5cff"/>
-  <use href="#logo-head" fill="#9b5cff"/>
+  <use href="#logo-shield" fill="#e0187a"/>
+  <!-- outside the shield the line is magenta, inside it's white -->
+  <use href="#logo-line" stroke="#ff3d96"/>
+  <use href="#logo-head" fill="#ff3d96"/>
   <g clip-path="url(#logo-in)">
     <use href="#logo-line" stroke="#ffffff"/>
     <use href="#logo-head" fill="#ffffff"/>
   </g>
-  <circle cx="33" cy="61" r="5.5" fill="#7b2ff7" stroke="#ffffff" stroke-width="3.5"/>
-  <circle cx="46" cy="70" r="5.5" fill="#7b2ff7" stroke="#ffffff" stroke-width="3.5"/>
-  <!-- the ball: white, with a purple centre pentagon -->
+  <circle cx="33" cy="61" r="5.5" fill="#e0187a" stroke="#ffffff" stroke-width="3.5"/>
+  <circle cx="46" cy="70" r="5.5" fill="#e0187a" stroke="#ffffff" stroke-width="3.5"/>
+  <!-- the ball: white, with a magenta centre pentagon -->
   <circle cx="54" cy="31" r="11" fill="#ffffff"/>
-  <polygon points="54,25.5 59.2,29.3 57.2,35.4 50.8,35.4 48.8,29.3" fill="#7b2ff7"/>
+  <polygon points="54,25.5 59.2,29.3 57.2,35.4 50.8,35.4 48.8,29.3" fill="#e0187a"/>
 </svg>
