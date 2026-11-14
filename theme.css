@@ -1,0 +1,33 @@
+  /* FM27-style theme: shared by template.html and charts.html (score.py inlines it into each page).
+     The colour names are kept from the old theme so every page recolours together: --blue is the accent (FM's purple),
+     --purple the column headings, --cyan the titles and highlights. */
+  :root { --bg: #26123f; --desk: #19092c; --fg: #f3ecff; --line: #472a6e; --hover: #3a1f5c; --dim: #a48fc4;
+          --blue: #9b5cff; --purple: #b8a9e8; --cyan: #e2d6ff;
+          --green: #4ade80; --yellow: #fbd13d; --orange: #fb923c; --red: #f87171;
+          --row: #2e1849; --accent-strong: #7b2ff7;
+          --head: "Barlow Condensed", "Bahnschrift SemiCondensed", "Arial Narrow", sans-serif;
+          --body: "Inter", "Segoe UI", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0 14px 14px; color: var(--fg); font: 13px/1.5 var(--body);
+         background: radial-gradient(1100px 560px at 85% -10%, #5a1a86 0%, transparent 62%), var(--desk); min-height: 100vh; }
+  /* The top bar: near-black, with a condensed uppercase menu of bordered buttons; the current page filled in the accent */
+  .bar { display: flex; align-items: center; flex-wrap: wrap; gap: 0 14px; margin: 0 -14px 12px; padding: 7px 14px;
+         background: #141317; border-bottom: 1px solid #2a2830; box-shadow: 0 2px 8px #0006; }
+  .pages { display: flex; align-items: center; flex-wrap: nowrap; gap: 3px; }
+  .pages a { color: var(--dim); text-decoration: none; padding: 4px 6px; font: 600 14px/1.2 var(--head); white-space: nowrap;
+             text-transform: uppercase; letter-spacing: .02em; border: 1px solid #34303f; border-radius: 6px;
+             transition: background .12s, color .12s, border-color .12s; }
+  .pages a b { color: var(--blue); font-weight: 700; margin-right: 3px; }
+  .pages a.on { color: #fff; background: #7b2ff733; border-color: var(--blue); }
+  .pages a.on b { color: var(--cyan); }
+  .pages a:hover:not(.on) { color: #141317; background: #e2d6ff; border-color: #e2d6ff; }
+  .pages a:hover:not(.on) b { color: #6a2ad6; }
+  .pages .sep { width: 1px; align-self: stretch; background: #34303f; margin: 3px 4px; }
+  /* The app's name and icon, left of the menu */
+  .pages .brand { display: flex; align-items: center; gap: 7px; padding: 0 8px 0 0;
+                  color: var(--fg); font: 500 20px/1 var(--head); letter-spacing: .01em; white-space: nowrap; }
+  .pages .brand svg { width: 26px; height: 26px; }
+  .pages .brand b { color: var(--fg); font-weight: 700; margin: 0; }
+  /* The logo, large and faint, in the bottom-right corner: over the page but too faint to get in the way, and clicks pass through */
+  .watermark { position: fixed; right: -40px; bottom: -50px; width: 360px; height: 360px; z-index: 5; pointer-events: none;
+               background: center / contain no-repeat; opacity: .045; }
