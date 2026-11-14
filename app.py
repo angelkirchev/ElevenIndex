@@ -90,6 +90,8 @@ class App:
     def import_now(self, path):
         date = export_date(path)
         source = guess_source(path)
+        if source is None and (m := re.search(r"[ _](\d{2})-(\d{2})-\d{2}$", path.stem)):
+            date += f"T{m.group(1)}{m.group(2)}"  # a squad export: its own snapshot, even beside another from the same day
         self.show_notice(f"Importing {path.name}…")
         try:
             with self.lock:
@@ -97,7 +99,7 @@ class App:
                 cfg, pages = score.build(save, self.config)
                 out = score.write_pages(save, self.config, cfg, pages)
                 # the list's name as saved (a staff search is renamed search-staff-…), without date and _gk/_outfield
-                listed = re.sub(r"^\d{4}-\d{2}-\d{2}_|(_gk|_outfield)?\.csv$", "", written[0][0])
+                listed = re.sub(r"^\d{4}-\d{2}-\d{2}(T\d{4})?_|(_gk|_outfield)?\.csv$", "", written[0][0])
                 self.commit(f"{save}: {listed} {date} (export)")
         except (Exception, SystemExit) as e:  # score.py stops with SystemExit on bad data
             return self.show_notice(f"Couldn't import {path.name}: {e}", error=True)
@@ -124,7 +126,7 @@ class App:
         names |= {cut for cut, full in cfg.get("aliases", {}).items() if full in names}  # files may hold the cut-off name
         found = []
         for p in sorted(folder.glob("*.csv")):
-            source = p.stem[11:]
+            source = score.obs_parts(p.stem)[1] if folder.name == "obs" else p.stem.split("_", 1)[-1]
             if not source.startswith("search-") or "intake" in source or p.name in keep:
                 continue
             with open(p, newline="", encoding="utf-8") as f:
@@ -216,6 +218,99 @@ class App:
         score.new_save(name, club, division)
         self.commit(f"{name}: new save")
         self.switch_save(name, f"New save {name} for {club}. Now import your squad: press F8 on it in FM, then Import file…")
+
+    # --- weights (the Attributes page) ----------------------------------------------------------------------------
+
+    def rescore_with(self, change, notice):
+        """Change the save's weights (change() writes the files), rescore and reload the Attributes page. If scoring
+        fails, save.toml and the save's weights.toml go back to what they were."""
+        save_toml, own = self.save_dir / "save.toml", self.save_dir / "weights.toml"
+        before = save_toml.read_text(encoding="utf-8"), own.read_text(encoding="utf-8") if own.exists() else None
+        with self.lock:
+            try:
+                change()
+                cfg, pages = score.build(self.save, self.config)
+                out = score.write_pages(self.save, self.config, cfg, pages)
+            except (Exception, SystemExit):
+                save_toml.write_text(before[0], encoding="utf-8")
+                if before[1] is None:
+                    own.unlink(missing_ok=True)
+                else:
+                    own.write_text(before[1], encoding="utf-8")
+                raise
+            self.commit(f"{self.save}: {notice.lower()}")
+        self.notice = (notice + ". Every page is rescored.", False)
+        self.show_soon(url=(out / "attributes.html").resolve().as_uri())
+
+    def current_weights(self):
+        return score.load_weights(score.load_toml(self.save_dir / "save.toml"), self.save_dir)
+
+    def save_weights(self, positions):
+        """Save the page's weights as this save's own (saves/<save>/weights.toml, weights = "custom")."""
+        cfg = score.load_toml(self.save_dir / "save.toml")
+        base = score.with_positions(self.current_weights(), positions)
+        start = "your earlier weights" if cfg.get("weights") == score.CUSTOM else "the default weights"
+
+        def change():
+            (self.save_dir / "weights.toml").write_text(score.weights_toml(base, (
+                f"Your own weights for {self.save}, saved on FMAnalyst's Attributes page ({time.strftime('%Y-%m-%d')}),\n"
+                f"starting from {start}. Score = sum(attribute x weight) / sum(weights).")), encoding="utf-8")
+            score.set_save_key(self.save_dir, "weights", score.CUSTOM)
+        self.rescore_with(change, "Saved your weights")
+
+    def use_weights(self, name):
+        """Score with the default weights, or the save's own (kept when you go back to the default)."""
+        if name not in (score.DEFAULT, score.CUSTOM):
+            raise ValueError(f"Unknown weights: {name}.")
+        if name == score.CUSTOM and not (self.save_dir / "weights.toml").is_file():
+            raise ValueError("You haven't saved weights of your own for this save yet: change some and click Save.")
+        self.rescore_with(lambda: score.set_save_key(self.save_dir, "weights", name),
+                          "Back to the default weights" if name == score.DEFAULT else "Now scoring with your own weights")
+
+    def export_weights(self, positions):
+        """Write the page's weights as a table you can open in Notepad or Excel: a row per attribute, a column per
+        position. .txt is tab-separated, .csv comma-separated."""
+        score.with_positions(self.current_weights(), positions)  # the same checks as saving
+        chosen = self.window.create_file_dialog(webview.FileDialog.SAVE, directory=str(Path.home() / "Documents"),
+                                                save_filename=f"{self.save}-weights.txt",
+                                                file_types=("Text, tab-separated (*.txt)", "Spreadsheet, comma-separated (*.csv)"))
+        if not chosen:
+            return None
+        path = Path(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)
+        path = path if path.suffix.lower() in (".txt", ".csv") else path.with_suffix(".txt")
+        clean = {p: {a: float(v) for a, v in t.items() if float(v) > 0} for p, t in positions.items()}
+        header = (f"FMAnalyst weights, exported from {self.save} on {time.strftime('%Y-%m-%d')}. One row per attribute, one column\n"
+                  "per position; blank = not used. Change the numbers, then Import it on the Attributes page.")
+        path.write_text(score.weights_table(clean, header, "," if path.suffix.lower() == ".csv" else "\t"), encoding="utf-8-sig")
+        return str(path)
+
+    def import_weights(self):
+        """Read weights you choose (a .txt or .csv table as Export writes, or a .toml weights file), for the page to
+        show: they're not saved until Save."""
+        chosen = self.window.create_file_dialog(webview.FileDialog.OPEN, directory=str(Path.home() / "Documents"),
+                                                file_types=("Weights (*.txt;*.csv;*.toml)", "All files (*.*)"))
+        if not chosen:
+            return None
+        path = Path(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            text = path.read_text(encoding="cp1252")  # saved by Excel in Windows' own encoding
+        try:
+            if path.suffix.lower() == ".toml":
+                w = score.tomllib.loads(text)
+                positions = {**({"GK": w["gk"]} if isinstance(w.get("gk"), dict) else {}), **w.get("outfield", {})}
+                positions = {p: {a: v for a, v in t.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+                             for p, t in positions.items() if isinstance(t, dict)}
+            else:
+                positions = score.read_weights_table(text)
+        except ValueError as e:
+            raise ValueError(f"Couldn't read {path.name}: {e}")
+        known = set(self.current_weights()["outfield"]) | {"GK"}
+        positions = {p: t for p, t in positions.items() if p in known}
+        if not positions:
+            raise ValueError(f"{path.name} has none of the positions (GK, DC, DL/DR…) as columns.")
+        return {"positions": positions, "file": path.name}
 
     def open_exports(self):
         if self.exports.is_dir() and sys.platform == "win32":
@@ -357,6 +452,27 @@ class MainApi:
 
     def browse_folder(self, current):
         return self._app.browse_folder(current)
+
+    def save_weights(self, positions):
+        return self._call(self._app.save_weights, positions)
+
+    def use_weights(self, name):
+        return self._call(self._app.use_weights, name)
+
+    def export_weights(self, positions):
+        return self._reply(self._app.export_weights, positions)
+
+    def import_weights(self):
+        return self._reply(self._app.import_weights)
+
+    @staticmethod
+    def _reply(f, *args):
+        """{"result": what f returned} when it worked, {"error": message} when it didn't."""
+        try:
+            return {"result": f(*args)}
+        except (Exception, SystemExit) as e:
+            log_error("weights")
+            return {"error": str(e)}
 
     @staticmethod
     def _call(f, *args):

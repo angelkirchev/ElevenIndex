@@ -26,10 +26,9 @@ words, one step at a time, no jargon, and do the typing for them. `README.md` is
    if you can't find it, ask. Copy `views/`, `player search filters/`, `staff search filters/` and `schedules/` into the folders of the same
    names there, creating any that are missing. Never overwrite a file of the same name without asking. Then tell them the
    columns README's step 5 lists for the views that aren't included (whole league).
-   The attributes come from the weights file, so if it's not `fm27`, list that file's instead (and the views may need editing).
+   The attributes come from `weights/default.toml` (or the save's own weights), so list those (and the views may need editing).
 4. **First screenshots:** their squad screen with the outfield view, scrolling to cover everyone, then the GK view, with FM's
    date and their crest in shot. When they say "new screenshots", follow "Adding screenshots" in AGENTS.md.
 5. Commit the new save: `git -C saves add -A && git -C saves commit -m "<save>: new save"`.
 
-Another save: same steps; the new save becomes `active_save`. Keep the newest weights unless the user wants new ones: then copy e.g. `weights/fm27.toml`
-to `weights/fm28.toml` and point at that.
+Another save: same steps; the new save becomes `active_save`. It scores with `weights/default.toml`; the user can change the weights per save on the Attributes page.

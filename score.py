@@ -45,14 +45,15 @@ APP = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 ROOT = Path(os.environ["FMANALYST_HOME"]) if os.environ.get("FMANALYST_HOME") else \
     documents() / "FMAnalyst" if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-PAGES = ["squad", "grid", "elsewhere", "last", "filters", "charts", "staff", "last_staff", "staff_filters", "settings",
-         "guide"]  # keys 1-9, then 0, then g, in this order
+PAGES = ["squad", "analysis", "development", "charts", "elsewhere", "last", "filters", "staff", "last_staff", "staff_filters",
+         "attributes", "guide"]  # keys 1-9, then 0, then a and g, in this order
+PAGE_KEYS = {"attributes": "a", "guide": "g"}  # past the tenth page, a letter
 # The menu's names, and where its groups start (players 1-6, staff 7-9, then settings and the guide)
-PAGE_LABELS = {"squad": "Squad", "grid": "Lineup", "elsewhere": "Scouted", "last": "Last import", "filters": "Player search",
-               "charts": "Charts", "staff": "Staff", "last_staff": "Last staff import", "staff_filters": "Staff search",
-               "settings": "Settings", "guide": "Guide"}
-NAV_GROUP_STARTS = {"staff", "settings"}
-META = {"Name", "Club", "Age", "Left Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating", "Division"}  # every other column is an attribute
+PAGE_LABELS = {"squad": "Squad", "development": "Development", "elsewhere": "All players", "last": "Last player import", "filters": "Player search",
+               "charts": "Market", "staff": "All staff", "last_staff": "Last staff import", "staff_filters": "Staff search",
+               "analysis": "Analysis", "attributes": "Attributes", "guide": "Guide"}
+NAV_GROUP_STARTS = {"elsewhere", "staff", "attributes"}
+META = {"Name", "Club", "Age", "Position", "Left Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating", "Division"}  # every other column is an attribute
 STAFF_META = {"Name", "Club", "Age", "Job", "Personality"}
 LEFT_FOOTED = {"Fairly Strong", "Strong", "Very Strong"}
 MIN_KNOWN_WEIGHT = 0.85  # a player is scored at a position when attributes carrying 85% of its weight are known (FM shows "-" for unscouted ones)
@@ -64,7 +65,6 @@ SEARCH_MIN_WEIGHT = 2  # staff filters page: attributes weighted below this get 
 SEARCH_WEIGHT_SHARE, SEARCH_MIN_ATTRS, SEARCH_MAX_ATTRS = 0.85, 3, 8
 CHART_ATTRS, CHART_GK_ATTRS = 8, 5  # charts page: the attribute menu lists a position's top attributes by weight
 IMAGE_TYPES = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
-GRID_PCT_AGE = 24  # the grid page shows vs Age next to the score for senior players this age and under
 
 
 
@@ -80,9 +80,116 @@ def weights_file(name):
     return APP / "weights" / f"{name}.toml"
 
 
-def weights_names():
-    """Every weights set, from the data folder and the program's, alphabetically."""
-    return sorted({p.stem for folder in (ROOT / "weights", APP / "weights") for p in folder.glob("*.toml")})
+# One built-in set, weights/default.toml. A save's own weights (changed on the Attributes page) live in its folder,
+# private to it: save.toml's weights = "custom". Any other name (an older version's fm27_test…) means the default.
+DEFAULT, CUSTOM = "default", "custom"
+
+
+def weights_path(cfg, save_dir):
+    """The weights file a save uses: its own saves/<save>/weights.toml for "custom", else the default."""
+    return save_dir / "weights.toml" if cfg.get("weights") == CUSTOM else weights_file(DEFAULT)
+
+
+def load_weights(cfg, save_dir):
+    return load_toml(weights_path(cfg, save_dir))
+
+
+def toml_key(k):
+    return k if re.fullmatch(r"[A-Za-z0-9_-]+", k) else toml_str(k)
+
+
+def toml_value(v):
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, (int, float)):
+        return f"{v:g}" if isinstance(v, float) else str(v)
+    if isinstance(v, list):
+        return "[" + ", ".join(toml_value(x) for x in v) + "]"
+    return toml_str(str(v))
+
+
+def weights_toml(w, header):
+    """A weights file's text: its tables in the usual order (positions, keeper, ages, then staff), values as given."""
+    lines = [f"# {line}" if line else "#" for line in header.splitlines()]
+
+    def table(name, d):
+        lines.extend(["", f"[{name}]", *(f"{toml_key(k)} = {toml_value(v)}" for k, v in d.items() if not isinstance(v, dict))])
+        for k, v in d.items():
+            if isinstance(v, dict):
+                table(f"{name}.{toml_key(k)}", v)
+
+    order = ["outfield", "gk", "age_benchmark", "staff_words", "staff_names", "staff"]
+    for name in [*order, *(k for k in w if k not in order)]:
+        if name in w:
+            v = w[name]
+            if isinstance(v, dict) and all(isinstance(x, dict) for x in v.values()):  # [outfield.DC], [staff.Mgr]…
+                for k, sub in v.items():
+                    table(f"{name}.{toml_key(k)}", sub)
+            else:
+                table(name, v)
+    return "\n".join(lines).lstrip("\n") + "\n"
+
+
+def with_positions(base, positions):
+    """base's weights with the position tables replaced by positions ({"GK": {...}, "DC": {...}…}), zero weights dropped."""
+    clean = {p: {a: float(v) if float(v) % 1 else int(float(v)) for a, v in t.items() if float(v) > 0} for p, t in positions.items()}
+    if bad := [p for p, t in clean.items() if not t]:
+        raise ValueError(f"Every position needs at least one attribute with a weight: {', '.join(bad)} has none.")
+    return {**base, "gk": clean.get("GK", base["gk"]), "outfield": {p: clean.get(p, t) for p, t in base["outfield"].items()}}
+
+
+def weights_table(positions, header, sep="\t"):
+    """The position weights as a plain table, for Notepad or Excel: a row per attribute (most weighted first), a column
+    per position; blank = not used. Lines starting with # are notes."""
+    total = {}
+    for t in positions.values():
+        for a, v in t.items():
+            total[a] = total.get(a, 0) + v
+    cols = list(positions)
+    fmt = lambda v: "" if v is None else f"{v:g}"
+    lines = [f"# {line}" for line in header.splitlines()]
+    lines.append(sep.join(["Attribute", *cols]))
+    for a in sorted(total, key=lambda a: (-total[a], a)):
+        lines.append(sep.join([a, *(fmt(positions[p].get(a)) for p in cols)]))
+    return "\n".join(lines) + "\n"
+
+
+def read_weights_table(text):
+    """weights_table's table back to {position: {attribute: weight}}, whatever it was saved with: tabs, commas or
+    semicolons, and decimal commas (9,3) from Excel. Blank, 0 or "-" = not used."""
+    lines = [l for l in text.splitlines() if l.strip() and not l.lstrip().startswith("#") and not l.lower().startswith("sep=")]
+    if not lines:
+        raise ValueError("the file is empty")
+    sep = max(("\t", ";", ","), key=lambda s: lines[0].count(s))
+    rows = list(csv.reader(lines, delimiter=sep))
+    head = [h.strip() for h in rows[0]]
+    if len(head) < 2 or head[0].lower() != "attribute":
+        raise ValueError("its first row should be: Attribute, then the positions (GK, DC, DL/DR…)")
+    positions = {p: {} for p in head[1:] if p}
+    for row in rows[1:]:
+        attr = row[0].strip() if row else ""
+        for p, cell in zip(head[1:], row[1:]):
+            cell = cell.strip().replace(",", ".")
+            if not attr or not p or cell in ("", "-", "–"):
+                continue
+            try:
+                v = float(cell)
+            except ValueError:
+                raise ValueError(f"{attr} at {p} isn't a number: {cell!r}")
+            if v < 0:
+                raise ValueError(f"{attr} at {p} is negative")
+            if v:
+                positions[p][attr] = int(v) if v.is_integer() else v
+    return positions
+
+
+def set_save_key(save_dir, key, value):
+    """Set one line of save.toml (key = "value"), keeping the rest of the file as it is."""
+    path = save_dir / "save.toml"
+    text, line = path.read_text(encoding="utf-8"), f"{key} = {toml_str(value)}"
+    text = re.sub(rf"^{key}\s*=.*$", line, text, flags=re.M) if re.search(rf"^{key}\s*=", text, re.M) \
+        else text.rstrip("\n") + "\n" + line + "\n"
+    path.write_text(text, encoding="utf-8")
 
 
 def money(text):
@@ -120,13 +227,24 @@ def read_rows(folder):
 
 # --- players ---
 
+# An observation file's name: <date>[T<hhmm>]_<source>_<view>.csv. A squad export carries its time too
+# (2026-11-14T0032_my-club_outfield.csv), so two squad exports on one day are two snapshots, not one replacing the other.
+OBS_NAME = re.compile(r"(\d{4}-\d{2}-\d{2}(?:T\d{4})?)_(.+)_([a-z]+)")
+
+
+def obs_parts(stem):
+    """'2026-11-14T0032_my-club_outfield' -> ('2026-11-14T0032', 'my-club', 'outfield')."""
+    m = OBS_NAME.fullmatch(stem)
+    return m.groups() if m else (stem[:10], stem[11:].rsplit("_", 1)[0], stem.rsplit("_", 1)[-1])
+
+
 def load_players(obs_dir, aliases=None):
     """Every observation row, grouped by player name (truncated names via `aliases` to the full one) and then game date;
     plus each file's date, source and clubs."""
     players, files = {}, {}
     for path, row in read_rows(obs_dir):
         row["Name"] = (aliases or {}).get(row["Name"], row["Name"])
-        date, source, view = path.stem[:10], path.stem[11:].rsplit("_", 1)[0], path.stem.rsplit("_", 1)[1]
+        date, source, view = obs_parts(path.stem)
         files.setdefault(path.name, {"date": date, "source": source, "clubs": set()})["clubs"].add(row["Club"])
         p = players.setdefault(row["Name"], {"keeper": False, "files": set(), "dates": {}})
         p["keeper"] |= view == "gk"  # anyone in a GK view is a keeper
@@ -140,6 +258,8 @@ def load_players(obs_dir, aliases=None):
         if row.get("Transfer Value"):
             lo, _, hi = row["Transfer Value"].partition(" - ")
             snap["value"] = (money(lo), money(hi or lo))
+        if row.get("Position"):  # FM's positions for the player (when the view shows them)
+            snap["position"] = row["Position"]
         if "Loan" in row:  # squad screens only: "in" (blue name), "out" (red name), "trial" (yellow name) or blank
             snap["loan"] = row["Loan"] or None
         if row.get("Rating"):  # season minutes and average rating, from search screens that show them
@@ -152,14 +272,16 @@ def player_row(name, p, w):
     """A player's latest state, plus their history: one entry per observation date."""
     positions = {"GK": w["gk"]} if p["keeper"] else w["outfield"]
     ages = sorted(int(a) for a in w["age_benchmark"])
-    known = {"leftFoot": None, "wage": None, "value": (None, None), "loan": None}
+    known = {"leftFoot": None, "wage": None, "value": (None, None), "loan": None, "position": None}
     history = []
     for date, snap, attrs in timeline(p["dates"]):
         known.update({k: v for k, v in snap.items() if k in known})
         scores = weighted(attrs, positions, MIN_KNOWN_WEIGHT)
         if not scores:  # too few attributes known by then for these weights: leave this date out
             continue
-        best = max(scores, key=scores.get)
+        # Best: the highest score among the positions FM says they play, when an export showed them; else any position
+        plays = [p for p in fm_positions(known["position"]) if p in scores]
+        best = max(plays or scores, key=scores.get)
         bench = w["age_benchmark"][str(min(max(snap["age"], ages[0]), ages[-1]))]
         history.append({"date": date, "club": snap["club"], "age": snap["age"], "leftFoot": known["leftFoot"],
                         **scores, "best": best, "score": scores[best], "vsAge": scores[best] / bench,
@@ -171,10 +293,29 @@ def player_row(name, p, w):
     return {
         "name": name,
         **{k: v for k, v in latest.items() if k not in ("date", "leftFoot", "attrs")},  # rating: latest observation only
+        "position": known["position"], "plays": [p for p in fm_positions(known["position"]) if p in positions] or None,
         "left": None if known["leftFoot"] is None else "yes" if known["leftFoot"] in LEFT_FOOTED else "no",
         "loan": known["loan"], "wage": known["wage"], "valueLo": known["value"][0], "value": known["value"][1],  # value sorts on the top of FM's range
         "history": history,
     }
+
+
+def fm_positions(text):
+    """FM's position text ("D/WB (R), M (RC)", "AM (RL), ST (C)", "GK") -> the weights' position groups, in order."""
+    groups = []
+    for part in (text or "").split(","):
+        m = re.match(r"\s*([A-Z/]+)\s*(?:\(([RLC]+)\))?", part)
+        if not m:
+            continue
+        sides = m.group(2) or "C"
+        wide = bool(set(sides) & set("RL"))
+        for role in m.group(1).split("/"):
+            found = {"GK": ["GK"], "DM": ["DM"], "ST": ["ST"], "WB": ["WBL/WBR"],
+                     "D": ["DC"] * ("C" in sides) + ["DL/DR"] * wide,
+                     "M": ["MC"] * ("C" in sides) + ["ML/MR"] * wide,
+                     "AM": ["AMC"] * ("C" in sides) + ["AML/AMR"] * wide}.get(role, [])
+            groups += [g for g in found if g not in groups]
+    return groups
 
 
 def player_cols(w, with_club):
@@ -187,6 +328,7 @@ def player_cols(w, with_club):
         *([] if with_club else [wage]),
         {"key": "left", "label": "Left", "fmt": "yesno"},
         *({"key": p, "label": p, "num": True, "fmt": "f1"} for p in ["GK", *w["outfield"]]),
+        {"key": "position", "label": "FM position"},
         {"key": "best", "label": "Best"},
         {"key": "score", "label": "Score", "num": True, "fmt": "f1"},
         {"key": "vsAge", "label": "vs Age", "num": True, "fmt": "pct"},
@@ -243,11 +385,71 @@ def charts(rows, squad, w, cfg, last=frozenset()):
             "managed": cfg["managed_club"], "division": cfg.get("division")}
 
 
+# Common FM formations, as the weights' position groups (a wide pair counts twice: one left, one right). Roles and duties
+# don't show in the scores, so shapes with the same positions (5-2-3 Wide and 5-2-2-1) rank the same.
+FORMATIONS = [
+    ("4-2-3-1", "The most common, usually gegenpress", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "AMC": 1, "ST": 1}),
+    ("4-3-3 DM Wide", "One holding midfielder, two wingers (4-1-2-3)", {"DL/DR": 2, "DC": 2, "DM": 1, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("4-3-3", "A flat midfield three", {"DL/DR": 2, "DC": 2, "MC": 3, "AML/AMR": 2, "ST": 1}),
+    ("4-2-3-1 DM Wide", "Two holding midfielders behind the ten (4-2-1-3)", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 1, "AML/AMR": 2, "ST": 1}),
+    ("3-4-3", "The most popular back three", {"DC": 3, "ML/MR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("3-4-2-1", "Two tens behind the striker", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AMC": 2, "ST": 1}),
+    ("4-4-2", "Vertical, counter-attacking football", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "ST": 2}),
+    ("4-2-2-2", "High press, narrow tens", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 2, "ST": 2}),
+    ("5-2-3 Wide", "Five at the back, three forwards", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("4-3-1-2", "A narrow diamond, for teams without wingers", {"DL/DR": 2, "DC": 2, "DM": 1, "MC": 2, "AMC": 1, "ST": 2}),
+    ("5-4-1", "Counter-attack for underdogs", {"DC": 3, "WBL/WBR": 2, "ML/MR": 2, "MC": 2, "ST": 1}),
+    ("5-2-2-1", "A more realistic defensive option", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("4-2-4", "Ultra-attacking, strong in older versions", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "ST": 2}),
+    ("3-5-2", "Wing-backs and two strikers", {"DC": 3, "WBL/WBR": 2, "DM": 1, "MC": 2, "ST": 2}),
+    ("5-3-2", "The defensive 3-5-2", {"DC": 3, "WBL/WBR": 2, "MC": 3, "ST": 2}),
+    ("4-1-4-1", "Often just the shape without the ball", {"DL/DR": 2, "DC": 2, "DM": 1, "ML/MR": 2, "MC": 2, "ST": 1}),
+    ("4-4-1-1", "Compact, with a deep-lying forward", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "AMC": 1, "ST": 1}),
+    ("3-4-1-2", "A ten behind two strikers", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AMC": 1, "ST": 2}),
+    ("4-3-2-1", "The Christmas tree: narrow, no wingers", {"DL/DR": 2, "DC": 2, "MC": 3, "AMC": 2, "ST": 1}),
+    ("3-4-3-0", "Strikerless: niche, but big results", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "AMC": 1}),
+]
+FORMATION_ORDER = ["GK", "DC", "DL/DR", "WBL/WBR", "DM", "MC", "ML/MR", "AMC", "AML/AMR", "ST"]
+
+
+def best_xi(players, need, plays):
+    """The strongest side for need ({position: count}): the best player-position pair first, each player once, only where
+    they play. Returns ([(position, player, score)], unfilled count)."""
+    left = dict(need)
+    pairs = sorted(((r[pos], i, pos) for i, r in enumerate(players) for pos in need
+                    if r.get(pos) is not None and plays(r, pos)), reverse=True)
+    used, xi = set(), []
+    for v, i, pos in pairs:
+        if left[pos] and i not in used:
+            used.add(i); left[pos] -= 1
+            xi.append((pos, players[i], v))
+    return xi, sum(left.values())
+
+
+def formations(players, plays):
+    """How the squad fits each of FORMATIONS: its best XI's average score, a second XI's (depth), the weakest spot."""
+    out = []
+    for name, note, shape in FORMATIONS:
+        need = {"GK": 1, **shape}
+        xi, short = best_xi(players, need, plays)
+        taken = {r["name"] for _, r, _ in xi}
+        second, short2 = best_xi([r for r in players if r["name"] not in taken], need, plays)
+        avg = lambda side, miss: sum(v for *_, v in side) / (len(side) + miss) if side else 0
+        outfield = [t for t in xi if t[0] != "GK"]
+        weak = min(outfield, key=lambda t: t[2]) if outfield else None
+        out.append({"name": name, "note": note, "xi": avg(xi, short), "depth": avg(second, short2), "short": short,
+                    "weak": {"pos": weak[0], "name": weak[1]["name"], "v": weak[2]} if weak else None,
+                    "players": [{"pos": pos, "name": r["name"], "v": v}
+                                for pos, r, v in sorted(xi, key=lambda t: (FORMATION_ORDER.index(t[0]), -t[2]))]})
+    return sorted(out, key=lambda f: (-f["xi"], -f["depth"]))
+
+
 def grid(squad, w, cfg, intake):
     """The squad by formation slot (save.toml's `grid`): senior players by position score, then youth
     (age <= youth_age) by that position's score against their age benchmark. Players are placed best first, each at
     their best position: its first free Starter, else Backup, else Third, which takes any number (players to sell or
     loan out), shared across that position's slots. A left-footer prefers a left-footed slot. Out on loan isn't placed.
+    Then empty Starter and Backup slots are filled from Third by whoever scores best at that slot's position.
     save.toml's `grid_pins` (name = slot label, or { slot = label, col = "starter" | "backup" | "third" }, either
     part optional, plus row = n for the nth slot with that label; pinning places a player out on loan too) puts a
     player in that slot instead, whatever their foot; other players steer clear of slots a pinned player is still to
@@ -271,7 +473,7 @@ def grid(squad, w, cfg, intake):
                 raise SystemExit(f"save.toml grid_pins: {n}'s row {pin_row[n]}, but grid has {len(fits)} {label!r} slot(s)")
             fits = [fits[pin_row[n] - 1]]
         pin_fits[n] = fits
-    youth_age = cfg.get("youth_age", 18)
+    youth_age = cfg.get("youth_age", 18)  # youth: 18 and under
     promoted = set(cfg.get("grid_senior", []))  # youngsters the user has moved up to the senior squad
     check_listed(cfg, "grid_senior", {r["name"] for r in squad}, "names players not in the squad")
     joined = set(cfg.get("grid_youth", []))  # intake players the user has kept: youth columns, not intake
@@ -281,16 +483,23 @@ def grid(squad, w, cfg, intake):
     check_listed(cfg, "grid_exclude", {r["name"] for r in squad}, "names players not in the squad")
     squad = [r for r in squad if r["name"] not in excluded]
     here = [r for r in squad if r["loan"] != "out" or r["name"] in pinned_any]  # out on loan: only if pinned
+    # FM's own positions, when an export showed them: a player only goes where FM says they play
+    plays = lambda r, pos: not r.get("plays") or pos in r["plays"]
 
-    def allocate(players, value, pct):
+    def allocate(players, value):
         cols, spare = [[[] for _ in slots] for _ in range(3)], []  # Starter, Backup, Third: lists of players per slot
+        rows = {r["name"]: r for r in players}
+
+        def entry(r, pos):
+            return {"name": r["name"], "age": r["age"], "loan": r["loan"], "v": value(r, pos), "score": r[pos], "left": r["left"] == "yes"}
         waiting = {}  # slot -> pinned players not yet placed: others steer clear of those slots at the same depth
         for r in players:
             for i in range(len(slots)):
                 waiting[i] = waiting.get(i, 0) + (i in pin_fits.get(r["name"], ()))
         for r in sorted(players, key=lambda r: (r["name"] not in pin_col, -value(r, r["best"]))):
             fits = (pin_fits[r["name"]] if r["name"] in pins else
-                    [i for i, s in enumerate(slots) if r.get(s["pos"]) is not None and (not s.get("left") or r["left"] == "yes")])
+                    [i for i, s in enumerate(slots) if r.get(s["pos"]) is not None and (not s.get("left") or r["left"] == "yes")
+                     and plays(r, s["pos"])])
             if not fits:
                 spare.append(r)
                 continue
@@ -305,24 +514,60 @@ def grid(squad, w, cfg, intake):
             depths = (pin_col[r["name"]],) if r["name"] in pin_col else (0, 1)
             free = [(d, *pref(i), i) for d in depths if d < 2 for i in ok if not cols[d][i]]
             d, i = (min(free)[0], min(free)[-1]) if free else (2, min(ok, key=lambda i: (len(cols[2][i]), *pref(i))))
-            cols[d][i].append({"name": r["name"], "age": r["age"], "loan": r["loan"], "v": value(r, pos), "score": r[pos], "left": r["left"] == "yes",
-                               "pct": r[pos] * r["vsAge"] / r["score"] if pct and r["age"] <= GRID_PCT_AGE else None})
+            cols[d][i].append(entry(r, pos))
+        # An empty Starter or Backup slot (a position nobody is best at, e.g. DM) is filled from Third: of the players
+        # there, whoever scores best at that slot's position moves up. Best pair first, Starters before Backups; players
+        # pinned to a slot or column stay put. A moved player keeps "from": the position they'd otherwise play.
+        movable = lambda p: p["name"] not in pins and p["name"] not in pin_col
+        for d in (0, 1):
+            while True:
+                pairs = [(value(rows[p["name"]], slots[i]["pos"]), i, j, k) for i in range(len(slots)) if not cols[d][i]
+                         for j in range(len(slots)) for k, p in enumerate(cols[2][j]) if movable(p)
+                         and rows[p["name"]].get(slots[i]["pos"]) is not None and (not slots[i].get("left") or p["left"])
+                         and plays(rows[p["name"]], slots[i]["pos"])]
+                if not pairs:
+                    break
+                _, i, j, k = max(pairs, key=lambda t: (t[0], -t[1]))
+                p = cols[2][j].pop(k)
+                cols[d][i].append(entry(rows[p["name"]], slots[i]["pos"]) | {"from": slots[j]["pos"]})
         return cols, spare
 
     is_senior = lambda r: r["age"] > youth_age or r["name"] in promoted
-    senior, spare = allocate([r for r in here if is_senior(r)], lambda r, pos: r[pos], True)
+    senior, spare = allocate([r for r in here if is_senior(r)], lambda r, pos: r[pos])
     vs_age = lambda r, pos: r[pos] * r["vsAge"] / r["score"]  # score ÷ age benchmark
-    youth, spare_youth = allocate([r for r in here if not is_senior(r) and r["name"] not in intake], vs_age, False)
-    new, spare_new = allocate([r for r in here if not is_senior(r) and r["name"] in intake], vs_age, False)
+
+    def place_young(players):
+        """Youngsters in one list per slot: each at their best position in the formation for their age (pinned: their
+        slot), shared out over that position's slots, a left-footer preferring a left-footed one; best for age first."""
+        lists, spare_young = [[] for _ in slots], []
+        for r in sorted(players, key=lambda r: -r["vsAge"]):
+            fits = (pin_fits[r["name"]] if r["name"] in pins else
+                    [i for i, s in enumerate(slots) if r.get(s["pos"]) is not None and (not s.get("left") or r["left"] == "yes")
+                     and plays(r, s["pos"])])
+            if not fits:
+                spare_young.append(r)
+                continue
+            pos = max({slots[i]["pos"] for i in fits}, key=lambda pos: vs_age(r, pos))
+            i = min((i for i in fits if slots[i]["pos"] == pos), key=lambda i: (not slots[i].get("left"), len(lists[i]), i))
+            lists[i].append({"name": r["name"], "age": r["age"], "loan": r["loan"], "v": vs_age(r, pos), "score": r[pos],
+                             "left": r["left"] == "yes"})
+        return [sorted(l, key=lambda p: -p["v"]) for l in lists], spare_young
+
+    young, spare_youth = place_young([r for r in here if not is_senior(r) and r["name"] not in intake])
+    new, spare_new = place_young([r for r in here if not is_senior(r) and r["name"] in intake])
+    # Beside Starter / Backup / Third: Youth (youth_age and under), and the latest intake while there is one
+    extra = {"youth": young, "intake": new}
+    extra_cols = [{"key": k, "label": label, "title": title} for k, label, title in (
+        ("youth", "Youth", f"players {youth_age} and under, best for their age first"),
+        ("intake", "Intake", "the latest youth intake, best for their age first")) if k != "intake" or any(extra[k])]
     brief = lambda r, v: {"name": r["name"], "age": r["age"], "pos": r["best"], "v": v}
-    return {"youthAge": youth_age, "pctAge": GRID_PCT_AGE,
+    return {"youthAge": youth_age, "extraCols": extra_cols,
             "slots": [{"label": s["label"], "pos": s["pos"], "left": bool(s.get("left")),
-                       "senior": [c[i] for c in senior], "youth": [c[i] for c in youth],
-                       "intake": [c[i] for c in new]} for i, s in enumerate(slots)],
+                       "senior": [c[i] for c in senior], "extra": {k: extra[k][i] for k in extra}} for i, s in enumerate(slots)],
             "spare": [brief(r, r["score"]) for r in sorted(spare, key=lambda r: -r["score"])],
-            "spareYouth": [brief(r, r["vsAge"]) for r in sorted(spare_youth + spare_new, key=lambda r: -r["vsAge"])],
+            "spareYouth": [brief(r, r["score"]) for r in sorted(spare_youth + spare_new, key=lambda r: -r["vsAge"])],
             "loanOut": [brief(r, r["score"]) for r in squad if r["loan"] == "out" and r["name"] not in pinned_any],
-            "players": {r["name"]: r for r in squad}}  # for the history overlay
+            "formations": formations([r for r in here if r["loan"] != "out"], plays)}
 
 
 # --- staff ---
@@ -392,9 +637,94 @@ def check_listed(cfg, key, known, what):
         raise SystemExit(f"save.toml {key} {what}: {sorted(missing)}")
 
 
-def settings(config, save):
-    """The settings page: each settings file and what's in it."""
-    return [{"path": path, "values": load_toml(ROOT / path)} for path in ("config.toml", f"saves/{save}/save.toml")]
+def analysis(squad, others, lineup, w):
+    """The analysis page: your squad position by position, as the Lineup places them (so DM, MC… have players too),
+    with each player's current attributes, ranked in the page by an attribute you pick. Each position also gets the
+    average of every attribute over the imported players whose best position it is, to compare with."""
+    positions = ["GK", *w["outfield"]]
+    rows = {r["name"]: r for r in squad}
+    roles = ["Starter", "Backup", "Third"]
+    attrs_of = lambda r: r["history"][-1]["attrs"]  # the latest known value of each attribute
+    out = []
+    for pos in positions:
+        seen, players = set(), []
+        for s in lineup["slots"]:
+            if s["pos"] != pos:
+                continue
+            # Starter / Backup / Third, then the Youth and intake columns
+            columns = [*((c, roles[ci]) for ci, c in enumerate(s["senior"])),
+                       *((s["extra"][c["key"]], c["label"]) for c in lineup["extraCols"])]
+            for col, label in columns:
+                for p in col:
+                    if p["name"] in seen:
+                        continue
+                    seen.add(p["name"])
+                    r = rows[p["name"]]
+                    players.append({"name": r["name"], "age": r["age"], "role": label, "from": p.get("from"),
+                                    "score": r.get(pos), "attrs": attrs_of(r)})
+        pool = [r for r in others if r["best"] == pos]
+        sums = {}
+        for r in pool:
+            for a, v in attrs_of(r).items():
+                n, t = sums.get(a, (0, 0))
+                sums[a] = (n + 1, t + v)
+        out.append({"pos": pos, "players": players, "imported": len(pool),
+                    "importedAvg": {a: t / n for a, (n, t) in sums.items()},
+                    "importedScore": sum(r[pos] for r in pool) / len(pool) if pool else None})
+    # The attributes to rank by: the most weighted (summed over the positions) first
+    weight = {}
+    for pw in [w["gk"], *w["outfield"].values()]:
+        for a, v in pw.items():
+            weight[a] = weight.get(a, 0) + v
+    known = {a for r in squad for a in attrs_of(r)}
+    attrs = sorted(known, key=lambda a: (-weight.get(a, 0), a))
+    return {"positions": out, "attrs": attrs, "players": rows}  # players: for the history overlay
+
+
+def attributes_page(cfg, w, rows, save_dir):
+    """The attributes page: the weights the save scores with, to change in the page (saved by the app), plus every
+    attribute that could be given a weight: those in any weights set, and any seen in the save's players."""
+    outfield, gk = set(), set()
+    for other in (w, load_toml(weights_file(DEFAULT))):
+        gk.update(other.get("gk", {}))
+        for t in other.get("outfield", {}).values():
+            outfield.update(t)
+    for r in rows:
+        (gk if r.get("DC") is None and r.get("GK") is not None else outfield).update(r["history"][-1]["attrs"])
+    own = save_dir / "weights.toml"
+    return {"custom": cfg.get("weights") == CUSTOM, "hasCustom": own.is_file(),
+            "saved": time.strftime("%Y-%m-%d", time.localtime(own.stat().st_mtime)) if own.is_file() else None,
+            "positions": {"GK": w["gk"], **w["outfield"]},
+            "attrs": {"outfield": sorted(outfield), "gk": sorted(gk)}}
+
+
+def development(rows, players, obs_files, managed, squad):
+    """The development page: the managed club's squad snapshots (each squad export, by date and time), and for everyone in
+    any of them their score, best position, vs Age and attributes at each, for the page to compare two snapshots."""
+    squad_files = {name: f["date"] for name, f in obs_files.items() if not f["source"].startswith("search-")
+                   and not PARTIAL_SQUAD.search(f["source"]) and managed in f["clubs"]}
+    snaps = sorted(set(squad_files.values()))
+    out = []
+    for r in rows:
+        in_snaps = {squad_files[f] for f in players[r["name"]]["files"] if f in squad_files}
+        if not in_snaps:
+            continue
+        at = {h["date"]: {"score": h["score"], "best": h["best"], "vsAge": h["vsAge"], "age": h["age"], "attrs": h["attrs"]}
+              for h in r["history"] if h["date"] in in_snaps}
+        out.append({"name": r["name"], "age": r["age"], "best": r["best"], "here": r["club"] == managed, "at": at})
+    return {"snapshots": snaps, "players": out, "rows": {r["name"]: r for r in squad}}  # rows: for the history overlay
+
+
+def settings_tile(config, cfg, save):
+    """The guide's last tile: this save's main settings, and where to change them."""
+    rows = [("Save", save), ("Club", cfg.get("managed_club", "–")), ("Weights", "your own (Attributes page)" if cfg.get("weights") == CUSTOM else "default"),
+            ("Currency", config.get("currency", "–")), ("Exports folder", config.get("exports_dir") or "found under Documents"),
+            ("Data folder", str(ROOT))]
+    table = "".join(f"<tr><td class=\"text\">{html.escape(k)}</td><td>{html.escape(str(v))}</td></tr>" for k, v in rows)
+    return {"key": "", "title": "Your settings",
+            "text": f"<table>{table}</table>Switch or start saves with <b>Saves</b> at the bottom right. Everything else is in "
+                    f"<b>config.toml</b> (this computer) and <b>saves\\{html.escape(save)}\\save.toml</b> (this save) in the data "
+                    f"folder: edit them with Notepad, then restart the app."}
 
 
 def build(save, config):
@@ -403,7 +733,7 @@ def build(save, config):
     if not (save_dir / "save.toml").exists():
         raise SystemExit(f"No saves/{save}/save.toml: run `python3 score.py init` to set up a save")
     cfg = load_toml(save_dir / "save.toml")
-    w = load_toml(weights_file(cfg["weights"]))
+    w = load_weights(cfg, save_dir)
     managed = cfg["managed_club"]
 
     players, obs_files = load_players(save_dir / "obs", cfg.get("aliases"))
@@ -451,9 +781,11 @@ def build(save, config):
     check_listed(cfg, "last_staff_names", staff.keys(), "has staff never observed")
     last_staff, last_staff_names = set(cfg.get("last_staff_batch", [])), set(cfg.get("last_staff_names", []))
 
+    lineup = grid(squad, w, cfg, intake)
     return cfg, {
-        "squad": (player_cols(w, False), squad),
-        "grid": (player_cols(w, False), grid(squad, w, cfg, intake)),  # the columns are for the history overlay
+        "squad": (player_cols(w, False), squad, {"lineup": lineup}),
+        "development": (player_cols(w, False), development(rows, players, obs_files, managed, squad)),
+        "analysis": (player_cols(w, False), analysis(squad, [r for r in rows if r["club"] != managed], lineup, w)),
         "elsewhere": (player_cols(w, True), [r for r in rows if r["club"] != managed]),
         "last": (player_cols(w, True), last_rows),
         "filters": ([], filters(squad, w)),
@@ -463,8 +795,8 @@ def build(save, config):
         "last_staff": (staff_cols(roles), [r for r in staff_rows
                                            if staff[r["name"]]["files"] & last_staff or r["name"] in last_staff_names]),
         "staff_filters": ([], staff_filters(staff_rows, roles, w.get("staff_words", {}), w.get("staff_names", {}))),
-        "settings": ([], settings(config, save)),
-        "guide": ([], GUIDE),
+        "attributes": ([], attributes_page(cfg, w, rows, save_dir)),
+        "guide": ([], GUIDE + [settings_tile(config, cfg, save)]),
     }
 
 
@@ -481,14 +813,15 @@ def write_pages(save, config, cfg, pages):
     out.mkdir(parents=True, exist_ok=True)
     home = html.escape(cfg["short_name"])
     labels = {p: PAGE_LABELS.get(p, p.replace("_", " ")) for p in PAGES}
-    keys = {p: str(i % 10) if i <= 10 else "g" for i, p in enumerate(PAGES, 1)}  # the tenth page is key 0, the guide g
+    keys = {p: PAGE_KEYS.get(p) or str(i % 10) for i, p in enumerate(PAGES, 1)}  # the tenth page is key 0
     dates = [f.name[:10] for d in ("obs", "staff") for f in (ROOT / "saves" / save / d).glob("*.csv")]
     site = json.dumps({"pages": {keys[p]: p for p in PAGES}, "currency": config.get("currency", "£"),
                        "gameDate": max(dates, default=None)})  # the latest game date: the history overlay's "years ago"
     theme = (APP / "theme.css").read_text(encoding="utf-8")
-    w = load_toml(weights_file(cfg["weights"]))
+    w = load_weights(cfg, ROOT / "saves" / save)
     weights = json.dumps({"GK": w["gk"], **w["outfield"], **w.get("staff", {})}, ensure_ascii=False)  # for the history overlay
-    for page, (columns, data) in pages.items():
+    for page, (columns, data, *extra) in pages.items():
+        extra = extra[0] if extra else {}
         nav = BRAND + "".join(('<span class="sep"></span>' if p in NAV_GROUP_STARTS else "") +
                       f'<a href="{p}.html"{" class=\"on\"" if p == page else ""}><b>{keys[p]}</b> {labels[p]}</a>' for p in PAGES)
         data = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")  # a "</script>" in a name can't end the script
@@ -496,10 +829,13 @@ def write_pages(save, config, cfg, pages):
         page_html = (template.replace("__THEME__", theme).replace("__NAV__", nav)
                      .replace("__TITLE__", f"{home} · {labels[page]}").replace("__SAVE__", save)
                      .replace("__HOME__", home).replace("__PAGE__", page).replace("__SITE__", site)
-                     .replace("__COLS__", json.dumps(columns)).replace("__WEIGHTS__", weights).replace("__DATA__", data))
+                     .replace("__COLS__", json.dumps(columns)).replace("__LINEUP__", json.dumps(extra.get("lineup"), ensure_ascii=False).replace("</", "<\\/")).replace("__WEIGHTS__", weights).replace("__DATA__", data))
         (out / f"{page}.html").write_text(page_html, encoding="utf-8")
-    print(f"[{save}] out/{save}/: " + ", ".join(f"{p} ({len(d)})" for p, (_, d) in pages.items()
-                                                 if p not in ("grid", "filters", "charts", "staff_filters", "settings", "guide")))
+    for old in out.glob("*.html"):  # pages an older version wrote (settings.html)
+        if old.stem not in pages:
+            old.unlink()
+    print(f"[{save}] out/{save}/: " + ", ".join(f"{p} ({len(spec[1])})" for p, spec in pages.items()
+                                                 if p not in ("analysis", "development", "filters", "charts", "staff_filters", "attributes", "guide")))
     return out
 
 
@@ -510,77 +846,93 @@ GUIDE = [
              "<li>Point the mouse at the list and press <b>F8</b> (FM27 Exporter saves it).</li>"
              "<li>Here, click <b>Import file…</b> at the bottom right and choose the newest file.</li></ol>"
              "That's all: the app works out whether it's your squad, a search or staff, scores everyone and shows "
-             "<b>Last import</b>. Do your squad first, then searches whenever you're looking for players."},
+             "<b>Last player import</b>. Do your squad first, then searches whenever you're looking for players."},
     {"key": "", "title": "What gets imported where",
-     "text": "<ul><li><b>Your squad screen</b> (file starts with First Team or Squad): your players, on <b>Squad</b> and "
-             "<b>Lineup</b>. Re-export it every few months to see who's improving; players missing from a newer one count as gone.</li>"
-             "<li><b>A search or shortlist</b>: a list of its own, on <b>Last import</b> and kept on <b>Scouted</b>.</li>"
-             "<li><b>A staff search</b> (staff_everything view): on <b>Staff</b> and <b>Last staff import</b>.</li>"
+     "text": "<ul><li><b>Your squad screen</b> (file starts with First Team or Squad): your players, on <b>Squad</b>"
+             ". Re-export it every few months to see who's improving; players missing from a newer one count as gone.</li>"
+             "<li><b>A search or shortlist</b>: a list of its own, on <b>Last player import</b> and kept on <b>All players</b>.</li>"
+             "<li><b>A staff search</b> (staff_everything view): on <b>All staff</b> and <b>Last staff import</b>.</li>"
              "<li><b>A whole division</b> with Division, Minutes and Average Rating columns: adds the rating charts to "
              "<b>Charts</b> (rename the file after the league first, e.g. league-one.csv).</li></ul>"},
     {"key": "", "title": "What the numbers mean",
      "text": "<ul><li><b>Position scores</b> (DC, DM, ST…): how well a player's attributes suit that position, on FM's "
              "1–20 scale, weighting the attributes that win matches there most.</li>"
-             "<li><b>Best</b>: the position they score highest at, and <b>Score</b> that score.</li>"
+             "<li><b>Best</b>: the position they score highest at, and <b>Score</b> that score. If your export has FM's "
+             "<b>Position</b> column, only the positions FM says they play count (a striker stays a striker), on "
+             "<b>Lineup</b> and <b>Analysis</b> too.</li>"
              "<li><b>vs Age</b>: their best score against what's typical at their age. 100% = on track to be a good "
              "Championship or low Premier League player at their peak; above 100% is ahead of that.</li>"
              "<li><b>Colours</b>: green very good, yellow good, white average, orange and red weak.</li>"
              "<li>Players with too many unscouted attributes (FM shows -) aren't scored until you know more.</li></ul>"},
     {"key": "1", "title": "Squad",
-     "text": "<b>Shows:</b> every player at your club, scored at each position.<br>"
-             "<b>Use it to:</b> see your best players, who's playing out of position (their Best differs from where you "
-             "play them) and who's ahead for their age.<br>"
-             "<b>How:</b> click a column heading to sort; double-click a player (or press Enter) for their history over time; "
-             "type in the filter box, e.g. <b>age&lt;=21 best=DC</b>, <b>left=yes</b> or <b>vs&gt;=95</b>."},
-    {"key": "2", "title": "Lineup",
-     "text": "<b>Shows:</b> your squad by formation slot: <b>Starter</b>, <b>Backup</b> and <b>Third</b> (players to sell or "
-             "loan out), then the best youngsters for each slot.<br>"
-             "<b>Use it to:</b> spot thin positions (no backup) and surplus ones (a long Third), and which youngsters are next in line.<br>"
-             "<b>How:</b> each player goes to their best position. Until you set your formation (your save's save.toml, see the "
-             "README's \"Your formation\"), there's one row per position. Click a name for their history."},
-    {"key": "3", "title": "Scouted",
+     "text": "<b>Shows:</b> your <b>Lineup</b> on top (your formation: <b>Starter</b>, <b>Backup</b>, <b>Third</b> = players to sell or "
+             "loan out, then <b>Youth</b>: 18 and under), and below it every player at your club, scored at each position. "
+             "Beside it, <b>Formations</b> ranks 20 common systems by how well your squad fits them: <b>XI</b> = your best "
+             "eleven's average score, <b>Depth</b> = a second eleven's, and the weakest spot; click one to see its XI. "
+             "<b>Hide</b> folds both away.<br>"
+             "<b>Use it to:</b> see your best players, thin positions (no backup), surplus ones (a long Third), who's next in "
+             "line, and who's ahead for their age.<br>"
+             "<b>How:</b> each player goes to their best position (only those FM says they play, if your export has the Position "
+             "column). A slot nobody is best at is filled from Third, marked <b>↑</b>. Click a column heading to sort; "
+             "double-click a player (or press Enter) for their history; filter with e.g. <b>age&lt;=21 best=DC</b>."},
+    {"key": "2", "title": "Analysis",
+     "text": "<b>Shows:</b> your team position by position, the way the <b>Lineup</b> on Squad places them, ranked by the attribute "
+             "you pick: <b>Speed</b> (Pace and Acceleration together), the <b>position score</b>, or any single attribute.<br>"
+             "<b>Use it to:</b> see which positions are fast or slow, strong or weak, and how each compares with the "
+             "players you've imported who play there (<b>Imported</b>, and <b>±</b> for the difference).<br>"
+             "<b>How:</b> pick in <b>Rank by</b>. The top table ranks the positions; below it, each position's players, "
+             "best first. Click a name for their history."},
+    {"key": "3", "title": "Development",
+     "text": "<b>Shows:</b> how your players developed between two squad snapshots (each squad export is one): score "
+             "changes, the biggest risers and fallers, which attributes rose or fell, and who joined or left.<br>"
+             "<b>Use it to:</b> see whether training and game time are working, and who's stalling.<br>"
+             "<b>How:</b> export your squad regularly, e.g. every half-season. Pick the two snapshots in <b>from</b> and "
+             "<b>to</b> (the latest two by default). Click a name for the full history."},
+    {"key": "4", "title": "Market",
+     "text": "<b>Shows:</b> your squad (orange dots) against other players (purple).<br>"
+             "<b>How:</b> <b>compare with</b> picks the others: your <b>Last player import</b>, <b>All imported players</b>, or a division "
+             "you've imported with ratings. Your squad is always orange. The position buttons pick the position; the "
+             "<b>attribute</b> menu lists that position's most important attributes. Hover a dot to see who it is.<br>"
+             "<b>Reading it:</b> the white line in each row is the middle of the others; your players right of it are better than "
+             "most. In Score vs wage, dots above the dashed line are good value."},
+    {"key": "5", "title": "All players",
      "text": "<b>Shows:</b> everyone you've imported who isn't at your club, scored the same way as your squad.<br>"
              "<b>Use it to:</b> compare transfer targets with your own players, and follow players you've looked at over the seasons.<br>"
              "<b>How:</b> sort and filter as on Squad. It grows with every import: <b>Clear old lists</b> at the bottom right "
              "(click twice) moves old searches to an archive. Nothing is deleted."},
-    {"key": "4", "title": "Last import",
+    {"key": "6", "title": "Last player import",
      "text": "<b>Shows:</b> only the players from the file you imported last.<br>"
              "<b>Use it to:</b> judge one search at a time.<br>"
              "<b>How:</b> sort by <b>Score</b> or <b>vs Age</b>, then filter, e.g. <b>best=ST age&lt;=23</b>. Compare their scores "
              "with your starters' on Squad: anyone clearly higher at your weak position is worth scouting."},
-    {"key": "5", "title": "Player search",
+    {"key": "7", "title": "Player search",
      "text": "<b>Shows:</b> for each position, your best players (3, or 1 for GK) and the attributes that matter most there.<br>"
              "<b>Use it to:</b> set up FM's player search to find players better than yours.<br>"
              "<b>How:</b> in FM's player search add <b>Position Is Accomplished At</b> that position, then each highlighted attribute "
              "<b>Is At Least</b> its <b>Search ≥</b> value. Dimmed attributes don't need a minimum. Too few results? Lower the "
              "smaller minimums first."},
-    {"key": "6", "title": "Charts",
-     "text": "<b>Shows:</b> your squad (orange dots) against other players (purple).<br>"
-             "<b>How:</b> <b>compare with</b> picks the others: your <b>Last import</b>, <b>All imported players</b>, or a division "
-             "you've imported with ratings. <b>club</b> picks who's orange. The position buttons pick the position; the "
-             "<b>attribute</b> menu lists that position's most important attributes. Hover a dot to see who it is.<br>"
-             "<b>Reading it:</b> the white line in each row is the middle of the others; your players right of it are better than "
-             "most. In Score vs wage, dots above the dashed line are good value."},
-    {"key": "7", "title": "Staff",
+    {"key": "8", "title": "All staff",
      "text": "<b>Shows:</b> every staff member you've imported, scored for each job: Mgr manager, AM assistant, HoYD head of "
              "youth development, the coaching groups (AttTct attacking tactical, DefTec defending technical…), GKC goalkeeping, "
              "FitC fitness, SetC set pieces, DoF director of football, Scout, PA performance analyst, Physio, SpSci sports scientist.<br>"
              "<b>How:</b> read across a row: the highest number is the job they suit best. Sort by a job to find the best for it. "
              "<b>Clear old lists</b> works here too."},
-    {"key": "8", "title": "Last staff import",
-     "text": "Only the staff from your latest staff import: judge one staff search at a time, the way Last import works for players."},
-    {"key": "9", "title": "Staff search",
+    {"key": "9", "title": "Last staff import",
+     "text": "Only the staff from your latest staff import: judge one staff search at a time, the way Last player import works."},
+    {"key": "0", "title": "Staff search",
      "text": "<b>Shows:</b> per job, the best staff you've imported (any club) and the attributes that matter most for that job.<br>"
              "<b>Use it to:</b> set up FM's staff search when hiring.<br>"
              "<b>How:</b> pick the job, then set each highlighted attribute to at least its <b>Search ≥</b> word (e.g. Good). "
              "The more staff searches you import, the better these minimums get."},
-    {"key": "0", "title": "Settings",
-     "text": "<b>Shows:</b> your settings: this computer's (config.toml) and this save's (save.toml), kept in your data folder "
-             "(Documents\\FMAnalyst for the downloaded app).<br>"
-             "<b>Worth knowing:</b> the save's <b>weights</b> line picks how players are scored; <b>Saves</b> (bottom right) "
-             "switches between saves or starts a new one; app.log in the data folder records any error."},
+    {"key": "a", "title": "Attributes",
+     "text": "<b>Shows:</b> the weight of every attribute at each position: how much it counts in that position's score.<br>"
+             "<b>Use it to:</b> score players your own way, e.g. more weight on Finishing for strikers.<br>"
+             "<b>How:</b> pick a position, change the numbers (blank or 0 = not used) and click <b>Save</b>: the app keeps them "
+             "as this save's own weights (<b>custom</b>) and rescores every page. <b>Back to default</b> returns to the "
+             "default weights (yours stay saved). <b>Export…</b> writes the weights as a table (.txt for Notepad, .csv for Excel) to "
+             "share or edit; <b>Import…</b> reads one back, then Save."},
     {"key": "", "title": "Keyboard shortcuts",
-     "text": "<ul><li><b>1</b>–<b>9</b>, <b>0</b>, <b>g</b>: go to a page.</li><li><b>Arrow keys</b>: move around a table; "
+     "text": "<ul><li><b>1</b>–<b>9</b>, <b>0</b>, <b>a</b>, <b>g</b>: go to a page.</li><li><b>Arrow keys</b>: move around a table; "
              "<b>Enter</b>: a player's history; <b>s</b>: sort by the current column.</li>"
              "<li><b>/</b> or <b>f</b>: the filter box; <b>Esc</b>: clear it.</li><li><b>c</b>: copy a player's name, to paste into "
              "FM's search.</li><li><b>?</b>: every shortcut.</li></ul>"},
@@ -608,11 +960,11 @@ def toml_str(s):
 
 def new_save(save, club, division="", weight=None):
     """Create saves/<save>/ (save.toml, obs/, staff/). weight defaults to the newest weights file."""
-    weight = weight or max(weights_names(), default="")
+    weight = weight or DEFAULT
     save_toml = ROOT / "saves" / save / "save.toml"
     (save_toml.parent / "obs").mkdir(parents=True, exist_ok=True)
     (save_toml.parent / "staff").mkdir(exist_ok=True)
-    save_toml.write_text(f"# A save managing {club}. The settings page (key 0) shows them.\n"
+    save_toml.write_text(f"# A save managing {club}. The Guide's \"Your settings\" tile shows them.\n"
                          f"weights = {toml_str(weight)}\nmanaged_club = {toml_str(club)}\n"
                          f"short_name = {toml_str(save)}\ndivision = {toml_str(division)}\n"
                          "last_batch = []\nlast_staff_batch = []\n", encoding="utf-8")
@@ -631,7 +983,7 @@ def set_active_save(save):
 def write_config(save, currency, screenshots_dir=None, exports_dir=None):
     """Write config.toml: this computer's settings."""
     ROOT.mkdir(parents=True, exist_ok=True)
-    lines = ["# Settings for this computer. The settings page (key 0) shows them.",
+    lines = ["# Settings for this computer. The Guide's \"Your settings\" tile shows them.",
              f"active_save = {toml_str(save)}",
              f"screenshots_dir = {toml_str(screenshots_dir or default_screenshots_dir())}",
              f"currency = {toml_str(currency)}"]
@@ -648,7 +1000,6 @@ def init():
         answer = input(f"{prompt}{f' [{default}]' if default else ''}: ").strip()
         return answer or default
 
-    weights = weights_names()
     print("Set up config.toml and a save. Press enter to keep the [default].\n")
     shots = ask("Folder your screenshots are saved to", old.get("screenshots_dir", default_screenshots_dir()))
     currency = ask("Currency symbol FM shows", old.get("currency", "£"))
@@ -657,7 +1008,7 @@ def init():
         club = ask("Club you manage (needed)")
     save = ask("Name for this save (a folder name)", re.sub(r"[^a-z0-9]+", "-", club.lower()).strip("-"))
     division = ask("Your club's division, exactly as FM shows it (optional)")
-    weight = ask(f"Weights to score with ({', '.join(weights)})", weights[-1] if weights else "")
+    weight = DEFAULT  # changed later, if wanted, on the Attributes page
 
     if (ROOT / "saves" / save / "save.toml").exists():
         print(f"\nsaves/{save}/save.toml already exists: left as it is")

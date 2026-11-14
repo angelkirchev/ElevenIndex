@@ -60,7 +60,7 @@ Where the weights still disagree with FM27's key attributes (candidates to amend
 ## What each coaching group trains
 
 From the hover popups on FM27's Set Coach Assignments screen (9/4/2029). **Share of position weight** is how much of
-`weights/fm27.toml` each group's player attributes make up, per position (GK: of the `[gk]` weights).
+`weights/default.toml` each group's player attributes make up, per position (GK: of the `[gk]` weights).
 
 | Coaching group | Player attributes trained | CB | WB/6 | 10 | 9 | Avg |
 |---|---|---|---|---|---|---|
@@ -135,5 +135,5 @@ Cutting such an attribute guts that role, even when its overall impact is low.
 
 ## Weights by role
 
-The weights themselves are in `weights/fm27.toml` (`[staff_words]` and `[staff.<role>]`); `score.py` reads them from there.
+The weights themselves are in `weights/default.toml` (`[staff_words]` and `[staff.<role>]`); `score.py` reads them from there.
 Attributes weighted 0 (Judging Staff Ability, Negotiating, Adaptability) are left out.

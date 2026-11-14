@@ -27,7 +27,7 @@ RENAME = {
     "Command Of Area": "Command of Area", "One On Ones": "One on Ones",
     "Average Rating": "Rating", "Av Rat": "Rating", "Mins": "Minutes", "Based": "Division",
 }
-META_ORDER = ["Name", "Club", "Age", "Left Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating", "Division"]
+META_ORDER = ["Name", "Club", "Age", "Position", "Left Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating", "Division"]
 GK_CHECK = ["Handling", "Reflexes", "One on Ones", "Aerial Reach", "Command of Area"]  # outfielders show 1-5 here
 GK_ATTRS = set(GK_CHECK) | {"Communication", "Eccentricity", "Kicking", "Punching", "Rushing Out (Tendency)", "Throwing"}
 OUTFIELD_ONLY = {"Finishing", "Tackling", "Marking", "Heading", "Dribbling", "Crossing", "Long Shots", "Penalty Taking",
@@ -101,7 +101,7 @@ def attr_value(v):
 
 def convert(rows, headers, club):
     """Split into {'outfield': rows, 'gk': rows} in FMAnalyst's format, plus the column list for each."""
-    known_meta = set(META_ORDER) | {"Position", "Best Pos", "Nation", "Ability", "Potential", "Height", "Inf",
+    known_meta = set(META_ORDER) | {"Best Pos", "Nation", "Ability", "Potential", "Height", "Inf",
                                    "Picked", "Best Role", "Playing Time", "Club"}
     attrs = [h for h in headers if h not in known_meta and h]
     out = {"outfield": [], "gk": []}
@@ -112,6 +112,8 @@ def convert(rows, headers, club):
         new = {"Name": r["Name"], "Club": r.get("Club") or club, "Age": r.get("Age", ""),
                "Left Foot": r.get("Left Foot", ""), "Wage": r.get("Wage", ""),
                "Transfer Value": r.get("Transfer Value", ""), "Loan": r.get("Loan", "")}
+        if (r.get("Position") or "").strip() not in ("", "-"):  # FM's own positions, e.g. "D/WB (R), M (RC)"
+            new["Position"] = r["Position"].strip()
         if new["Club"] in ("-", ""):
             new["Club"] = "Free agent"
         # The charts page: season minutes and average rating. FM shows '-' for a player who hasn't played, so both are
@@ -189,8 +191,8 @@ def main():
 def import_file(export, date, source=None, club=None, save=None):
     """Import one export (players or staff) into a save and set last_batch / last_staff_batch.
     Returns (save, [(file name, row count)], [names skipped], "players" or "staff")."""
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
-        raise ValueError("The date must be YYYY-MM-DD, e.g. 2026-07-15")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(T\d{4})?", date):
+        raise ValueError("The date must be YYYY-MM-DD (or YYYY-MM-DDThhmm), e.g. 2026-07-15")
     config = score.load_config()
     save = save or config["active_save"]
     save_toml = score.ROOT / "saves" / save / "save.toml"
@@ -226,7 +228,7 @@ def import_file(export, date, source=None, club=None, save=None):
 def import_staff(headers, rows, date, source, club, save_toml, cfg):
     """A staff export -> staff/<date>_<source>.csv, attributes as FM's words (score.py turns them into numbers with
     the weights file's [staff_words]). Returns ([(file name, count)], [names skipped])."""
-    words = score.load_toml(score.weights_file(cfg["weights"])).get("staff_words", {})
+    words = score.load_weights(cfg, save_toml.parent).get("staff_words", {})
     # a search named after "Player Search ..." is a staff search here
     source = source.replace("search-player-search", "search-staff") if source.startswith("search-") else source
     if "Club" not in headers:  # your club's staff screen: everyone on it works for you, like a squad screen
@@ -259,7 +261,7 @@ def import_staff(headers, rows, date, source, club, save_toml, cfg):
 def drop_unscorable(converted, obs_dir, cfg):
     """Leave out players score.py couldn't score at any position, even with what's known of them from earlier
     imports (it would stop on them). Returns (converted without them, their names)."""
-    w = score.load_toml(score.weights_file(cfg["weights"]))
+    w = score.load_weights(cfg, obs_dir.parent)
     aliases = cfg.get("aliases", {})
     known, _ = score.load_players(obs_dir, aliases)
     kept, skipped = {}, []

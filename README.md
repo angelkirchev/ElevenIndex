@@ -31,7 +31,7 @@ compare with what's typical for their age. Green is strong, orange weak.
 
 ![Squad page: every player scored at each position](docs/screenshots/squad.png)
 
-**Right after an import**: the **Last import** page shows only the list you just imported, and a message confirms it.
+**Right after an import**: the **Last player import** page shows only the list you just imported, and a message confirms it.
 
 ![Last page after an import](docs/screenshots/import.png)
 
@@ -40,11 +40,11 @@ better ones.
 
 ![Player search page](docs/screenshots/filters.png)
 
-**Saves**: switch between saves or start a new one. **Clear old lists** tidies up **Scouted**, the players you've looked at.
+**Saves**: switch between saves or start a new one. **Clear old lists** tidies up **All players**, everyone you've imported.
 
 ![Saves panel](docs/screenshots/saves.png)
 
-![Scouted page with Clear old lists](docs/screenshots/clear.png)
+![All players page with Clear old lists](docs/screenshots/clear.png)
 
 **Staff**, scored for every job: manager, each coaching group, scout, physio and more.
 
@@ -124,6 +124,9 @@ The views give FM's lists the right columns.
    on **staff search**, **`staff_everything`**.
 5. On each of the two player views, point at the list and press **Ctrl + F8** once, so every attribute shows,
    goalkeeping ones included.
+6. Recommended: add the **Position** column to both player views too (the view's menu → **Customise View…** →
+   add **Position**), then save the view. With it, a player's Best position and Lineup slot come only from the
+   positions FM says he plays, so a striker isn't listed as a centre-back because of his attributes.
 
 ### 5. Import your squad
 
@@ -139,28 +142,31 @@ On your squad screen, point at the list and press **F8**. In the app, click **Im
 | You export | It becomes |
 |---|---|
 | Your squad (file starts `First Team` or `Squad`) | Your squad. Players missing from a newer squad export count as gone. |
-| A search or shortlist | A list of its own, shown on **Last import** (key 4) and kept on **Scouted** (key 3) |
-| Staff from a staff search (the `staff_everything` view) | Staff, shown on **Last staff import** (key 8) |
-| A whole division, with Division, Minutes and Average Rating columns | Adds the division and the rating charts to **Charts** (key 6). Rename the file first, e.g. `league-one.csv`. |
+| A search or shortlist | A list of its own, shown on **Last player import** (key 6) and kept on **All players** (key 5) |
+| Staff from a staff search (the `staff_everything` view) | Staff, shown on **Last staff import** (key 9) and kept on **All staff** (key 8) |
+| A whole division, with Division, Minutes and Average Rating columns | Adds the division and the rating charts to **Charts** (key 7). Rename the file first, e.g. `league-one.csv`. |
 
 **The pages:** press the number keys to switch, **?** for all shortcuts. Click a column to sort, double-click a player
 for their history, and type in the filter box, e.g. `age<=21 best=DC`.
 
 | Key | Page | Key | Page |
 |---|---|---|---|
-| 1 | Squad: your players | 6 | Charts: your squad against your last import |
-| 2 | Lineup: your formation, starter / backup / third | 7 | Staff: every staff member you've imported |
-| 3 | Scouted: everyone else you've looked at | 8 | Last staff import |
-| 4 | Last import: your latest import | 9 | Staff search: the best staff you've imported, and what to search for |
-| 5 | Player search: what to search for to beat your players | 0 | Settings |
-|   |   | g | Guide: how to use each page |
+| **Your team** | | **Staff** | |
+| 1 | Squad: your lineup (starter / backup / third, youth), how you fit 20 formations, and every player | 8 | All staff: every staff member you've imported |
+| 2 | Analysis: your team position by position, ranked by speed or any attribute | 9 | Last staff import |
+| 3 | Development: how your players changed between two squad exports | 0 | Staff search: the best staff you've imported, and what to search for |
+| 4 | Market: your squad against the players you've imported, and score vs wage | | |
+| **Players** | | **More** | |
+| 5 | All players: everyone you've imported | a | Attributes: change the weights, import or export them |
+| 6 | Last player import: your latest import | g | Guide: how to use each page, and your settings |
+| 7 | Player search: what to search for to beat your players | | |
 
 **More than one save:** click **Saves** to switch, or to start a save for a new game or club.
 
-**Tidying up:** **Clear old lists** on Scouted and Staff (click twice) moves old searches to an archive. It keeps
+**Tidying up:** **Clear old lists** on All players and All staff (click twice) moves old searches to an archive. It keeps
 your squad and your latest list, and nothing is deleted.
 
-**Your formation:** the Lineup page uses one row per position until you set a formation. Add it to your save's
+**Your formation:** the Lineup (on the Squad page) uses one row per position until you set a formation. Add it to your save's
 `save.toml` (in your data folder, see [FAQ](#faq)), one line per slot; `pos` is one of GK, DC, DL/DR, WBL/WBR, DM, MC,
 ML/MR, AMC, AML/AMR, ST, and `left = true` means left-footed only:
 
@@ -239,9 +245,9 @@ The weights come from FM27 research by the community:
   tabled by squirrel_plays on [FM-Arena](https://fm-arena.com/threads/player-attributes.59/)). Pace, Acceleration and
   Stamina matter most.
 - FM's own **CA costs**: which attributes FM counts at each position.
-- **Purity**'s test of attribute importance by position
-  ([FM-Arena](https://fm-arena.com/threads/attribute-importance-by-position-in-fm27-a-test-on-my-own-tactic.125/)),
-  as an alternative set to compare with.
+
+Those are the default weights. To score your own way, change them on the **Attributes** page (key **A**): your weights
+are kept for that save, and **Back to default** returns to these.
 
 Imports use [FM27 Exporter](https://github.com/v1adicke/fm27-exporter). MIT licence, see [LICENSE](LICENSE).
 Not affiliated with Sports Interactive or SEGA.

@@ -48,7 +48,6 @@ __THEME__
 <div class="bar">
   <span class="pages">__NAV__</span>
   <span class="seg"><span class="lbl">compare with</span><select id="division"></select></span>
-  <span class="seg"><span class="lbl">club</span><select id="club"></select></span>
   <span class="seg" id="pos"><span class="lbl">position</span></span>
   <span class="seg"><span class="lbl">attribute</span><select id="speed"></select></span>
   <span class="legend"><span><i style="background:var(--blue)"></i><span id="lLeague"></span> <span id="nLeague"></span></span><span><i style="background:var(--orange)"></i><span id="lClub"></span> <span id="nSquad"></span></span></span>
@@ -65,7 +64,7 @@ const { positions: POSITIONS, players: DATA, managed: MANAGED, division: HOME_DI
 const MIN_DIVISION = 20, perDivision = {};
 for (const p of DATA) if (p.division) perDivision[p.division] = (perDivision[p.division] || 0) + 1;
 // What the squad is compared with: the latest import (as on the Last page), everyone imported, or a division
-const LAST = "Last import", ALL = "All imported players";
+const LAST = "Last player import", ALL = "All imported players";
 const REAL_DIVISIONS = Object.keys(perDivision).filter(d => perDivision[d] >= MIN_DIVISION).sort();
 const DIVISIONS = [...(DATA.some(p => !p.squad && p.last) ? [LAST] : []), ...(DATA.some(p => !p.squad) ? [ALL] : []), ...REAL_DIVISIONS];
 const short = d => d.replace(/^Sky Bet /, "");
@@ -78,10 +77,10 @@ try { Object.assign(state, JSON.parse(localStorage.getItem(STORE) || "{}")); } c
 if (!POSITIONS.includes(state.pos)) state.pos = POSITIONS[0];
 if (!attrsFor(state.pos).includes(state.speed)) state.speed = attrsFor(state.pos)[0];
 if (!DIVISIONS.includes(state.division)) state.division = DIVISIONS[0];
+state.club = MANAGED;  // an older version let you pick another club
 // The division's players are the baseline; the club's are highlighted (the managed club: its squad screen)
 const inLeague = p => !p.squad && (state.division === ALL || (state.division === LAST ? p.last : p.division === state.division));
-const isHl = p => state.club === MANAGED ? p.squad : inLeague(p) && p.club === state.club;
-const clubs = () => [MANAGED, ...[...new Set(DATA.filter(inLeague).map(p => p.club))].filter(c => c !== MANAGED).sort()];
+const isHl = p => p.squad;  // your squad, always: the charts rank what you've imported against it
 let VIEW = [];
 // Axes span every division (and the highlighted club), so switching division doesn't move them
 const AXIS_POOL = () => DATA.filter(p => inLeague(p) || p.hl);
@@ -219,10 +218,9 @@ function scatter(spec) {
 }
 
 function render() {
-  if (!clubs().includes(state.club)) state.club = MANAGED;
   VIEW = DATA.filter(p => inLeague(p) || isHl(p));
   for (const p of DATA) p.hl = isHl(p);
-  for (const [id, opts] of [["division", DIVISIONS.map(d => [d, short(d)])], ["club", clubs().map(c => [c, c])]]) {
+  for (const [id, opts] of [["division", DIVISIONS.map(d => [d, short(d)])]]) {
     const s = document.getElementById(id);
     s.innerHTML = opts.map(([v, l]) => `<option value="${v}"${v === state[id] ? " selected" : ""}>${l}</option>`).join("");
     s.onchange = () => set(id, s.value);

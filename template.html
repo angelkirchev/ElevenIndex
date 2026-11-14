@@ -76,31 +76,82 @@ __THEME__
   .helphint b { color: var(--fg); font-weight: normal; }
   .tiles td.wrap { white-space: normal; }
   .tile.guide .gtext { line-height: 1.65; color: var(--fg); }
+  .tile.guide table { width: auto; margin: 2px 0 8px; } .tile.guide td { padding: 2px 14px 2px 0; }
+  /* Analysis: the summary spans both columns; names open the history; the Rank by menu sits in its title */
+  .tile.wide { grid-column: 1 / -1; }
+  /* Development: the summary figures in a row */
+  .devsum { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 10px; }
+  .devsum > div { background: var(--row); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; min-width: 120px; }
+  .devsum b { display: block; font: 700 22px/1.1 var(--head); color: var(--fg); }
+  .devsum b.t4 { color: var(--green); } .devsum b.t0 { color: var(--red); }
+  .devsum span { color: var(--dim); font-size: 12px; }
+  td.wrap { white-space: normal; }
+  /* Attributes: position buttons, the Save / Import / Export buttons, and the weights table */
+  .wbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 2px 0 8px; }
+  .seg { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+  .seg button, .wbtns button { font: 600 13px var(--body); color: var(--fg); background: var(--row); border: 1px solid var(--line);
+                               border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  .seg button:hover, .wbtns button:hover:not(:disabled) { background: #e2d6ff; color: #141317; border-color: #e2d6ff; }
+  .seg button.on { background: var(--accent-strong); border-color: var(--blue); color: #fff; }
+  .wbtns { display: inline-flex; align-items: center; gap: 6px; }
+  .wbtns button.primary { background: var(--accent-strong); border-color: var(--blue); color: #fff; }
+  .wbtns button:disabled { opacity: .4; cursor: default; }
+  .unsaved { color: var(--yellow); font-weight: 600; margin-right: 4px; }
+  .wnow { color: var(--fg); font-weight: 600; }
+  #wswitch { font: 600 12px var(--body); color: var(--fg); background: var(--row); border: 1px solid var(--blue); border-radius: 6px;
+             padding: 3px 10px; margin-left: 8px; cursor: pointer; }
+  #wswitch:hover { background: #e2d6ff; color: #141317; }
+  table.weights { width: auto; min-width: 560px; }
+  table.weights tr.unused td { color: var(--dim); }
+  table.weights tr.divider td { color: var(--dim); font-size: 12px; padding-top: 12px; border-bottom: 1px solid var(--line); }
+  input.wt { width: 72px; font: 600 13px var(--body); color: var(--fg); background: var(--desk); border: 1px solid var(--line);
+             border-radius: 5px; padding: 2px 6px; text-align: right; }
+  input.wt:focus { outline: none; border-color: var(--blue); }
+  td.barcell { width: 220px; } .wfill { display: block; height: 8px; border-radius: 4px; background: var(--blue); }
+  .pl { cursor: pointer; } .pl:hover { color: var(--cyan); text-decoration: underline; }
+  .rankby { font: 500 13px var(--body); text-transform: none; letter-spacing: 0; color: var(--dim); margin-left: 6px; }
+  #rankby { font: 600 13px var(--body); color: var(--fg); background: var(--row); border: 1px solid var(--blue);
+            border-radius: 6px; padding: 3px 8px; margin-left: 4px; }
   .tile.guide ol, .tile.guide ul { margin: 2px 0 6px; padding-left: 20px; }
   .tile.guide li { margin: 3px 0; }
   .tile.guide b { color: var(--cyan); font-weight: 600; }
   /* Grid page: formation slots × senior then youth depth */
-  #main.grid table { width: auto; }
-  #main.grid td { padding: 5px 14px; }
-  #main.grid th { cursor: default; color: var(--purple); }
-  #main.grid th.group { color: var(--dim); text-align: left; border-bottom: 0; }
-  #main.grid td.slot { color: var(--cyan); }
-  #main.grid .split { border-left: 1px solid var(--line); }
-  #main.grid .v { margin-left: 6px; }
-  #main.grid .age { color: var(--dim); font-size: 11px; margin-left: 6px; }
-  #main.grid [data-name] { cursor: pointer; }
-  #main.grid .foot { color: var(--yellow); font-size: 11px; margin-left: 5px; }
-  #main.grid div.cur { outline: 1px solid var(--cyan); outline-offset: 2px; }
-  #main.grid .notes { margin-top: 12px; white-space: normal; line-height: 1.7; }
+  #lineup table { width: auto; }
+  #lineup td { padding: 5px 14px; }
+  #lineup th { cursor: default; color: var(--purple); }
+  #lineup th.group { color: var(--dim); text-align: left; border-bottom: 0; }
+  #lineup td.slot { color: var(--cyan); }
+  #lineup .split { border-left: 1px solid var(--line); }
+  #lineup .v { margin-left: 6px; }
+  #lineup .age { color: var(--dim); font-size: 11px; margin-left: 6px; }
+  #lineup [data-name] { cursor: pointer; }
+  #lineup .foot { color: var(--yellow); font-size: 11px; margin-left: 5px; }
+  #lineup .from { color: var(--cyan); font-size: 10px; margin-left: 5px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; }
+  #lineup .notes { margin-top: 8px; white-space: normal; line-height: 1.7; }
+  #squadtop { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-bottom: 10px; }  /* both boxes one height */
+  #squadtop.closed { align-items: flex-start; }
+  #squadtop.closed #lineup table, #squadtop.closed #lineup .notes, #squadtop.closed #formations { display: none; }
+  #lineup { flex: 0 1 auto; display: flex; flex-direction: column; } #lineup td { padding: 3px 12px; }
+  #lineup table { flex: 1 1 auto; height: 100%; }  /* the rows spread to the box's full height */
+  #formations { flex: 1 1 380px; min-width: 0; } #formations td, #formations th { padding: 3px 8px; }
+  #formations tr.f { cursor: pointer; } #formations tr.f:hover td { background: var(--hover); }
+  #formations tr.xi td { white-space: normal; color: var(--dim); font-size: 12px; padding-bottom: 8px; }
+  #formations .note { color: var(--dim); font-size: 11px; display: block; line-height: 1.2; }
+  #lineup .lhead { display: flex; align-items: center; gap: 10px; }
+  #lineup .lhead button { font: 600 12px var(--body); color: var(--fg); background: var(--row); border: 1px solid var(--line);
+                          border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+  #lineup .lhead button:hover { background: #e2d6ff; color: #141317; }
+  #squadtop.closed .ttitle { margin-bottom: 0; }
 </style>
 </head>
 <body>
 <div class="bar">
   <span class="pages">__NAV__</span>
-  <input id="filter" placeholder="/ filter  e.g. age<=24 best=DC vs>=90 left=yes" spellcheck="false" autocomplete="off">
+  <input id="filter" placeholder="Search…" title="Type a name, or filters like age<=24 best=DC vs>=90 left=yes" spellcheck="false" autocomplete="off">
   <span id="count"></span>
-  <a class="helphint" href="#" id="helphint" title="Keyboard shortcuts"><b>?</b> shortcuts</a>
+  <a class="helphint" href="#" id="helphint" title="Keyboard shortcuts (?)"><b>?</b></a>
 </div>
+<div id="squadtop" hidden><div class="tile" id="lineup"></div><div class="tile" id="formations"></div></div>
 <div class="tile" id="main">
   <table>
     <thead><tr id="head"></tr></thead>
@@ -113,7 +164,8 @@ __THEME__
   <table class="keys">
     <colgroup><col style="width:190px"><col></colgroup>
     <tr><th colspan="2">Pages</th></tr>
-    <tr><td><kbd>1</kbd>–<kbd>9</kbd> <kbd>0</kbd> <kbd>G</kbd></td><td>go to a page: Squad, Lineup, Scouted, Last import, Player search, Charts, Staff, Last staff import, Staff search, Settings, Guide</td></tr>
+    <tr><td><kbd>1</kbd>–<kbd>9</kbd> <kbd>0</kbd></td><td>go to a page: Squad, Analysis, Development, Market · All players, Last player import, Player search · All staff, Last staff import, Staff search</td></tr>
+    <tr><td><kbd>A</kbd> <kbd>G</kbd></td><td>Attributes (the weights), Guide</td></tr>
     <tr><td><kbd>?</kbd></td><td>show or hide this list</td></tr>
     <tr><th colspan="2">Tables</th></tr>
     <tr><td><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd></td><td>move around the table</td></tr>
@@ -131,8 +183,9 @@ __THEME__
 </div></div>
 <script>
 const PAGE = "__PAGE__", SITE = __SITE__, PAGES = SITE.pages;
-const TABLE = !["grid", "filters", "staff_filters", "settings", "guide"].includes(PAGE);  // the other pages are tiles, with no table to filter or move around
+const TABLE = !["analysis", "development", "filters", "staff_filters", "attributes", "guide"].includes(PAGE);  // the other pages are tiles, with no table to filter or move around
 const DATA = __DATA__;
+const LINEUP = __LINEUP__;  // the squad page's lineup panel (grid() in score.py), else null
 const loanLabel = r => r.loan === "trial" ? "trial" : "loan " + r.loan;  // "loan in", "loan out", "trial"
 const FMT = {
   f1: v => v.toFixed(1),
@@ -225,7 +278,8 @@ function render() {
     if (c.key === "name") return `<td class="${at}">${v}${r.loan ? `<span class="loan ${r.loan}">${loanLabel(r)}</span>` : ""}</td>`;
     return `<td class="${c.num ? "num" : "text"}${at}">${v}</td>`;
   }).join("") + "</tr>").join("");
-  document.querySelector("td.cur")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (render.done) document.querySelector("td.cur")?.scrollIntoView({ block: "nearest", inline: "nearest" });  // not on opening the page
+  render.done = true;
   save();
 }
 
@@ -243,6 +297,11 @@ document.addEventListener("keydown", e => {
     if (e.key === "Escape" || e.key === "Enter") input.blur();
     return;
   }
+  const typing = document.activeElement?.matches?.("input, select, textarea");
+  if (typing) {  // a weight box or menu: keys are for it, not page shortcuts
+    if (e.key === "Escape") document.activeElement.blur();
+    return;
+  }
   if (detail.classList.contains("show")) {
     if (e.key === "Escape" || e.key === "Enter") { detail.classList.remove("show"); e.preventDefault(); }
     return;
@@ -250,20 +309,6 @@ document.addEventListener("keydown", e => {
   if (e.key === "?") { help.classList.toggle("show"); e.preventDefault(); return; }
   if (e.key === "Escape" && help.classList.contains("show")) { help.classList.remove("show"); return; }
   if (PAGES[e.key] && PAGES[e.key] !== PAGE) { location.href = PAGES[e.key] + ".html"; return; }
-  if (PAGE === "grid") {
-    const move = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
-    if (move) {
-      const k = (cur.k ?? 0) + move[0];  // up / down step through a cell's players first
-      if (move[0] && k >= 0 && k < gridCell().length) cur.k = k;
-      else { cur.r += move[0]; cur.c += move[1]; cur.k = move[0] < 0 ? gridCell(Math.max(0, cur.r)).length - 1 : 0; }
-      renderGrid();
-    }
-    else if (e.key === "Enter" && curPlayer()) showDetail(curPlayer());
-    else if (e.key === "c") document.execCommand("copy");
-    else return;
-    e.preventDefault();
-    return;
-  }
   if (!TABLE) return;
   const move = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
   if (move) { cur.r += move[0]; cur.c += move[1]; render(); }
@@ -276,24 +321,16 @@ document.addEventListener("keydown", e => {
   e.preventDefault();
 });
 
-// The attributes table shows one date per transfer window, newest first: each observation goes to its nearest
-// window (Oct–Mar → January, Apr–Sep → summer), which keeps the date closest to 1 Jan / 1 Jul; the latest always shows
+// The attributes table: every observation, newest first (each squad export is its own snapshot)
 function windowDates(H) {
-  const win = new Map(), last = H[H.length - 1];
-  const key = d => { const [y, m] = d.split("-").map(Number); return m >= 10 ? [y + 1, 1] : m <= 3 ? [y, 1] : [y, 7]; };
-  for (const h of H) {
-    const [y, m] = key(h.date), k = `${y}-${m}`;
-    const off = Math.abs(new Date(h.date) - new Date(Date.UTC(y, m - 1, 1)));
-    const cur = win.get(k);
-    if (cur?.h === last) continue;
-    if (h === last || !cur || off < cur.off) win.set(k, { h, off });
-  }
-  return [...win.values()].map(w => w.h).sort((a, b) => b.date.localeCompare(a.date));
+  return [...H].reverse();
 }
+// "2026-11-14T0032" -> "2026-11-14 00:32" (a squad export's time), else the date as it is
+const fmtDate = d => String(d).replace(/T(\d\d)(\d\d)$/, " $1:$2");
 
 // Game time since a date, to the save's latest game date (any screenshot): "1.5 years"; blank for now (0.0)
 const yearsAgo = d => {
-  const y = SITE.gameDate ? ((new Date(SITE.gameDate) - new Date(d)) / 31557600000).toFixed(1) : "0.0";
+  const y = SITE.gameDate ? ((new Date(SITE.gameDate.slice(0, 10)) - new Date(d.slice(0, 10))) / 31557600000).toFixed(1) : "0.0";
   return y === "0.0" ? "" : `${y} years`;
 };
 
@@ -305,7 +342,7 @@ function showDetail(r) {
     `<span class="chg ${v > p ? "t4" : "t0"}">${FMT.delta(v - p)}</span>`;
   const scoreRows = H.map((h, i) => {
     const p = H[i - 1];
-    return `<tr><td>${h.date}</td><td class="text">${h.club}</td><td class="num">${h.age ?? "–"}</td>` +
+    return `<tr><td>${fmtDate(h.date)}</td><td class="text">${h.club}</td><td class="num">${h.age ?? "–"}</td>` +
       pos.map(k => `<td class="num ${tier(h[k], RANGE.f1)}">${FMT.f1(h[k])}${chg(h[k], p?.[k])}</td>`).join("") +
       `<td class="text">${h.best ?? "–"}</td>${vs ? `<td class="num ${tier(h.vsAge, RANGE.pct)}">${FMT.pct(h.vsAge)}</td>` : ""}</tr>`;
   }).join("");
@@ -327,20 +364,20 @@ function showDetail(r) {
   document.getElementById("detailbody").innerHTML = `
     <div class="ttitle">${r.name} <span class="sub">· ${[r.club, r.age != null && r.age + "y",
       ...("job" in r ? [r.job, r.personality] : ["left foot " + (last.leftFoot ?? "–"), r.loan && loanLabel(r)])].filter(Boolean).join(" · ")}</span></div>
-    ${H.length === 1 ? `<div class="sub">Only one observation so far (${last.date}); changes appear once you add screenshots from a later game date.</div>` : ""}
+    ${H.length === 1 ? `<div class="sub">Only one observation so far (${fmtDate(last.date)}); changes appear once you export your squad again later.</div>` : ""}
     <table><thead><tr><th>Date</th><th>Club</th><th class="num">Age</th>${pos.map(k => `<th class="num">${k}</th>`).join("")}<th>Best</th>${vs ? `<th class="num">vs Age</th>` : ""}</tr></thead>
       <tbody>${scoreRows}</tbody></table>
     <div class="ttitle">Attributes</div>
     <table><thead>${wpos.length ? `<tr><th></th><th class="group wt${gr ? " nb" : ""}">weight</th>${gr ? `<th class="group wt">growth</th>` : ""}<th class="group" colspan="${AH.length}">value</th></tr>` : ""}
       <tr><th class="ago"></th>${wpos.map(() => `<th class="wt ago${gr ? " nb" : ""}"></th>`).join("")}${gr ? `<th class="wt ago"></th>` : ""}${AH.map(h => `<th class="num ago">${yearsAgo(h.date)}</th>`).join("")}</tr>
-      <tr><th></th>${wpos.map(k => `<th class="num wt${gr ? " nb" : ""}">${k}</th>`).join("")}${gr ? `<th class="num wt">${yearsAgo(H[0].date)}</th>` : ""}${AH.map(h => `<th class="num">${h.date}</th>`).join("")}</tr></thead>
+      <tr><th></th>${wpos.map(k => `<th class="num wt${gr ? " nb" : ""}">${k}</th>`).join("")}${gr ? `<th class="num wt">${yearsAgo(H[0].date)}</th>` : ""}${AH.map(h => `<th class="num">${fmtDate(h.date)}</th>`).join("")}</tr></thead>
       <tbody>${attrRows}</tbody></table>`;
   detail.classList.add("show");
 }
 
 // Filters pages: DATA is one entry per position or staff role (filters() and staff_filters() in score.py); staff values come with FM's words as labels
 function renderFilters() {
-  input.style.visibility = "hidden";
+  input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main");
   main.className = "tiles";
   if (!DATA.length) {  // nothing imported yet for this page
@@ -358,62 +395,288 @@ function renderFilters() {
         `<td class="num ${v == null ? "" : attrTier(v)}">${r.labels ? r.labels[i] : v ?? "–"}</td>`).join("")}<td class="num search">${r.min == null ? "–" : r.min}</td></tr>`).join("")}</tbody>
     </table></div>`).join("");
 }
-// Grid page: DATA = { slots: [{ label, pos, senior: [player|null ×3], youth: [...] }], spare, spareYouth, loanOut } (grid() in score.py)
-function renderGrid() {
-  input.style.visibility = "hidden";
-  const main = document.getElementById("main"), d = DATA, n = 3;
-  main.className = "tile grid";
+// Squad page: the lineup panel above the table. LINEUP = { slots: [{ label, pos, left, senior: [[players] ×3],
+// extra: { youth, intake } }], extraCols, spare, spareYouth, loanOut } (grid() in score.py)
+const LINEUP_STORE = "fm:__SAVE__:lineup";
+function renderLineup() {
+  const box = document.getElementById("lineup"), d = LINEUP, n = 3;
+  if (!d) return;
+  let closed = false;
+  try { closed = localStorage.getItem(LINEUP_STORE) === "closed"; } catch (e) {}
+  const top = document.getElementById("squadtop");
+  top.hidden = false;
+  top.className = closed ? "closed" : "";
   const surname = name => name.split(" ").pop();
-  cur.r = Math.max(0, Math.min(cur.r, d.slots.length - 1));
-  const groups = d.slots.some(s => s.intake.some(c => c.length)) ? 3 : 2;  // the intake columns only while there's an intake
-  cur.c = Math.max(0, Math.min(cur.c, groups * n - 1));
-  cur.k = Math.max(0, Math.min(cur.k ?? 0, gridCell().length - 1));
-  const entry = (p, youth, here) => `<div class="${here ? "cur" : ""}" data-name="${esc(p.name)}">` +
+  const extra = d.extraCols;
+  const entry = (p, youth) => `<div data-name="${esc(p.name)}">` +
     `<span title="${esc(p.name)}">${esc(surname(p.name))}</span>` +
-    (youth ? `<span class="v ${tier(p.v, RANGE.pct)}">${FMT.pct(p.v)}</span><span class="age">${FMT.f1(p.score)}</span>` :
-      `<span class="v ${tier(p.score, RANGE.f1)}">${FMT.f1(p.score)}</span>`) +
-    (p.pct != null ? `<span class="v ${tier(p.pct, RANGE.pct)}">${FMT.pct(p.pct)}</span>` : "") +
-    (youth || p.pct != null ? `<span class="age">${p.age}y</span>` : "") + (youth && p.left ? `<span class="foot" title="left foot Fairly Strong or better">L</span>` : "") + (p.loan ? `<span class="loan ${p.loan}">${loanLabel(p)}</span>` : "") + "</div>";
-  const cell = (ps, youth, ri, ci) => {
-    const at = ri === cur.r && ci === cur.c;
-    return `<td class="${ci === n || ci === 2 * n ? "split" : ""}${at && !ps.length ? " cur" : ""}" data-r="${ri}" data-c="${ci}">` +
-      (ps.length ? ps.map((p, k) => entry(p, youth, at && k === cur.k)).join("") : `<span class="dim">–</span>`) + "</td>";
-  };
+    `<span class="v ${tier(p.score, RANGE.f1)}">${FMT.f1(p.score)}</span><span class="age">${p.age}y</span>` + (youth && p.left ? `<span class="foot" title="left foot Fairly Strong or better">L</span>` : "") +
+    (p.from ? `<span class="from" title="moved up from Third (their best position, ${esc(p.from)}) to fill an empty slot">↑${esc(p.from)}</span>` : "") + (p.loan ? `<span class="loan ${p.loan}">${loanLabel(p)}</span>` : "") + "</div>";
+  const cell = (ps, youth, ci) => `<td class="${ci === n ? "split" : ""}">` +
+    (ps.length ? ps.map(p => entry(p, youth)).join("") : `<span class="dim">–</span>`) + "</td>";
   const heads = ["Starter", "Backup", "Third"];
-  const list = (title, ps, fmt) => ps.length ? `<div><span class="sub">${title}:</span> ${ps.map(p =>
-    `<span title="${esc(p.name)}" data-name="${esc(p.name)}">${esc(surname(p.name))}</span> <span class="sub">${p.age}y ${p.pos} ${fmt(p.v)}</span>`).join(" · ")}</div>` : "";
-  main.innerHTML = `<table>
-    <thead><tr><th></th>${heads.map(h => `<th>${h}</th>`).join("")}${["Youth", "Intake"].slice(0, groups - 1).map(g => heads.map((h, i) => `<th class="${i ? "" : "split"}">${g} ${i + 1}</th>`).join("")).join("")}</tr></thead>
-    <tbody>${d.slots.map((s, ri) => `<tr><td class="slot" title="scored as ${esc(s.pos)}${s.left ? ", left-footed only" : ""}">${esc(s.label)}</td>` +
-      s.senior.map((ps, i) => cell(ps, false, ri, i)).join("") + s.youth.map((ps, i) => cell(ps, true, ri, n + i)).join("") +
-      (groups > 2 ? s.intake.map((ps, i) => cell(ps, true, ri, 2 * n + i)).join("") : "") + "</tr>").join("")}</tbody>
+  const list = (title, ps) => ps.length ? `<div><span class="sub">${title}:</span> ${ps.map(p =>
+    `<span title="${esc(p.name)}" data-name="${esc(p.name)}">${esc(surname(p.name))}</span> <span class="sub">${p.age}y ${p.pos} ${FMT.f1(p.v)}</span>`).join(" · ")}</div>` : "";
+  box.innerHTML = `<div class="ttitle lhead">Lineup <button id="ltoggle">${closed ? "Show" : "Hide"}</button></div><table>
+    <thead><tr><th></th>${heads.map(h => `<th>${h}</th>`).join("")}${extra.map((c, i) =>
+      `<th class="${i ? "" : "split"}" title="${esc(c.title)}">${esc(c.label)}</th>`).join("")}</tr></thead>
+    <tbody>${d.slots.map(s => `<tr><td class="slot" title="scored as ${esc(s.pos)}${s.left ? ", left-footed only" : ""}">${esc(s.label)}</td>` +
+      s.senior.map((ps, i) => cell(ps, false, i)).join("") + extra.map((c, i) => cell(s.extra[c.key], true, n + i)).join("") + "</tr>").join("")}</tbody>
   </table>
-  <div class="notes">${list("Not placed", d.spare, FMT.f1)}${list("Youth not placed", d.spareYouth, FMT.pct)}${list("Out on loan", d.loanOut, FMT.f1)}</div>`;
+  <div class="notes">${list("Not placed", d.spare)}${list("Youngsters not placed", d.spareYouth)}${list("Out on loan", d.loanOut)}</div>`;
+  document.getElementById("ltoggle").onclick = () => {
+    try { localStorage.setItem(LINEUP_STORE, closed ? "open" : "closed"); } catch (e) {}
+    renderLineup();
+  };
+  renderFormations();
 }
-// The grid cell under the cursor: its players (Third can hold several)
-function gridCell(r = cur.r, c = cur.c) {
-  const s = DATA.slots[r];
-  return s ? (c < 3 ? s.senior[c] : c < 6 ? s.youth[c - 3] : s.intake[c - 6]) ?? [] : [];
+// Beside the lineup: how the squad fits common formations (formations() in score.py), best first; a row opens its XI
+let openFormation = null;
+function renderFormations() {
+  const box = document.getElementById("formations"), fs = LINEUP.formations || [];
+  const surname = name => name.split(" ").pop();
+  box.innerHTML = `<div class="ttitle">Formations <span class="sub">how your squad fits them · click one for its XI</span></div>
+    <table><thead><tr><th class="num">#</th><th>Formation</th><th class="num" title="the best XI's average score">XI</th>
+    <th class="num" title="a second XI's average, from the players left: how well you can rotate">Depth</th><th>Weakest spot</th></tr></thead>
+    <tbody>${fs.map((f, i) => `<tr class="f" data-f="${esc(f.name)}"><td class="num dim">${i + 1}</td>
+      <td title="${esc(f.note)}"><b>${esc(f.name)}</b></td>
+      <td class="num ${tier(f.xi, RANGE.f1)}">${f.xi.toFixed(2)}${f.short ? ` <span class="t0" title="positions nobody can fill">−${f.short}</span>` : ""}</td>
+      <td class="num ${tier(f.depth, RANGE.f1)}">${f.depth.toFixed(2)}</td>
+      <td>${f.weak ? `${esc(f.weak.pos)} <span class="dim">${esc(surname(f.weak.name))}</span> <span class="${tier(f.weak.v, RANGE.f1)}">${f.weak.v.toFixed(1)}</span>` : "–"}</td></tr>` +
+      (openFormation === f.name ? `<tr class="xi"><td></td><td colspan="4"><i>${esc(f.note)}.</i> ${f.players.map(p =>
+        `${esc(p.pos)} <span data-name="${esc(p.name)}" style="color:var(--fg);cursor:pointer">${esc(surname(p.name))}</span> ${p.v.toFixed(1)}`).join(" · ")}</td></tr>` : "")).join("")}</tbody></table>
+    <div class="sub">XI: your best eleven for that shape (each player once, at positions he plays: FM's own when your export has the
+    Position column, else any). Shapes with the same positions rank the same; roles and duties don't show in the scores.</div>`;
+  box.querySelectorAll("tr.f").forEach(tr => tr.onclick = () => {
+    openFormation = openFormation === tr.dataset.f ? null : tr.dataset.f; renderFormations();
+  });
 }
+document.getElementById("squadtop").addEventListener("click", e => {
+  const el = e.target.closest("[data-name]");
+  if (el && getSelection().isCollapsed) showDetail(DATA.find(r => r.name === el.dataset.name));
+});
 // The player under the cursor: a table row, or on the grid the player at the cursor
 function curPlayer() {
-  if (PAGE !== "grid") return view[cur.r];
-  const p = gridCell()[cur.k];
-  return p ? DATA.players[p.name] : undefined;
+  return view[cur.r];
 }
-// Grid: click a name for its history (and move the cursor there)
+// Analysis page: DATA = { positions: [{ pos, players: [{ name, age, role, from, score, attrs }], imported, importedAvg,
+// importedScore }], attrs, players } (analysis() in score.py): the squad by position, ranked by what "Rank by" picks
+const ANALYSIS_STORE = "fm:__SAVE__:analysis";
+let rankBy = "Speed";
+try { rankBy = localStorage.getItem(ANALYSIS_STORE) || rankBy; } catch (e) {}
+function renderAnalysis() {
+  input.style.display = "none"; document.getElementById("count").style.display = "none";
+  const main = document.getElementById("main"), d = DATA;
+  main.className = "tiles";
+  const options = ["Speed", "Score", ...d.attrs];
+  if (!options.includes(rankBy)) rankBy = "Speed";
+  const mean = vs => { vs = vs.filter(v => v != null); return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null; };
+  // Speed: Pace and Acceleration together; Score: the position score; else one attribute
+  const val = (p, attrs, score) => rankBy === "Speed" ? mean([attrs.Pace, attrs.Acceleration]) : rankBy === "Score" ? score : attrs[rankBy] ?? null;
+  const fmt = v => v == null ? "–" : rankBy === "Score" || !Number.isInteger(v) ? v.toFixed(1) : String(v);
+  const avg1 = v => v == null ? "–" : v.toFixed(1);  // averages: always one decimal
+  const cls = v => v == null ? "dim" : rankBy === "Score" ? tier(v, RANGE.f1) : attrTier(v);
+  const label = rankBy === "Speed" ? "Speed (Pace + Acceleration)" : rankBy === "Score" ? "Position score" : rankBy;
+  const diff = (a, b) => a == null || b == null ? `<td class="num dim">–</td>` :
+    `<td class="num ${a - b >= 0 ? "t4" : "t0"}">${a - b >= 0 ? "+" : "−"}${Math.abs(a - b).toFixed(1)}</td>`;
+  const ps = d.positions.map(g => {
+    const players = g.players.map(p => ({ ...p, v: val(p, p.attrs, p.score) }))
+      .sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
+    const avg = mean(players.map(p => p.v));
+    const imp = g.imported ? val(null, g.importedAvg, g.importedScore) : null;
+    return { ...g, players, avg, imp, top: players.find(p => p.v != null) };
+  });
+  const ranked = [...ps].sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
+  const select = `<select id="rankby">${options.map(o => `<option value="${esc(o)}"${o === rankBy ? " selected" : ""}>${
+    esc(o === "Speed" ? "Speed (Pace + Acceleration)" : o === "Score" ? "Position score" : o)}</option>`).join("")}</select>`;
+  const summary = `<div class="tile wide"><div class="ttitle">Positions ranked <span class="rankby">by ${select}</span></div>
+    <table><thead><tr><th class="num">#</th><th>Position</th><th class="num">Players</th><th class="num">Your average</th><th>Your best</th>
+    <th class="num">Imported</th><th class="num">±</th></tr></thead><tbody>${ranked.map((g, i) => `<tr><td class="num dim">${i + 1}</td>
+      <td>${esc(g.pos)}</td><td class="num">${g.players.length}</td><td class="num ${cls(g.avg)}">${avg1(g.avg)}</td>
+      <td>${g.top ? `<span class="pl" data-name="${esc(g.top.name)}">${esc(g.top.name)}</span> <span class="${cls(g.top.v)}">${fmt(g.top.v)}</span>` : "–"}</td>
+      <td class="num ${cls(g.imp)}" title="average of ${g.imported} imported player(s) whose best position is ${esc(g.pos)}">${avg1(g.imp)}${
+        g.imported ? ` <span class="sub">(${g.imported})</span>` : ""}</td>${diff(g.avg, g.imp)}</tr>`).join("")}</tbody></table>
+    <div class="sub">Players per position as on the <b>Lineup</b>. <b>Imported</b>: the average of the imported players whose best position it is,
+    and <b>±</b> how your players compare with them.</div></div>`;
+  const tiles = ps.map(g => `<div class="tile"><div class="ttitle">${esc(g.pos)} <span class="sub">${esc(label)} · your average
+    <span class="${cls(g.avg)}">${avg1(g.avg)}</span>${g.imp != null ? ` · imported <span class="${cls(g.imp)}">${avg1(g.imp)}</span>` : ""}</span></div>
+    ${g.players.length ? `<table><thead><tr><th class="num">#</th><th>Player</th><th>Role</th><th class="num">Age</th><th class="num">${esc(label)}</th>
+      <th class="num">${esc(g.pos)} score</th></tr></thead><tbody>${g.players.map((p, i) => `<tr><td class="num dim">${i + 1}</td>
+      <td><span class="pl" data-name="${esc(p.name)}">${esc(p.name)}</span></td><td class="text">${esc(p.role)}${p.from ? ` <span class="sub">↑${esc(p.from)}</span>` : ""}</td>
+      <td class="num">${p.age}</td><td class="num ${cls(p.v)}">${fmt(p.v)}</td>
+      <td class="num ${p.score == null ? "dim" : tier(p.score, RANGE.f1)}">${p.score == null ? "–" : p.score.toFixed(1)}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="sub">No one here on the Lineup.</div>`}</div>`).join("");
+  main.innerHTML = summary + tiles;
+  document.getElementById("rankby").onchange = e => {
+    rankBy = e.target.value;
+    try { localStorage.setItem(ANALYSIS_STORE, rankBy); } catch (err) {}
+    renderAnalysis();
+  };
+}
 document.getElementById("main").addEventListener("click", e => {
-  const el = PAGE === "grid" && e.target.closest("[data-name]");
-  if (!el || !getSelection().isCollapsed) return;
-  const td = el.closest("td[data-r]");
-  if (td) { cur = { r: +td.dataset.r, c: +td.dataset.c, k: [...td.querySelectorAll("[data-name]")].indexOf(el) }; renderGrid(); }
-  showDetail(DATA.players[el.dataset.name]);
+  const el = PAGE === "analysis" && e.target.closest(".pl[data-name]");
+  if (el && getSelection().isCollapsed) showDetail(DATA.players[el.dataset.name]);
 });
-// Settings page: DATA = [{ path, values }], one per settings file (settings() in score.py)
+// Development page: DATA = { snapshots: [date…], players: [{ name, age, best, here, at: { date: { score, best, vsAge,
+// age, attrs } } }], rows } (development() in score.py): two squad snapshots compared
+const DEV_STORE = "fm:__SAVE__:development";
+let devFrom = null, devTo = null;
+try { [devFrom, devTo] = JSON.parse(localStorage.getItem(DEV_STORE) || "[null,null]"); } catch (e) {}
+function renderDevelopment() {
+  input.style.display = "none"; document.getElementById("count").style.display = "none";
+  const main = document.getElementById("main"), d = DATA, S = d.snapshots;
+  main.className = "tiles";
+  if (S.length < 2) {
+    main.innerHTML = `<div class="tile wide"><div class="ttitle">Development</div><div class="gtext">
+      ${S.length ? `You have one squad snapshot so far (${fmtDate(S[0])}).` : "No squad snapshot yet."}
+      Every time you export your squad (F8 on your squad screen) and import it, the app keeps it as a new snapshot.
+      Export it again after some game time, e.g. each half-season, and this page shows how every player developed in between:
+      score changes, which attributes rose or fell, the biggest risers and fallers, and who joined or left.</div></div>`;
+    return;
+  }
+  if (!S.includes(devTo)) devTo = S[S.length - 1];
+  if (!S.includes(devFrom) || devFrom >= devTo) devFrom = S[Math.max(0, S.indexOf(devTo) - 1)];
+  const sign = v => (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v).toFixed(1);
+  const cls = v => v > 0.05 ? "t4" : v < -0.05 ? "t0" : "dim";
+  const both = [], joined = [], left = [];
+  for (const p of d.players) {
+    const a = p.at[devFrom], b = p.at[devTo];
+    if (a && b) {
+      const ch = Object.keys(b.attrs).filter(k => a.attrs[k] != null && b.attrs[k] !== a.attrs[k])
+        .map(k => ({ k, d: b.attrs[k] - a.attrs[k] })).sort((x, y) => Math.abs(y.d) - Math.abs(x.d) || x.k.localeCompare(y.k));
+      both.push({ ...p, a, b, ds: b.score - a.score, dv: (b.vsAge - a.vsAge) * 100, up: ch.filter(c => c.d > 0), down: ch.filter(c => c.d < 0) });
+    } else if (b) joined.push(p); else if (a) left.push(p);
+  }
+  both.sort((x, y) => y.ds - x.ds);
+  const avg = both.length ? both.reduce((s, p) => s + p.ds, 0) / both.length : 0;
+  const totals = {};
+  for (const p of both) for (const c of [...p.up, ...p.down]) totals[c.k] = (totals[c.k] || 0) + c.d;
+  const tot = Object.entries(totals).sort((x, y) => y[1] - x[1]);
+  const name = p => `<span class="pl" data-name="${esc(p.name)}">${esc(p.name)}</span>`;
+  const chips = cs => cs.slice(0, 4).map(c => `<span class="${c.d > 0 ? "t4" : "t0"}">${c.d > 0 ? "+" : "−"}${Math.abs(c.d)}</span> ${esc(c.k)}`).join(", ") +
+    (cs.length > 4 ? ` <span class="sub">+${cs.length - 4} more</span>` : "");
+  const opt = (sel, keep) => S.map(s => `<option value="${esc(s)}"${s === sel ? " selected" : ""}>${esc(fmtDate(s))}</option>`).join("");
+  const top = (title, ps) => `<div class="tile"><div class="ttitle">${title}</div>${ps.length ? `<table><tbody>${ps.map(p =>
+    `<tr><td>${name(p)}</td><td class="num dim">${p.b.age}y</td><td class="text">${esc(p.b.best)}</td>
+     <td class="num">${p.a.score.toFixed(1)} → ${p.b.score.toFixed(1)}</td><td class="num ${cls(p.ds)}">${sign(p.ds)}</td></tr>`).join("")}</tbody></table>`
+    : `<div class="sub">No one.</div>`}</div>`;
+  main.innerHTML = `<div class="tile wide"><div class="ttitle">Development <span class="rankby">from
+      <select id="devfrom">${opt(devFrom)}</select> to <select id="devto">${opt(devTo)}</select></span></div>
+    <div class="devsum">
+      <div><b>${both.length}</b><span>players compared</span></div>
+      <div><b class="${cls(avg)}">${sign(avg)}</b><span>average score change</span></div>
+      <div><b class="t4">${both.filter(p => p.ds > 0.05).length}</b><span>improved</span></div>
+      <div><b class="t0">${both.filter(p => p.ds < -0.05).length}</b><span>declined</span></div>
+      <div><b>${joined.length}</b><span>joined${joined.length ? ": " + joined.map(p => esc(p.name.split(" ").pop())).join(", ") : ""}</span></div>
+      <div><b>${left.length}</b><span>left${left.length ? ": " + left.map(p => esc(p.name.split(" ").pop())).join(", ") : ""}</span></div>
+    </div>
+    <div class="sub">Squad attributes, summed over the players compared: rose most ${tot.filter(t => t[1] > 0).slice(0, 5).map(([k, v]) =>
+      `<span class="t4">+${v}</span> ${esc(k)}`).join(", ") || "–"} · fell most ${tot.filter(t => t[1] < 0).reverse().slice(0, 5).map(([k, v]) =>
+      `<span class="t0">−${Math.abs(v)}</span> ${esc(k)}`).join(", ") || "–"}</div></div>
+  ${top("Biggest risers", both.filter(p => p.ds > 0.05).slice(0, 5))}
+  ${top("Biggest fallers", both.filter(p => p.ds < -0.05).reverse().slice(0, 5))}
+  <div class="tile wide"><div class="ttitle">Every player <span class="sub">score at their best position, then and now</span></div>
+    <table><thead><tr><th>Player</th><th class="num">Age</th><th>Best</th><th class="num">Score</th><th class="num">±</th>
+      <th class="num">vs Age ±</th><th>Attributes up</th><th>Attributes down</th></tr></thead><tbody>${both.map(p =>
+      `<tr><td>${name(p)}</td><td class="num">${p.b.age}</td><td class="text">${esc(p.b.best)}${p.a.best !== p.b.best ? ` <span class="sub">was ${esc(p.a.best)}</span>` : ""}</td>
+       <td class="num">${p.a.score.toFixed(1)} → ${p.b.score.toFixed(1)}</td><td class="num ${cls(p.ds)}">${sign(p.ds)}</td>
+       <td class="num ${cls(p.dv)}">${sign(p.dv)}%</td><td class="wrap">${p.up.length ? chips(p.up) : "<span class=\"dim\">–</span>"}</td>
+       <td class="wrap">${p.down.length ? chips(p.down) : "<span class=\"dim\">–</span>"}</td></tr>`).join("")}</tbody></table></div>`;
+  const keep = () => { try { localStorage.setItem(DEV_STORE, JSON.stringify([devFrom, devTo])); } catch (e) {} renderDevelopment(); };
+  document.getElementById("devfrom").onchange = e => { devFrom = e.target.value; keep(); };
+  document.getElementById("devto").onchange = e => { devTo = e.target.value; keep(); };
+}
+document.getElementById("main").addEventListener("click", e => {
+  const el = PAGE === "development" && e.target.closest(".pl[data-name]");
+  if (el && getSelection().isCollapsed && DATA.rows[el.dataset.name]) showDetail(DATA.rows[el.dataset.name]);
+});
+// Attributes page: DATA = { custom, hasCustom, saved, positions: { GK: {attr: weight}, DC: {...}… }, attrs: { outfield, gk } }
+// (attributes_page() in score.py). The weights can be changed here; the app saves them (pywebview.api.save_weights).
+const ATTR_STORE = "fm:__SAVE__:attributes";
+let attrPos = "DC", edited = null;
+try { attrPos = localStorage.getItem(ATTR_STORE) || attrPos; } catch (e) {}
+function renderAttributes() {
+  input.style.display = "none"; document.getElementById("count").style.display = "none";
+  const main = document.getElementById("main"), d = DATA, inApp = !!window.pywebview;
+  main.className = "tiles";
+  if (!edited) edited = JSON.parse(JSON.stringify(d.positions));
+  const positions = Object.keys(edited);
+  if (!positions.includes(attrPos)) attrPos = positions.find(p => p !== "GK") || positions[0];
+  const changed = JSON.stringify(edited) !== JSON.stringify(d.positions);
+  const t = edited[attrPos], total = Object.values(t).reduce((a, b) => a + (+b || 0), 0);
+  const all = [...new Set([...(attrPos === "GK" ? d.attrs.gk : d.attrs.outfield), ...Object.keys(t)])];
+  const used = all.filter(a => +t[a] > 0).sort((a, b) => t[b] - t[a]), unused = all.filter(a => !(+t[a] > 0)).sort();
+  const top = Math.max(...used.map(a => +t[a]), 0.0001);  // the bars: against the position's biggest weight
+  const row = a => {
+    const v = +t[a] || 0, share = total ? v / total : 0;
+    return `<tr class="${v ? "" : "unused"}"><td>${esc(a)}</td>
+      <td class="num"><input class="wt" type="number" min="0" max="20" step="0.1" data-attr="${esc(a)}" value="${v || ""}" placeholder="0"></td>
+      <td class="num">${v ? (share * 100).toFixed(1) + "%" : ""}</td>
+      <td class="barcell"><span class="wfill" style="width:${(v / top * 100).toFixed(1)}%"></span></td></tr>`;
+  };
+  main.innerHTML = `<div class="tile wide">
+    <div class="ttitle">Attribute weights <span class="rankby">scoring with <b class="wnow">${d.custom ? `your own weights` :
+      "the default weights"}</b>${d.custom && d.saved ? ` (saved ${esc(d.saved)})` : ""}
+      ${d.custom ? `<button id="wswitch" data-to="default">Back to default</button>` :
+        d.hasCustom ? `<button id="wswitch" data-to="custom">Use my weights</button>` : ""}</span></div>
+    <div class="wbar">
+      <span class="seg" id="wpos">${positions.map(p => `<button data-pos="${esc(p)}" class="${p === attrPos ? "on" : ""}">${esc(p)}</button>`).join("")}</span>
+      <span class="wbtns">${changed ? `<span class="unsaved">unsaved changes</span>` : ""}
+        <button id="wsave" class="primary"${inApp && changed ? "" : " disabled"}>Save</button>
+        <button id="wundo"${changed ? "" : " disabled"}>Undo changes</button>
+        <button id="wimport"${inApp ? "" : " disabled"}>Import…</button>
+        <button id="wexport"${inApp ? "" : " disabled"}>Export…</button></span>
+    </div>
+    <div class="sub">A position's score = Σ(attribute × weight) ÷ Σ(weights), so only the weights' sizes against each other matter.
+      Blank or 0 = not used. <b>Save</b> keeps them as this save's own weights (the default stays as it is) and rescores every page; <b>Export</b> writes
+      them as a table (.txt or .csv) to open in Notepad or Excel, and <b>Import</b> reads one back.${inApp ? "" :
+      " <b>Open this page in the app to save, import or export.</b>"}</div>
+  </div>
+  <div class="tile wide"><div class="ttitle">${esc(attrPos)} <span class="sub">${used.length} attributes used · total weight ${total.toFixed(1)}</span></div>
+    <table class="weights"><thead><tr><th>Attribute</th><th class="num">Weight</th><th class="num">Share</th><th></th></tr></thead>
+    <tbody>${used.map(row).join("")}${unused.length ? `<tr class="divider"><td colspan="4">Not used at ${esc(attrPos)}</td></tr>` + unused.map(row).join("") : ""}</tbody></table>
+    ${attrPos !== "GK" ? `<div class="sub">Player searches exported with the player_search_outfield view have 18 attributes. Weight others and a
+      searched player may not be scored (85% of a position's weight has to be known).</div>` : ""}</div>`;
+  main.querySelectorAll("#wpos button").forEach(b => b.onclick = () => {
+    attrPos = b.dataset.pos; try { localStorage.setItem(ATTR_STORE, attrPos); } catch (e) {} renderAttributes();
+  });
+  main.querySelectorAll("input.wt").forEach(i => i.onchange = () => {
+    const v = parseFloat(String(i.value).replace(",", "."));
+    if (v > 0) t[i.dataset.attr] = Math.round(v * 10) / 10; else delete t[i.dataset.attr];
+    renderAttributes();
+    main.querySelector(`input.wt[data-attr="${CSS.escape(i.dataset.attr)}"]`)?.focus();
+  });
+  const call = async (f, ...args) => {
+    const r = await f(...args);
+    if (r && r.error) window.fmNotice ? fmNotice(r.error, true) : alert(r.error);
+    return r;
+  };
+  document.getElementById("wundo").onclick = () => { edited = null; renderAttributes(); };
+  const sw = document.getElementById("wswitch");
+  if (sw) sw.onclick = () => {
+    if (!inApp) return;
+    if (changed && !confirm("Switching drops your unsaved changes. Switch anyway?")) return;
+    if (sw.dataset.to === "default" && !confirm("Score with the default weights again? Your own stay saved: Use my weights brings them back.")) return;
+    sw.disabled = true; call(pywebview.api.use_weights, sw.dataset.to);
+  };
+  if (!inApp) return;
+  document.getElementById("wsave").onclick = e => { e.target.disabled = true; e.target.textContent = "Saving…"; call(pywebview.api.save_weights, edited); };
+  document.getElementById("wexport").onclick = async () => {
+    const r = await call(pywebview.api.export_weights, edited);
+    if (r && r.result) fmNotice(`Exported to ${r.result}`, false);
+  };
+  document.getElementById("wimport").onclick = async () => {
+    const r = await call(pywebview.api.import_weights);
+    if (!r || !r.result) return;
+    for (const [p, w] of Object.entries(r.result.positions)) if (edited[p]) edited[p] = w;
+    renderAttributes();
+    fmNotice(`Loaded ${Object.keys(r.result.positions).length} positions from ${r.result.file}. Check them, then Save.`, false);
+  };
+}
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 // Guide page: DATA = [{ key, title, text }] (GUIDE in score.py): how to use each page; a tile links to its page
 function renderGuide() {
-  input.style.visibility = "hidden";
+  input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main");
   main.className = "tiles";
   main.innerHTML = DATA.map(g => {
@@ -421,16 +684,6 @@ function renderGuide() {
     const head = page ? `<a href="${page}.html" style="color:inherit;text-decoration:none">${g.key} · ${g.title}</a>` : g.title;
     return `<div class="tile guide"><div class="ttitle">${head}</div><div class="gtext">${g.text}</div></div>`;
   }).join("");
-}
-function renderSettings() {
-  input.style.visibility = "hidden";
-  const main = document.getElementById("main");
-  main.className = "tiles";
-  const val = v => Array.isArray(v) ? (v.length ? v.map(val).join(", ") : "–") : v === "" ? "–" :
-    typeof v === "object" ? (v.label ? `${v.label} (${v.pos}${v.left ? ", left" : ""})` : JSON.stringify(v)) : v;
-  main.innerHTML = DATA.map(f => `<div class="tile"><div class="ttitle">${esc(f.path)}</div>
-    <table>${Object.entries(f.values).map(([k, v]) => `<tr><td class="text">${esc(k)}</td><td class="wrap">${esc(val(v))}</td></tr>`).join("")}</table>
-  </div>`).join("") + `<div class="sub">To change a setting, edit its file, then run <b>python3 score.py</b> again.</div>`;
 }
 document.getElementById("head").addEventListener("click", e => {
   const ci = COLS.findIndex(c => c.key === e.target.dataset.key);
@@ -455,15 +708,19 @@ document.addEventListener("copy", e => {
   const count = document.getElementById("count");
   count.textContent = `copied ${name}`; count.classList.add("copied");
   clearTimeout(count.timer);
-  count.timer = setTimeout(() => { count.classList.remove("copied"); if (PAGE === "grid") count.textContent = ""; else render(); }, 1200);
+  count.timer = setTimeout(() => { count.classList.remove("copied"); render(); }, 1200);
 });
 input.addEventListener("input", () => { cur.r = 0; render(); });
 help.addEventListener("click", e => { if (e.target === help) help.classList.remove("show"); });
 detail.addEventListener("click", e => { if (e.target === detail) detail.classList.remove("show"); });
 document.getElementById("helphint").addEventListener("click", e => { e.preventDefault(); help.classList.add("show"); });
-if (PAGE.endsWith("staff")) input.placeholder = "/ filter  e.g. job:coach PosTct>=12 personality:prof";
-if (PAGE === "filters" || PAGE === "staff_filters") renderFilters(); else if (PAGE === "grid") renderGrid();
-else if (PAGE === "settings") renderSettings(); else if (PAGE === "guide") renderGuide(); else render();
+if (PAGE.endsWith("staff")) input.title = "Type a name, or filters like job:coach PosTct>=12 personality:prof";
+if (PAGE === "squad") renderLineup();
+if (PAGE === "filters" || PAGE === "staff_filters") renderFilters(); else if (PAGE === "development") renderDevelopment();
+else if (PAGE === "analysis") renderAnalysis(); else if (PAGE === "attributes") renderAttributes();
+else if (PAGE === "guide") renderGuide(); else render();
+// The app's bridge (pywebview.api) can arrive just after the page has drawn: draw the Attributes page again then
+window.addEventListener("pywebviewready", () => { if (PAGE === "attributes") renderAttributes(); });
 </script>
 </body>
 </html>

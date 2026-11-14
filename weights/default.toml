@@ -1,4 +1,4 @@
-# Player scoring weights for FM27: FM's 10 position groups, weighted by both
+# FMAnalyst's default weights for FM27: FM's 10 position groups, weighted by both
 #   - CA cost (docs/ca_costs_fm27.csv): which attributes FM counts at each position, and
 #   - match impact (docs/attribute_impact_test.csv): harvestgreen22's FM27 attribute test, posted on sortitoutsi
 #     (https://sortitoutsi.net/content/78219/fm27-attribute-test-tactical-understanding-training-system-preset-tactics-ai-reverse-engineering-engine-for-test,
@@ -8,7 +8,7 @@
 # Outfield weight = CA cost x (impact + 1), scaled so each position's top weight is 10. Impact = the gain from 9 to 15
 # (where most players are); a loss counts as none. The + 1 keeps a little weight for attributes the test found no
 # gain in (Marking, Tackling, Passing...). Leadership and Teamwork aren't in the test: CA cost only.
-# Goalkeepers: CA cost only (the test is outfield). Staff: the same as fm27.toml's.
+# Goalkeepers: CA cost only (the test is outfield).
 # Outfield attributes: only the 18 that the player_search_outfield view shows (Acceleration, Anticipation, Composure,
 # Decisions, Dribbling, Finishing, First Touch, Heading, Jumping Reach, Off The Ball, Pace, Passing, Positioning,
 # Stamina, Strength, Tackling, Teamwork, Work Rate), rescaled to a top weight of 10 per position. So searches exported
@@ -194,7 +194,7 @@ Composure = 2
 Leadership = 2
 Teamwork = 2
 
-# Expected best-position score by age (fm27.toml's: these weights give best scores within 0.3% of fm27's); "vs Age" = best score / benchmark.
+# Expected best-position score by age; "vs Age" = best score / benchmark.
 # Ages above the highest listed use the highest; below the lowest use the lowest.
 [age_benchmark]
 15 = 10.3
@@ -209,7 +209,7 @@ Teamwork = 2
 24 = 13.8
 
 # Staff: FM shows staff attributes as words; each counts as the midpoint of its 1-20 range.
-# Role score = sum(value * weight) / sum(weights). Notes and sources: fm27_staff.md.
+# Role score = sum(value * weight) / sum(weights). Notes and sources: staff_notes.md.
 [staff_words]
 Elite = 20
 Outstanding = 18.5

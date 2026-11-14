@@ -1,33 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- FMAnalyst's icon in light colours, for the pages' top bar (score.py inlines it). docs/logo-icon.svg is the navy
-       original, docs/FMAnalyst.ico the .exe's icon and docs/logo.png the README's wordmark. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" shape-rendering="geometricPrecision">
+  <!-- FMAnalyst's icon for the pages' dark top bar (score.py inlines it): a purple shield, the rising line and ball in
+       white. docs/logo-icon.svg is the navy original, docs/FMAnalyst.ico the .exe's icon, docs/logo.png the README's. -->
   <defs>
     <path id="logo-shield" d="M14 16 Q50 6 86 16 L86 50 Q84 78 50 95 Q16 78 14 50 Z"/>
     <clipPath id="logo-in"><use href="#logo-shield"/></clipPath>
-    <polyline id="logo-line" points="5,88 33,61 46,70 80,32" fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-    <polygon id="logo-head" points="93,15 72,22 86,36"/>
+    <polyline id="logo-line" points="5,88 33,61 46,70 80,32" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon id="logo-head" points="94,14 70,22 86,38"/>
   </defs>
-  <use href="#logo-shield" fill="#ece4ff"/>
-  <!-- outside the shield the line is navy, inside it's white -->
-  <use href="#logo-line" stroke="#ece4ff"/>
-  <use href="#logo-head" fill="#ece4ff"/>
+  <use href="#logo-shield" fill="#7b2ff7"/>
+  <!-- outside the shield the line is purple, inside it's white -->
+  <use href="#logo-line" stroke="#9b5cff"/>
+  <use href="#logo-head" fill="#9b5cff"/>
   <g clip-path="url(#logo-in)">
-    <use href="#logo-line" stroke="#1f0d36"/>
-    <use href="#logo-head" fill="#1f0d36"/>
+    <use href="#logo-line" stroke="#ffffff"/>
+    <use href="#logo-head" fill="#ffffff"/>
   </g>
-  <circle cx="33" cy="61" r="5" fill="#ece4ff" stroke="#1f0d36" stroke-width="3"/>
-  <circle cx="46" cy="70" r="5" fill="#ece4ff" stroke="#1f0d36" stroke-width="3"/>
-  <!-- the ball: a centre pentagon and five patches at the edge -->
-  <circle cx="55" cy="30" r="10" fill="#1f0d36"/>
-  <polygon points="55,25.6 59.2,28.6 57.6,33.6 52.4,33.6 50.8,28.6" fill="#ece4ff"/>
-  <g fill="#ece4ff">
-    <path d="M51.5 20.6 Q55 19.6 58.5 20.6 L55 22.4 Z"/>
-    <path d="M64.4 25.8 Q65.4 29.4 64.6 32.6 L62.6 29 Z"/>
-    <path d="M61.2 38.4 Q58.4 40 55 40 L58.6 36.6 Z"/>
-    <path d="M48.8 38.4 Q51.6 40 55 40 L51.4 36.6 Z"/>
-    <path d="M45.6 25.8 Q44.6 29.4 45.4 32.6 L47.4 29 Z"/>
-  </g>
-  <g stroke="#ece4ff" stroke-width="1" fill="none">
-    <path d="M55 25.6 V22.4 M59.2 28.6 L62.6 29 M57.6 33.6 L58.6 36.6 M52.4 33.6 L51.4 36.6 M50.8 28.6 L47.4 29"/>
-  </g>
+  <circle cx="33" cy="61" r="5.5" fill="#7b2ff7" stroke="#ffffff" stroke-width="3.5"/>
+  <circle cx="46" cy="70" r="5.5" fill="#7b2ff7" stroke="#ffffff" stroke-width="3.5"/>
+  <!-- the ball: white, with a purple centre pentagon -->
+  <circle cx="54" cy="31" r="11" fill="#ffffff"/>
+  <polygon points="54,25.5 59.2,29.3 57.2,35.4 50.8,35.4 48.8,29.3" fill="#7b2ff7"/>
 </svg>
