@@ -45,7 +45,7 @@ APP = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 ROOT = Path(os.environ["FMANALYST_HOME"]) if os.environ.get("FMANALYST_HOME") else \
     documents() / "FMAnalyst" if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.2.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.3.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/FMAnalyst"
 PAGES = ["squad", "analysis", "development", "charts", "elsewhere", "last", "filters", "staff", "last_staff", "staff_filters",
          "attributes", "guide"]  # keys 1-9, then 0, then a and g, in this order
@@ -887,11 +887,13 @@ GUIDE = [
              "<li>A player whose scouted attributes are mostly unknown (FM shows -) isn't scored until you know more.</li></ul>"},
     {"key": "", "title": "A player's profile",
      "text": "<b>Click a name</b> on any page (or double-click a row, or press <b>Enter</b>) to open it; <b>Esc</b> closes it.<br>"
-             "<b>Top table:</b> one row per snapshot, oldest first: club, age, every position score, Best, Score and vs Age, "
-             "each with its change since the row before (<span class='t4'>+1.2</span>, <span class='t0'>−0.3</span>).<br>"
-             "<b>Attributes:</b> every attribute at each snapshot, oldest to newest, with its change (+1, −1), the weight it "
-             "has at his best position, and <b>growth</b>: the total change since the first snapshot. The most important "
-             "attributes for his position come first."},
+             "<b>Scout report:</b> two or three lines like FM's scout: what kind of player he is at his position (FM's own, "
+             "or his best by attributes), his level, his strengths and weaknesses for that position, and how he's doing for his age.<br>"
+             "<b>Scores:</b> one row per snapshot, oldest first: club, age, every position score, Best, Score and vs Age, each "
+             "with its change since the row before (<span class='t4'>+1.2</span>, <span class='t0'>−0.3</span>); the "
+             "<b>Change</b> row at the bottom is the total change since the first snapshot.<br>"
+             "<b>Attributes:</b> every attribute at each snapshot, oldest to newest, each with its change, and <b>Change</b>: the "
+             "total since the first snapshot. The attributes that matter most at his position come first."},
     {"key": "1", "title": "Squad",
      "text": "<b>Lineup</b> (top left): your squad by position. <b>Starter</b> and <b>Backup</b>; <b>Third</b> = surplus, "
              "players to sell or loan out; <b>Youth</b> = 18 and under, best for their age first. Each player goes to his best "
@@ -922,10 +924,12 @@ GUIDE = [
              "<b>Controls:</b> <b>compare with</b> = whom to compare with: your <b>Last player import</b>, <b>All imported "
              "players</b>, or a division you've imported with ratings. <b>position</b> picks the position for the lower "
              "charts; <b>attribute</b> lists that position's most important attributes. Hover a dot to see who it is.<br>"
-             "<b>Charts:</b> <b>Role score by position</b> and <b>Attribute by position</b> (the white line is the middle of "
-             "the purple players: your dots right of it are better than most); <b>Score vs wage</b> (dots above the dashed "
-             "line are better than their wage suggests: good value); with a division import, <b>Score vs average rating</b> "
-             "(does a higher score mean better matches in your league?)."},
+             "<b>Charts:</b> <b>Role score by position</b> and <b>Attribute by position</b>: for each position the purple "
+             "range is the players you compare with (the line from lowest to highest, the shaded box their middle half, the "
+             "white bar and number their middle, a tick for each player); your players are the orange diamonds, and the "
+             "number at the right is your best minus their middle (green = you're ahead). <b>Score vs wage</b>: four "
+             "quadrants split at their middle; top left = <b>better and cheaper</b> (good value), bottom right = <b>worse "
+             "and dearer</b>. With a division import, <b>Score vs average rating</b>: does a higher score mean better matches?"},
     {"key": "5", "title": "All players",
      "text": "<b>Shows:</b> everyone you've imported who isn't at your club, scored the same way as your squad, with club, "
              "wage and value (the top of FM's range).<br>"

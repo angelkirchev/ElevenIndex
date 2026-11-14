@@ -53,6 +53,9 @@ __THEME__
   #detail .tile { width: min(1400px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow: auto; }
   #detail table + .ttitle { margin-top: 14px; }
   #detail .chg { font-size: 11px; margin-left: 4px; }
+  #detail .scout { background: var(--row); border-left: 3px solid var(--blue); border-radius: 6px; padding: 8px 12px; margin: 2px 0 10px;
+                   line-height: 1.6; color: var(--fg); max-width: 900px; } #detail .scout b { color: var(--cyan); }
+  #detail tr.total td { border-top: 1px solid var(--line); font-weight: 600; background: transparent; }
   /* Weights: small, dim multipliers behind a divider, so they don't read as attribute values */
   td.wt { color: var(--dim); font-size: 11px; border-right: 1px solid var(--line); padding-right: 12px; }
   th.wt { border-right: 1px solid var(--line); padding-right: 12px; }
@@ -334,44 +337,80 @@ const yearsAgo = d => {
 };
 
 // Player history: one row per observation date, then attribute values by date
+// A scout's report on a player, like FM's: 2-3 sentences from his position (FM's own when the export showed it, else his
+// best), the attributes that stand out for it, his level, and how he's doing for his age
+const ROLE_NAME = { GK: "goalkeeper", DC: "centre-back", "DL/DR": "full-back", "WBL/WBR": "wing-back", DM: "defensive midfielder",
+  MC: "central midfielder", "ML/MR": "wide midfielder", AMC: "attacking midfielder", "AML/AMR": "winger", ST: "striker" };
+const TRAITS = [[["Pace", "Acceleration"], "quick"], [["Stamina", "Work Rate"], "tireless"], [["Strength"], "strong"],
+  [["Jumping Reach", "Heading"], "good in the air"], [["Dribbling", "Technique"], "skilful"], [["Finishing"], "clinical"],
+  [["Passing", "Vision"], "creative"], [["Tackling", "Marking"], "tough-tackling"], [["Anticipation", "Decisions", "Positioning"], "intelligent"],
+  [["Composure"], "composed"], [["Reflexes", "Handling", "One on Ones"], "reliable"], [["Aerial Reach", "Command of Area"], "commanding"]];
+function scoutReport(r, H) {
+  const last = H[H.length - 1], first = H[0], a = last.attrs;
+  const pos = (r.plays && r.plays[0]) || last.best, w = WEIGHTS[pos] || {};
+  const known = Object.keys(a).filter(k => a[k] != null);
+  // what stands out: a trait when its attributes average 14+; strengths and weaknesses among the ones that count at his position
+  const traits = TRAITS.filter(([ks]) => { const vs = ks.map(k => a[k]).filter(v => v != null); return vs.length && vs.reduce((s, v) => s + v, 0) / vs.length >= 14; })
+    .map(([, t]) => t).slice(0, 3);
+  const counted = known.filter(k => w[k]).sort((x, y) => w[y] * a[y] - w[x] * a[x]);
+  const strong = counted.filter(k => a[k] >= 13).slice(0, 3), weak = known.filter(k => w[k] >= 0.5 && a[k] <= 9).sort((x, y) => w[y] - w[x]).slice(0, 2);
+  const lvl = last.score >= 14 ? "a key player at this level" : last.score >= 13 ? "a strong first-team player" : last.score >= 12 ? "a solid squad player"
+    : last.score >= 11 ? "a backup option" : "below the level of a first-team player";
+  const article = w => /^[aeiou]/i.test(w) ? "An" : "A";
+  const who = [traits.length ? traits.join(", ") : "", ROLE_NAME[pos] || pos].filter(Boolean).join(" ");
+  const list = ks => ks.map(k => `${k} <b>${a[k]}</b>`).join(", ");
+  const s1 = `${article(who)} ${who}${r.plays ? "" : " by his attributes"}, ${lvl} (${pos} score <b>${last.score.toFixed(1)}</b>).`;
+  const s2 = [strong.length ? `Strengths: ${list(strong)}` : "", weak.length ? `weaknesses: ${list(weak)}` : ""].filter(Boolean).join("; ");
+  const v = last.vsAge, age = last.age;
+  let s3 = v == null ? "" : v >= 1.05 ? `Well ahead of his age (${FMT.pct(v)} at ${age})` : v >= 0.97 ? `On track for his age (${FMT.pct(v)} at ${age})`
+    : v >= 0.9 ? `A little behind for his age (${FMT.pct(v)} at ${age})` : `Behind for his age (${FMT.pct(v)} at ${age})`;
+  if (s3) s3 += age <= 21 ? ", with time to grow" : age >= 31 ? ", and may start to decline" : "";
+  if (H.length > 1) { const d = last.score - first.score; s3 += `${s3 ? "; " : ""}${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)} since ${fmtDate(first.date)}`; }
+  return [s1, s2 && s2[0].toUpperCase() + s2.slice(1) + ".", s3 && s3 + "."].filter(Boolean).join(" ");
+}
 function showDetail(r) {
-  const H = r.history, last = H[H.length - 1], vs = H.some(h => h.vsAge != null);
+  const H = r.history, last = H[H.length - 1], first = H[0], vs = H.some(h => h.vsAge != null), gr = H.length > 1;
+  const staff = "job" in r, hasScore = H.some(h => h.score != null);
   const pos = COLS.filter(c => c.fmt === "f1" && c.key !== "score" && H.some(h => h[c.key] != null)).map(c => c.key);
-  const chg = (v, p) => p == null || Math.abs(v - p) < 0.05 ? "" :
+  const chg = (v, p) => p == null || v == null || Math.abs(v - p) < 0.05 ? "" :
     `<span class="chg ${v > p ? "t4" : "t0"}">${FMT.delta(v - p)}</span>`;
+  const total = (v, p, fmt = d => FMT.delta(d)) => v == null || p == null || Math.abs(v - p) < 0.005 ? `<span class="dim">–</span>` :
+    `<span class="${v > p ? "t4" : "t0"}">${fmt(v - p)}</span>`;
   const scoreRows = H.map((h, i) => {
     const p = H[i - 1];
     return `<tr><td>${fmtDate(h.date)}</td><td class="text">${h.club}</td><td class="num">${h.age ?? "–"}</td>` +
       pos.map(k => `<td class="num ${tier(h[k], RANGE.f1)}">${FMT.f1(h[k])}${chg(h[k], p?.[k])}</td>`).join("") +
-      `<td class="text">${h.best ?? "–"}</td>${h.score != null ? `<td class="num ${tier(h.score, RANGE.f1)}"><b>${FMT.f1(h.score)}</b>${chg(h.score, p?.score)}</td>` : ""}` +
+      `<td class="text">${h.best ?? "–"}</td>${hasScore ? `<td class="num ${tier(h.score, RANGE.f1)}"><b>${FMT.f1(h.score)}</b>${chg(h.score, p?.score)}</td>` : ""}` +
       `${vs ? `<td class="num ${tier(h.vsAge, RANGE.pct)}">${FMT.pct(h.vsAge)}${p?.vsAge != null && Math.abs(h.vsAge - p.vsAge) >= 0.005 ?
         `<span class="chg ${h.vsAge > p.vsAge ? "t4" : "t0"}">${h.vsAge > p.vsAge ? "+" : "−"}${Math.round(Math.abs(h.vsAge - p.vsAge) * 100)}</span>` : ""}</td>` : ""}</tr>`;
   }).join("");
+  // the total change, first snapshot to last
+  const totalRow = gr ? `<tr class="total"><td>Change</td><td class="text dim">since ${fmtDate(first.date)}</td><td class="num">${last.age != null && first.age != null ? "+" + (last.age - first.age) : ""}</td>` +
+    pos.map(k => `<td class="num">${total(last[k], first[k])}</td>`).join("") + `<td></td>` +
+    (hasScore ? `<td class="num"><b>${total(last.score, first.score)}</b></td>` : "") +
+    (vs ? `<td class="num">${total(last.vsAge, first.vsAge, d => (d > 0 ? "+" : "−") + Math.round(Math.abs(d) * 100) + "%")}</td>` : "") + "</tr>" : "";
   // Attributes ranked by the best position's (or staff role's) weight, alphabetical within a weight
   const wpos = [last.best].filter(k => WEIGHTS[k]), wt = a => wpos.length ? WEIGHTS[wpos[0]][a] ?? 0 : 0;
   const attrs = Object.keys(last.attrs).sort((a, b) => wt(b) - wt(a) || a.localeCompare(b));
-  const AH = windowDates(H), gr = H.length > 1;
-  // Growth: latest known value minus the first, over every observation
-  const growth = a => {
+  const AH = windowDates(H);
+  const growth = a => {  // latest known value minus the first, over every snapshot
     const vs = H.map(h => h.attrs[a]).filter(v => v != null), g = vs.length > 1 ? vs[vs.length - 1] - vs[0] : 0;
-    return `<td class="num wt">${g ? `<span class="${g > 0 ? "t4" : "t0"}">${g > 0 ? "+" : "−"}${Math.abs(g)}</span>` : ""}</td>`;
+    return `<td class="num wt">${g ? `<span class="${g > 0 ? "t4" : "t0"}">${g > 0 ? "+" : "−"}${Math.abs(g)}</span>` : `<span class="dim">–</span>`}</td>`;
   };
-  const attrRows = attrs.map(a => `<tr><td>${a}</td>` +
-    wpos.map(() => `<td class="num wt${gr ? " nb" : ""}">${wt(a) ? "×" + wt(a) : "–"}</td>`).join("") + (gr ? growth(a) : "") + AH.map((h, i) => {
+  const attrRows = attrs.map(a => `<tr><td>${a}</td>` + (gr ? growth(a) : "") + AH.map((h, i) => {
     const v = h.attrs[a], p = AH[i - 1]?.attrs[a];
     return v == null ? `<td class="num dim">–</td>` :
       `<td class="num ${attrTier(v)}">${v}${p == null || p === v ? "" : `<span class="chg ${v > p ? "t4" : "t0"}">${v > p ? "+" : "−"}${Math.abs(v - p)}</span>`}</td>`;
   }).join("") + "</tr>").join("");
+  const head = [r.club, r.age != null && r.age + "y", ...(staff ? [r.job, r.personality] : [r.position && "FM: " + r.position, r.loan && loanLabel(r)])].filter(Boolean).join(" · ");
   document.getElementById("detailbody").innerHTML = `
-    <div class="ttitle">${r.name} <span class="sub">· ${[r.club, r.age != null && r.age + "y",
-      ...("job" in r ? [r.job, r.personality] : ["left foot " + (last.leftFoot ?? "–"), r.loan && loanLabel(r)])].filter(Boolean).join(" · ")}</span></div>
-    ${H.length === 1 ? `<div class="sub">Only one observation so far (${fmtDate(last.date)}); changes appear once you export your squad again later.</div>` : ""}
-    <table><thead><tr><th>Date</th><th>Club</th><th class="num">Age</th>${pos.map(k => `<th class="num">${k}</th>`).join("")}<th>Best</th>${H.some(h => h.score != null) ? `<th class="num">Score</th>` : ""}${vs ? `<th class="num">vs Age</th>` : ""}</tr></thead>
-      <tbody>${scoreRows}</tbody></table>
+    <div class="ttitle">${r.name} <span class="sub">· ${head}</span></div>
+    ${staff || !hasScore ? "" : `<div class="scout">${scoutReport(r, H)}</div>`}
+    ${H.length === 1 ? `<div class="sub">Only one snapshot so far (${fmtDate(last.date)}): changes show once you export your squad again later.</div>` : ""}
+    <table><thead><tr><th>Date</th><th>Club</th><th class="num">Age</th>${pos.map(k => `<th class="num">${k}</th>`).join("")}<th>Best</th>${hasScore ? `<th class="num">Score</th>` : ""}${vs ? `<th class="num">vs Age</th>` : ""}</tr></thead>
+      <tbody>${scoreRows}${totalRow}</tbody></table>
     <div class="ttitle">Attributes</div>
-    <table><thead>${wpos.length ? `<tr><th></th><th class="group wt${gr ? " nb" : ""}">weight</th>${gr ? `<th class="group wt">growth</th>` : ""}<th class="group" colspan="${AH.length}">value</th></tr>` : ""}
-      <tr><th class="ago"></th>${wpos.map(() => `<th class="wt ago${gr ? " nb" : ""}"></th>`).join("")}${gr ? `<th class="wt ago"></th>` : ""}${AH.map(h => `<th class="num ago">${yearsAgo(h.date)}</th>`).join("")}</tr>
-      <tr><th></th>${wpos.map(k => `<th class="num wt${gr ? " nb" : ""}">${k}</th>`).join("")}${gr ? `<th class="num wt">${yearsAgo(H[0].date)}</th>` : ""}${AH.map(h => `<th class="num">${fmtDate(h.date)}</th>`).join("")}</tr></thead>
+    <table><thead><tr><th>Attribute</th>${gr ? `<th class="num wt" title="the total change, first snapshot to last">Change</th>` : ""}${AH.map(h => `<th class="num">${fmtDate(h.date)}</th>`).join("")}</tr></thead>
       <tbody>${attrRows}</tbody></table>`;
   detail.classList.add("show");
 }
@@ -616,9 +655,8 @@ function renderAttributes() {
       <td class="barcell"><span class="wfill" style="width:${(v / top * 100).toFixed(1)}%"></span></td></tr>`;
   };
   main.innerHTML = `<div class="tile wide">
-    <div class="ttitle">Attribute weights <span class="rankby">scoring with <b class="wnow">${d.custom ? `your own weights` :
-      "the default weights"}</b>${d.custom && d.saved ? ` (saved ${esc(d.saved)})` : ""}
-      ${d.custom ? `<button id="wswitch" data-to="default">Back to default</button>` :
+    <div class="ttitle">Attribute weights <span class="rankby">${d.custom ? `<b class="wnow">your own weights</b>${d.saved ? ` (saved ${esc(d.saved)})` : ""}
+      <button id="wswitch" data-to="default">Back to default</button>` :
         d.hasCustom ? `<button id="wswitch" data-to="custom">Use my weights</button>` : ""}</span></div>
     <div class="wbar">
       <span class="seg" id="wpos">${positions.map(p => `<button data-pos="${esc(p)}" class="${p === attrPos ? "on" : ""}">${esc(p)}</button>`).join("")}</span>

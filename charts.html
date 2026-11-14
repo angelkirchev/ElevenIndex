@@ -31,11 +31,20 @@ __THEME__
   .row-label { fill: var(--purple); font-size: 12px; cursor: pointer; } .row-label.on { fill: var(--cyan); font-weight: 700; }
   .row-n { fill: var(--dim); }
   .dot { stroke: var(--bg); stroke-width: 1.5; cursor: pointer; }
-  .dot.league { fill: var(--blue); fill-opacity: .75; }
-  .dot.squad { fill: var(--orange); }
+  .dot.league { fill: var(--bg); stroke: var(--blue); stroke-width: 1.6; }
+  .dot.league.rug { fill: var(--blue); fill-opacity: .55; stroke: none; }
+  .dot.squad { fill: var(--orange); stroke: #1a1020; stroke-width: 1.5; }
+  .band-row { fill: #ffffff05; }
+  .range { stroke: #b794ff66; stroke-width: 2; }
+  .iqr { fill: #9b5cff40; stroke: #9b5cff; stroke-width: 1; }
+  .row-diff { font-weight: 700; font-size: 12px; } .row-diff.up { fill: var(--green); } .row-diff.down { fill: var(--red); }
+  .quad.good { fill: #4ade8014; } .quad.bad { fill: #f8717112; }
+  .quad-line { stroke: var(--line); stroke-dasharray: 2 4; }
+  .quad-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .quad-label.good { fill: #4ade80aa; } .quad-label.bad { fill: #f87171aa; }
   .dot.hl { stroke: var(--fg); stroke-width: 2; fill-opacity: 1; }
   .hit { fill: transparent; cursor: pointer; }
-  .median { stroke: var(--fg); stroke-width: 2; }
+  .median { fill: #fff; }
   .median-label { fill: var(--fg); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; pointer-events: none; }
   .trend { stroke: var(--dim); stroke-width: 2; stroke-dasharray: 5 4; fill: none; }
   .squad-label { fill: var(--orange); font-size: 10px; pointer-events: none; }
@@ -50,7 +59,7 @@ __THEME__
   <span class="seg"><span class="lbl">compare with</span><select id="division"></select></span>
   <span class="seg" id="pos"><span class="lbl">position</span></span>
   <span class="seg"><span class="lbl">attribute</span><select id="speed"></select></span>
-  <span class="legend"><span><i style="background:var(--blue)"></i><span id="lLeague"></span> <span id="nLeague"></span></span><span><i style="background:var(--orange)"></i><span id="lClub"></span> <span id="nSquad"></span></span></span>
+  <span class="legend"><span><i style="background:transparent;border:1.6px solid var(--blue)"></i><span id="lLeague"></span> <span id="nLeague"></span></span><span><i style="background:var(--orange);border-radius:1px;transform:rotate(45deg)"></i><span id="lClub"></span> <span id="nSquad"></span></span></span>
 </div>
 <div class="grid">
   <div class="tile"><div class="ttitle">Role score by position</div><div id="strip-score"></div></div>
@@ -125,8 +134,10 @@ function hover(p, e) {
   const x = e.clientX + 14, y = e.clientY + 14, w = tip.offsetWidth, h = tip.offsetHeight;
   tip.style.left = Math.min(x, innerWidth - w - 8) + "px"; tip.style.top = (y + h > innerHeight ? e.clientY - h - 10 : y) + "px";
 }
-function dot(svg, p, cx, cy) {
-  const c = el("circle", { cx, cy, r: p.hl ? 5 : 4, class: "dot " + (p.hl ? "squad" : "league"), "data-name": p.name }, svg);
+function dot(svg, p, cx, cy, small) {
+  const c = p.hl ? el("rect", { x: cx - 5, y: cy - 5, width: 10, height: 10, rx: 1.5, transform: `rotate(45 ${cx} ${cy})`,
+                                class: "dot squad", "data-name": p.name }, svg)
+                 : el("circle", { cx, cy, r: small ? 2.6 : 4, class: "dot league" + (small ? " rug" : ""), "data-name": p.name }, svg);
   c.addEventListener("mousemove", e => hover(p, e)); c.addEventListener("mouseleave", () => hover(null));
   return c;
 }
@@ -144,35 +155,38 @@ function axis(svg, scale, horizontal, at, span, label) {
   }
 }
 
-// One row of dots per position; tick = league median (labelled with its value when showMedian)
+// One row per position: the compared players as a range (lowest to highest, the middle half shaded, the middle marked
+// and labelled) with a tick for each underneath; your players as diamonds on top; at the right, your best minus their middle.
 // min: where the axis starts; values below it sit on the axis's left edge
 function strip(id, value, label, groupFor, step, showMedian, min) {
   const box = document.getElementById(id); box.innerHTML = "";
-  const W = box.clientWidth, rowH = 46, L = 64, R = 46, H = POSITIONS.length * rowH + 30;
+  const W = box.clientWidth, rowH = 46, L = 64, R = 50, H = POSITIONS.length * rowH + 30;
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H }, box);
   const rows = POSITIONS.map(pos => ({ pos, ps: VIEW.filter(p => groupFor(p, pos) && value(p, pos) != null) }));
   const all = POSITIONS.flatMap(pos => AXIS_POOL().filter(p => groupFor(p, pos)).map(p => value(p, pos)).filter(v => v != null));
   if (!rows.some(r => r.ps.length)) return;
   const [lo, hi] = extent(all, 0.04), sx = linear([min ?? lo, hi], [L, W - R], step), x = v => sx(Math.max(v, sx.domain[0]));
   axis(svg, sx, true, H - 24, H - 24, label);
-  const labels = [];
+  const q = (s, f) => { const k = (s.length - 1) * f, a = Math.floor(k); return s[a] + (s[Math.min(a + 1, s.length - 1)] - s[a]) * (k - a); };
   rows.forEach(({ pos, ps }, i) => {
-    const cy = i * rowH + rowH / 2, league = ps.filter(inLeague);
+    const cy = i * rowH + rowH / 2, league = ps.filter(inLeague), mine = ps.filter(p => p.hl);
+    if (i % 2) el("rect", { x: L - 6, y: cy - rowH / 2, width: W - L - R + 12, height: rowH, class: "band-row" }, svg);
     const t = el("text", { x: 0, y: cy + 4, class: "row-label" + (pos === state.pos ? " on" : "") }, svg); t.textContent = pos;
     t.addEventListener("click", () => set("pos", pos));
-    el("text", { x: W, y: cy + 4, "text-anchor": "end", class: "row-n" }, svg).textContent = `n=${league.length}`;
-    for (const p of [...ps.filter(p => !p.hl), ...ps.filter(p => p.hl)]) dot(svg, p, x(value(p, pos)), cy + jitter(p.name + pos) * (rowH - 14));
     if (league.length) {
-      const v = median(league.map(p => value(p, pos))), m = x(v);
-      el("line", { x1: m, x2: m, y1: cy - rowH / 2 + 3, y2: cy + rowH / 2 - 3, class: "median" }, svg);
-      if (showMedian) labels.push([m + 5, cy - rowH / 2 + 13, v.toFixed(1)]);
-    }
+      const s = league.map(p => value(p, pos)).sort((a, b) => a - b), m = q(s, 0.5);
+      el("line", { x1: x(s[0]), x2: x(s[s.length - 1]), y1: cy, y2: cy, class: "range" }, svg);
+      el("rect", { x: x(q(s, 0.25)), y: cy - 7, width: Math.max(2, x(q(s, 0.75)) - x(q(s, 0.25))), height: 14, rx: 4, class: "iqr" }, svg);
+      el("rect", { x: x(m) - 1.5, y: cy - 10, width: 3, height: 20, rx: 1.5, class: "median" }, svg);
+      if (showMedian) el("text", { x: x(m), y: cy - 13, "text-anchor": "middle", class: "median-label" }, svg).textContent = m.toFixed(1);
+      for (const p of league) dot(svg, p, x(value(p, pos)), cy + 15, true);
+      if (mine.length) {
+        const d = Math.max(...mine.map(p => value(p, pos))) - m;
+        el("text", { x: W, y: cy + 4, "text-anchor": "end", class: "row-diff " + (d >= 0 ? "up" : "down") }, svg).textContent = (d >= 0 ? "+" : "−") + Math.abs(d).toFixed(1);
+      } else el("text", { x: W, y: cy + 4, "text-anchor": "end", class: "row-n" }, svg).textContent = `${league.length}`;
+    } else el("text", { x: W, y: cy + 4, "text-anchor": "end", class: "row-n" }, svg).textContent = "–";
+    mine.forEach(p => dot(svg, p, x(value(p, pos)), cy));
   });
-  // Drawn last, on a backing box, so no dot covers them
-  for (const [lx, ly, text] of labels) {
-    el("rect", { x: lx - 2, y: ly - 11, width: text.length * 7 + 4, height: 14, rx: 2, fill: "var(--bg)", "fill-opacity": 0.85 }, svg);
-    el("text", { x: lx, y: ly, class: "median-label" }, svg).textContent = text;
-  }
 }
 
 function fit(pts) {
@@ -199,9 +213,16 @@ function scatter(spec) {
   const x = log ? logScale([Math.min(...xs) / 1.25, Math.max(...xs) * 1.25], [L, W - R]) : linear(extent(xs, 0.05), [L, W - R]);
   const y = linear(extent(ys, 0.06), [H - B, T]);
   axis(svg, x, true, H - B, H - B - T, spec.xl); axis(svg, y, false, L, W - L - R, spec.yl);
-  if (f) {
-    const [a, b] = x.domain, tx = v => log ? Math.log(v) : v;
-    el("line", { x1: x(a), y1: y(f.icpt + f.slope * tx(a)), x2: x(b), y2: y(f.icpt + f.slope * tx(b)), class: "trend" }, svg);
+  // Four quadrants, split at the compared players' middle: better and cheaper (top left) is where the value is
+  if (league.length >= 3) {
+    const mx = x(median(league.map(spec.x))), my = y(median(league.map(spec.y)));
+    el("rect", { x: L, y: T, width: Math.max(0, mx - L), height: Math.max(0, my - T), class: "quad good" }, svg);
+    el("rect", { x: mx, y: my, width: Math.max(0, W - R - mx), height: Math.max(0, H - B - my), class: "quad bad" }, svg);
+    el("line", { x1: mx, x2: mx, y1: T, y2: H - B, class: "quad-line" }, svg);
+    el("line", { x1: L, x2: W - R, y1: my, y2: my, class: "quad-line" }, svg);
+    const [good, bad] = spec.quads || ["better and cheaper", "worse and dearer"];
+    el("text", { x: L + 6, y: T + 12, class: "quad-label good" }, svg).textContent = good;
+    el("text", { x: W - R - 6, y: H - B - 6, "text-anchor": "end", class: "quad-label bad" }, svg).textContent = bad;
   }
   const jx = spec.jitter ? (p => spec.jitter * jitter(p.name)) : (() => 0), jy = spec.jitterY ? (p => spec.jitterY * jitter(p.name + "y")) : (() => 0);
   for (const p of [...rest, ...hl]) dot(svg, p, x(spec.x(p) + jx(p)), y(spec.y(p) + jy(p)));
@@ -247,7 +268,8 @@ function render() {
   strip("strip-speed", p => speed(p), sp, (p, pos) => p.best === pos, 2);
   document.getElementById("scatters").innerHTML = "";
   const pos = state.pos, score = p => p.scores[pos], rating = p => p.rating, spd = p => speed(p);
-  scatter({ title: `${pos} score vs wage`, x: p => p.wage || null, y: score, xl: "wage p/w (log)", yl: `${pos} score`, log: true });
+  scatter({ title: `${pos} score vs wage`, x: p => p.wage || null, y: score, xl: "wage p/w (log)", yl: `${pos} score`, log: true,
+            quads: ["better and cheaper", "worse and dearer"] });
   if (VIEW.some(p => p.rating != null)) {
     scatter({ title: `${pos} score vs average rating`, x: rating, y: score, xl: "average rating", yl: `${pos} score` });
     scatter({ title: `${sp} vs average rating`, x: spd, y: rating, xl: sp, yl: "rating", jitter: 0.35 });
