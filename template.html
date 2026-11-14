@@ -50,7 +50,7 @@ __THEME__
   .tiles tr.minor td { opacity: .45; }
   #help, #detail { display: none; position: fixed; inset: 0; background: #0b0718cc; align-items: center; justify-content: center; z-index: 10; }
   #help.show, #detail.show { display: flex; }
-  #detail .tile { width: min(1000px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow: auto; }
+  #detail .tile { width: min(1400px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow: auto; }
   #detail table + .ttitle { margin-top: 14px; }
   #detail .chg { font-size: 11px; margin-left: 4px; }
   /* Weights: small, dim multipliers behind a divider, so they don't read as attribute values */
@@ -72,8 +72,6 @@ __THEME__
   #help td:first-child { color: var(--cyan); }
   #help b { color: var(--fg); font-weight: normal; }
   #help .sub { white-space: normal; padding-top: 10px; }
-  .helphint { color: var(--dim); text-decoration: none; white-space: nowrap; }
-  .helphint b { color: var(--fg); font-weight: normal; }
   .tiles td.wrap { white-space: normal; }
   .tile.guide .gtext { line-height: 1.65; color: var(--fg); }
   .tile.guide table { width: auto; margin: 2px 0 8px; } .tile.guide td { padding: 2px 14px 2px 0; }
@@ -115,6 +113,7 @@ __THEME__
   .tile.guide ol, .tile.guide ul { margin: 2px 0 6px; padding-left: 20px; }
   .tile.guide li { margin: 3px 0; }
   .tile.guide b { color: var(--cyan); font-weight: 600; }
+  .tile.guide a { color: var(--blue); }
   /* Grid page: formation slots × senior then youth depth */
   #lineup table { width: auto; }
   #lineup td { padding: 5px 14px; }
@@ -128,6 +127,7 @@ __THEME__
   #lineup .foot { color: var(--yellow); font-size: 11px; margin-left: 5px; }
   #lineup .from { color: var(--cyan); font-size: 10px; margin-left: 5px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; }
   #lineup .notes { margin-top: 8px; white-space: normal; line-height: 1.7; }
+  #squadtop[hidden] { display: none; }
   #squadtop { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-bottom: 10px; }  /* both boxes one height */
   #squadtop.closed { align-items: flex-start; }
   #squadtop.closed #lineup table, #squadtop.closed #lineup .notes, #squadtop.closed #formations { display: none; }
@@ -147,9 +147,8 @@ __THEME__
 <body>
 <div class="bar">
   <span class="pages">__NAV__</span>
-  <input id="filter" placeholder="Search…" title="Type a name, or filters like age<=24 best=DC vs>=90 left=yes" spellcheck="false" autocomplete="off">
+  <input id="filter" placeholder="Search…" title="Type a name, or filters like age<=24 best=DC vs>=90 foot=left" spellcheck="false" autocomplete="off">
   <span id="count"></span>
-  <a class="helphint" href="#" id="helphint" title="Keyboard shortcuts (?)"><b>?</b></a>
 </div>
 <div id="squadtop" hidden><div class="tile" id="lineup"></div><div class="tile" id="formations"></div></div>
 <div class="tile" id="main">
@@ -177,7 +176,7 @@ __THEME__
     <tr><td><kbd>Esc</kbd></td><td>clear the filter</td></tr>
   </table>
   <p class="keyhint">Type a name or club to find it, or a condition on any column:
-    <b>age&lt;=21</b> · <b>best=DC</b> · <b>best!=GK</b> · <b>vs&gt;=90</b> · <b>left=yes</b> · <b>club:levski</b> (contains) ·
+    <b>age&lt;=21</b> · <b>best=DC</b> · <b>best!=GK</b> · <b>vs&gt;=90</b> · <b>foot=left</b> · <b>club:levski</b> (contains) ·
     <b>wage&lt;=10k</b> · <b>value&lt;=500k</b> (top of FM's range) · <b>loan-in</b> / <b>loan-out</b> / <b>trial</b>.
     Combine them with spaces, e.g. <b>age&lt;=23 best=ST vs&gt;=90</b>.</p>
 </div></div>
@@ -198,7 +197,7 @@ const FMT = {
 const RANGE = { f1: [6, 13], f2: [6.5, 7.1], pct: [0.6, 1.0], attr: [5, 15] };  // f2: average match rating
 const COLS = __COLS__;
 const WEIGHTS = __WEIGHTS__;  // { position or staff role: { attribute: weight } }
-const ALIASES = { lefty: "left", leftfoot: "left", player: "name", pos: "best", position: "best", vs: "vsAge" };
+const ALIASES = { left: "foot", lefty: "foot", leftfoot: "foot", player: "name", pos: "best", position: "best", vs: "vsAge" };
 const STORE = "fm:__SAVE__:" + PAGE;
 const input = document.getElementById("filter"), help = document.getElementById("help"), detail = document.getElementById("detail");
 let sortKey = COLS.some(c => c.key === "vsAge") ? "vsAge" : COLS.find(c => c.num && c.fmt)?.key, dir = -1, cur = { r: 0, c: 0 }, view = [];
@@ -275,7 +274,7 @@ function render() {
     if (c.fmt === "range") return `<td class="num${at}">${r.valueLo === v ? FMT.money(v) : FMT.money(r.valueLo) + "–" + FMT.money(v)}</td>`;
     if (c.fmt === "yesno") return `<td class="${v === "yes" ? "t4" : "dim"}${at}">${v}</td>`;
     if (c.fmt) return `<td class="num ${tier(v, RANGE[c.fmt])}${at}">${FMT[c.fmt](v)}</td>`;
-    if (c.key === "name") return `<td class="${at}">${v}${r.loan ? `<span class="loan ${r.loan}">${loanLabel(r)}</span>` : ""}</td>`;
+    if (c.key === "name") return `<td class="${at}"><span class="pl" title="open ${esc(v)}'s profile">${esc(v)}</span>${r.loan ? `<span class="loan ${r.loan}">${loanLabel(r)}</span>` : ""}</td>`;
     return `<td class="${c.num ? "num" : "text"}${at}">${v}</td>`;
   }).join("") + "</tr>").join("");
   if (render.done) document.querySelector("td.cur")?.scrollIntoView({ block: "nearest", inline: "nearest" });  // not on opening the page
@@ -323,7 +322,7 @@ document.addEventListener("keydown", e => {
 
 // The attributes table: every observation, newest first (each squad export is its own snapshot)
 function windowDates(H) {
-  return [...H].reverse();
+  return [...H];
 }
 // "2026-11-14T0032" -> "2026-11-14 00:32" (a squad export's time), else the date as it is
 const fmtDate = d => String(d).replace(/T(\d\d)(\d\d)$/, " $1:$2");
@@ -344,7 +343,9 @@ function showDetail(r) {
     const p = H[i - 1];
     return `<tr><td>${fmtDate(h.date)}</td><td class="text">${h.club}</td><td class="num">${h.age ?? "–"}</td>` +
       pos.map(k => `<td class="num ${tier(h[k], RANGE.f1)}">${FMT.f1(h[k])}${chg(h[k], p?.[k])}</td>`).join("") +
-      `<td class="text">${h.best ?? "–"}</td>${vs ? `<td class="num ${tier(h.vsAge, RANGE.pct)}">${FMT.pct(h.vsAge)}</td>` : ""}</tr>`;
+      `<td class="text">${h.best ?? "–"}</td>${h.score != null ? `<td class="num ${tier(h.score, RANGE.f1)}"><b>${FMT.f1(h.score)}</b>${chg(h.score, p?.score)}</td>` : ""}` +
+      `${vs ? `<td class="num ${tier(h.vsAge, RANGE.pct)}">${FMT.pct(h.vsAge)}${p?.vsAge != null && Math.abs(h.vsAge - p.vsAge) >= 0.005 ?
+        `<span class="chg ${h.vsAge > p.vsAge ? "t4" : "t0"}">${h.vsAge > p.vsAge ? "+" : "−"}${Math.round(Math.abs(h.vsAge - p.vsAge) * 100)}</span>` : ""}</td>` : ""}</tr>`;
   }).join("");
   // Attributes ranked by the best position's (or staff role's) weight, alphabetical within a weight
   const wpos = [last.best].filter(k => WEIGHTS[k]), wt = a => wpos.length ? WEIGHTS[wpos[0]][a] ?? 0 : 0;
@@ -357,7 +358,7 @@ function showDetail(r) {
   };
   const attrRows = attrs.map(a => `<tr><td>${a}</td>` +
     wpos.map(() => `<td class="num wt${gr ? " nb" : ""}">${wt(a) ? "×" + wt(a) : "–"}</td>`).join("") + (gr ? growth(a) : "") + AH.map((h, i) => {
-    const v = h.attrs[a], p = AH[i + 1]?.attrs[a];
+    const v = h.attrs[a], p = AH[i - 1]?.attrs[a];
     return v == null ? `<td class="num dim">–</td>` :
       `<td class="num ${attrTier(v)}">${v}${p == null || p === v ? "" : `<span class="chg ${v > p ? "t4" : "t0"}">${v > p ? "+" : "−"}${Math.abs(v - p)}</span>`}</td>`;
   }).join("") + "</tr>").join("");
@@ -365,7 +366,7 @@ function showDetail(r) {
     <div class="ttitle">${r.name} <span class="sub">· ${[r.club, r.age != null && r.age + "y",
       ...("job" in r ? [r.job, r.personality] : ["left foot " + (last.leftFoot ?? "–"), r.loan && loanLabel(r)])].filter(Boolean).join(" · ")}</span></div>
     ${H.length === 1 ? `<div class="sub">Only one observation so far (${fmtDate(last.date)}); changes appear once you export your squad again later.</div>` : ""}
-    <table><thead><tr><th>Date</th><th>Club</th><th class="num">Age</th>${pos.map(k => `<th class="num">${k}</th>`).join("")}<th>Best</th>${vs ? `<th class="num">vs Age</th>` : ""}</tr></thead>
+    <table><thead><tr><th>Date</th><th>Club</th><th class="num">Age</th>${pos.map(k => `<th class="num">${k}</th>`).join("")}<th>Best</th>${H.some(h => h.score != null) ? `<th class="num">Score</th>` : ""}${vs ? `<th class="num">vs Age</th>` : ""}</tr></thead>
       <tbody>${scoreRows}</tbody></table>
     <div class="ttitle">Attributes</div>
     <table><thead>${wpos.length ? `<tr><th></th><th class="group wt${gr ? " nb" : ""}">weight</th>${gr ? `<th class="group wt">growth</th>` : ""}<th class="group" colspan="${AH.length}">value</th></tr>` : ""}
@@ -624,11 +625,13 @@ function renderAttributes() {
       <span class="wbtns">${changed ? `<span class="unsaved">unsaved changes</span>` : ""}
         <button id="wsave" class="primary"${inApp && changed ? "" : " disabled"}>Save</button>
         <button id="wundo"${changed ? "" : " disabled"}>Undo changes</button>
+        <button id="wreset"${JSON.stringify(edited) === JSON.stringify(d.defaults) ? " disabled" : ""} title="put the default weights back in every position (then Save)">Reset to default</button>
         <button id="wimport"${inApp ? "" : " disabled"}>Import…</button>
         <button id="wexport"${inApp ? "" : " disabled"}>Export…</button></span>
     </div>
     <div class="sub">A position's score = Σ(attribute × weight) ÷ Σ(weights), so only the weights' sizes against each other matter.
-      Blank or 0 = not used. <b>Save</b> keeps them as this save's own weights (the default stays as it is) and rescores every page; <b>Export</b> writes
+      Blank or 0 = not used. <b>Save</b> keeps them as this save's own weights (the default stays as it is) and rescores every page; <b>Undo changes</b> drops
+      what you haven't saved, <b>Reset to default</b> puts the default weights back; <b>Export</b> writes
       them as a table (.txt or .csv) to open in Notepad or Excel, and <b>Import</b> reads one back.${inApp ? "" :
       " <b>Open this page in the app to save, import or export.</b>"}</div>
   </div>
@@ -652,6 +655,11 @@ function renderAttributes() {
     return r;
   };
   document.getElementById("wundo").onclick = () => { edited = null; renderAttributes(); };
+  document.getElementById("wreset").onclick = () => {
+    if (!confirm("Put the default weights back in every position? Nothing is saved until you click Save.")) return;
+    edited = JSON.parse(JSON.stringify(d.defaults)); renderAttributes();
+    if (window.fmNotice) fmNotice("The default weights are back in the page. Click Save to score with them.", false);
+  };
   const sw = document.getElementById("wswitch");
   if (sw) sw.onclick = () => {
     if (!inApp) return;
@@ -690,6 +698,8 @@ document.getElementById("head").addEventListener("click", e => {
   if (ci >= 0) { cur.c = ci; sortBy(ci); }
 });
 document.getElementById("body").addEventListener("click", e => {
+  const name = e.target.closest(".pl");  // a name: the player's (or staff member's) profile
+  if (name && getSelection().isCollapsed) { const tr = name.closest("tr"); cur = { r: tr.rowIndex - 1, c: 0 }; render(); showDetail(view[cur.r]); return; }
   const td = e.target.closest("td");
   if (!td || !getSelection().isCollapsed) return;  // re-rendering would drop a text selection
   cur = { r: td.parentElement.rowIndex - 1, c: td.cellIndex };
@@ -713,7 +723,6 @@ document.addEventListener("copy", e => {
 input.addEventListener("input", () => { cur.r = 0; render(); });
 help.addEventListener("click", e => { if (e.target === help) help.classList.remove("show"); });
 detail.addEventListener("click", e => { if (e.target === detail) detail.classList.remove("show"); });
-document.getElementById("helphint").addEventListener("click", e => { e.preventDefault(); help.classList.add("show"); });
 if (PAGE.endsWith("staff")) input.title = "Type a name, or filters like job:coach PosTct>=12 personality:prof";
 if (PAGE === "squad") renderLineup();
 if (PAGE === "filters" || PAGE === "staff_filters") renderFilters(); else if (PAGE === "development") renderDevelopment();

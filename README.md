@@ -10,8 +10,7 @@ Press **F8** on a list in FM, click **Import file…** in the app, and your page
 
 Also for FM27, usable on their own: **[views](https://github.com/angelkirchev/FMAnalyst/tree/main/views)** ·
 **[player search filters](https://github.com/angelkirchev/FMAnalyst/tree/main/player%20search%20filters)** ·
-**[staff search filters](https://github.com/angelkirchev/FMAnalyst/tree/main/staff%20search%20filters)** ·
-**[training schedules](https://github.com/angelkirchev/FMAnalyst/releases/latest/download/fm27-training-schedules.zip)**
+**[staff search filters](https://github.com/angelkirchev/FMAnalyst/tree/main/staff%20search%20filters)**
 (all the views and filters in one [ZIP](https://github.com/angelkirchev/FMAnalyst/archive/refs/heads/main.zip))
 
 - [What it looks like](#what-it-looks-like)
@@ -217,17 +216,14 @@ names start with the export's date), and start the app again.
 
 **Something else went wrong.** `app.log` in your data folder says what happened.
 
-**Can I use just the views, search filters or training schedules?** Yes, without the app:
+**Can I use just the views or search filters?** Yes, without the app:
 
-- **Views and search filters:** browse the [views](https://github.com/angelkirchev/FMAnalyst/tree/main/views),
+Browse the [views](https://github.com/angelkirchev/FMAnalyst/tree/main/views),
   [player search filters](https://github.com/angelkirchev/FMAnalyst/tree/main/player%20search%20filters) and
   [staff search filters](https://github.com/angelkirchev/FMAnalyst/tree/main/staff%20search%20filters), or get them all in
   the [project ZIP](https://github.com/angelkirchev/FMAnalyst/archive/refs/heads/main.zip). Copy the files into FM's folders
   of the same names, as in step 4 (create a folder if FM doesn't have it yet). They appear under their file names in
-  FM's view options and search screens.
-- **Training schedules:** [download the ZIP](https://github.com/angelkirchev/FMAnalyst/releases/latest/download/fm27-training-schedules.zip)
-  and follow `How to install.txt` inside. The schedules are also in the
-  [schedules](https://github.com/angelkirchev/FMAnalyst/tree/main/schedules) folder.
+FM's view options and search screens.
 
 ---
 

@@ -23,6 +23,13 @@ from webview.menu import Menu, MenuAction
 import import_export
 import score
 
+VERSION = score.VERSION  # shown in the window title (set in score.py, which the guide uses too)
+
+
+def window_title(save=None):
+    """The window title: FMAnalyst 1.2.0 — Save: my-save (or "set up" on the setup page)."""
+    return f"FMAnalyst {VERSION} — " + (f"Save: {save}" if save else "set up")
+
 
 
 def exports_dir(config):
@@ -198,7 +205,7 @@ class App:
             score.set_active_save(name)
             self.config = score.load_config()
             self.save, self.save_dir = name, score.ROOT / "saves" / name
-            self.window.set_title(f"FMAnalyst: {name}")
+            self.window.set_title(window_title(name))
             if any((self.save_dir / "obs").glob("*.csv")):
                 cfg, pages = score.build(name, self.config)
                 out = score.write_pages(name, self.config, cfg, pages)
@@ -358,7 +365,7 @@ class App:
         self.exports = exports_dir(self.config)
         self.save, self.save_dir = name, score.ROOT / "saves" / name
         self.commit(f"{name}: new save")
-        self.window.set_title(f"FMAnalyst: {name}")
+        self.window.set_title(window_title(name))
         self.notice = (f"All set up for {club}. Now import your squad: press F8 on it in FM, then Import file…", False)
         self.show_soon(html=START_HTML)
 
@@ -368,7 +375,7 @@ class App:
 
     def start(self):
         if self.save is None:
-            where, title = {"html": self.setup_page()}, "FMAnalyst: set up"
+            where, title = {"html": self.setup_page()}, window_title()
         else:
             # rescore on every start, so a change of weights (or a newer version of the app) shows straight away
             try:
@@ -379,7 +386,7 @@ class App:
                 log_error("rescoring on start")
             page = score.ROOT / "out" / self.save / "last.html"
             where = {"url": page.resolve().as_uri()} if page.exists() else {"html": START_HTML}
-            title = f"FMAnalyst: {self.save}"
+            title = window_title(self.save)
         self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
         self.window.events.loaded += self.on_load
         self.window.events.closed += lambda: os._exit(0)  # closing the window ends the app
