@@ -376,7 +376,7 @@ class App:
             except (Exception, SystemExit) as e:
                 self.notice = (f"Couldn't update the pages: {e}", True)
                 log_error("rescoring on start")
-            page = score.ROOT / "out" / self.save / "last.html"
+            page = score.ROOT / "out" / self.save / "squad.html"  # the app opens on Squad › Lineup
             where = {"url": page.resolve().as_uri()} if page.exists() else {"html": START_HTML}
             title = window_title(self.save)
         self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)

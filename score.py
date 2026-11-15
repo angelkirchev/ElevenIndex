@@ -38,21 +38,22 @@ APP = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 ROOT = Path(os.environ["FMANALYST_HOME"]) if os.environ.get("FMANALYST_HOME") else \
     documents() / "FMAnalyst" if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.5.3"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.6.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/FMAnalyst"
-PAGES = ["squad", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff", "last_staff",
-         "staff_filters", "attributes", "guide"]
+PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
+         "last_staff", "staff_filters", "attributes", "guide"]
 # Each page's full name (the window title, the Guide)
-PAGE_LABELS = {"squad": "Squad", "development": "Development", "elsewhere": "All players", "last": "Last player import", "filters": "Player search",
+PAGE_LABELS = {"squad": "Lineup", "formations": "Formations", "development": "Development", "elsewhere": "All players", "last": "Last player import", "filters": "Player search",
                "charts": "Research", "compare": "Compare players", "staff": "All staff", "last_staff": "Last staff import", "staff_filters": "Staff search",
                "analysis": "Analysis", "attributes": "Attributes", "guide": "Guide"}
 # The top menu: (key, page) or (key, group name, its pages, the page it opens on), None = a divider. A group's pages are
-# sub-tabs under the bar; its key opens the group on its Last import, and pressed again moves to the next sub-tab.
-MENU = [("1", "squad"), ("2", "analysis"), ("3", "development"), ("4", "charts"),
-        ("5", "Players", ["elsewhere", "last", "filters", "compare"], "last"),
-        ("6", "Staff", ["staff", "last_staff", "staff_filters"], "last_staff"),
+# sub-tabs under the bar; its key opens the group on its first page (Lineup, Last import…), and pressed again moves to the next.
+MENU = [("1", "Squad", ["squad", "formations", "analysis", "development"], "squad"), ("2", "charts"),
+        ("3", "Players", ["elsewhere", "last", "filters", "compare"], "last"),
+        ("4", "Staff", ["staff", "last_staff", "staff_filters"], "last_staff"),
         None, ("a", "attributes"), ("g", "guide")]
-SUB_LABELS = {"elsewhere": "All players", "last": "Last import", "filters": "Search", "compare": "Compare",
+SUB_LABELS = {"squad": "Lineup", "formations": "Formations", "analysis": "Analysis", "development": "Development",
+              "elsewhere": "All players", "last": "Last import", "filters": "Search", "compare": "Compare",
               "staff": "All staff", "last_staff": "Last import", "staff_filters": "Search"}
 META = {"Name", "Club", "Age", "Position", "Left Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating", "Division"}  # every other column is an attribute
 STAFF_META = {"Name", "Club", "Age", "Job", "Personality"}  # a staff file's other columns are attributes
@@ -527,6 +528,24 @@ def fm_positions(text):
     return groups
 
 
+WIDE_ROLES = {"D": "DL/DR", "WB": "WBL/WBR", "M": "ML/MR", "AM": "AML/AMR"}
+WIDE_GROUPS = set(WIDE_ROLES.values())
+
+
+def fm_sides(text):
+    """FM's position text -> the sides he plays at the wide positions: "D/WB (R), AM (RL)" -> {"DL/DR": "R",
+    "WBL/WBR": "R", "AML/AMR": "LR"}. Empty without the Position column (the foot decides then)."""
+    out = {}
+    for part in (text or "").split(","):
+        m = re.match(r"\s*([A-Z/]+)\s*(?:\(([RLC]+)\))?", part)
+        sides = "".join(c for c in (m.group(2) or "") if c in "LR") if m else ""
+        for role in (m.group(1).split("/") if m and sides else []):
+            if role in WIDE_ROLES:
+                g = WIDE_ROLES[role]
+                out[g] = "".join(sorted(set(out.get(g, "") + sides)))
+    return out
+
+
 def search_attrs(weights):
     """The attributes worth a minimum in FM's search: the top-weighted ones making up SEARCH_WEIGHT_SHARE of the weight."""
     ranked, total, picked, share = sorted(weights.items(), key=lambda kv: -kv[1]), sum(weights.values()), [], 0
@@ -541,28 +560,29 @@ def search_attrs(weights):
 # Common FM formations, as the weights' position groups (a wide pair counts twice: one left, one right). Roles and duties
 # don't show in the scores, so shapes with the same positions (5-2-3 Wide and 5-2-2-1) rank the same.
 FORMATIONS = [
-    ("4-2-3-1", "The most common, usually gegenpress", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "AMC": 1, "ST": 1}),
-    ("4-3-3 DM Wide", "One holding midfielder, two wingers (4-1-2-3)", {"DL/DR": 2, "DC": 2, "DM": 1, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("4-3-3", "A flat midfield three", {"DL/DR": 2, "DC": 2, "MC": 3, "AML/AMR": 2, "ST": 1}),
-    ("4-2-3-1 DM Wide", "Two holding midfielders behind the ten (4-2-1-3)", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 1, "AML/AMR": 2, "ST": 1}),
-    ("3-4-3", "The most popular back three", {"DC": 3, "ML/MR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("3-4-2-1", "Two tens behind the striker", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AMC": 2, "ST": 1}),
-    ("4-4-2", "Vertical, counter-attacking football", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "ST": 2}),
-    ("4-2-2-2", "High press, narrow tens", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 2, "ST": 2}),
-    ("5-2-3 Wide", "Five at the back, three forwards", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("4-3-1-2", "A narrow diamond, for teams without wingers", {"DL/DR": 2, "DC": 2, "DM": 1, "MC": 2, "AMC": 1, "ST": 2}),
-    ("5-4-1", "Counter-attack for underdogs", {"DC": 3, "WBL/WBR": 2, "ML/MR": 2, "MC": 2, "ST": 1}),
-    ("5-2-2-1", "A more realistic defensive option", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("4-2-4", "Ultra-attacking, strong in older versions", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "ST": 2}),
-    ("3-5-2", "Wing-backs and two strikers", {"DC": 3, "WBL/WBR": 2, "DM": 1, "MC": 2, "ST": 2}),
-    ("5-3-2", "The defensive 3-5-2", {"DC": 3, "WBL/WBR": 2, "MC": 3, "ST": 2}),
-    ("4-1-4-1", "Often just the shape without the ball", {"DL/DR": 2, "DC": 2, "DM": 1, "ML/MR": 2, "MC": 2, "ST": 1}),
-    ("4-4-1-1", "Compact, with a deep-lying forward", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "AMC": 1, "ST": 1}),
-    ("3-4-1-2", "A ten behind two strikers", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AMC": 1, "ST": 2}),
-    ("4-3-2-1", "The Christmas tree: narrow, no wingers", {"DL/DR": 2, "DC": 2, "MC": 3, "AMC": 2, "ST": 1}),
-    ("3-4-3-0", "Strikerless: niche, but big results", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "AMC": 1}),
+    ("4-2-3-1", "Double pivot, a ten, wingers pressing high", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "AMC": 1, "ST": 1}),
+    ("4-3-3 DM Wide", "A holder, two box-to-box eights, wingers", {"DL/DR": 2, "DC": 2, "DM": 1, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("4-3-3", "Flat midfield three, width from wingers", {"DL/DR": 2, "DC": 2, "MC": 3, "AML/AMR": 2, "ST": 1}),
+    ("4-2-3-1 DM Wide", "Two holders, a ten, two wide forwards", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 1, "AML/AMR": 2, "ST": 1}),
+    ("3-4-3", "Back three, wide midfielders, pressing front three", {"DC": 3, "ML/MR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("3-4-2-1", "Two tens behind a striker, wing backs for width", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AMC": 2, "ST": 1}),
+    ("4-4-2", "Two banks of four, strike partnership", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "ST": 2}),
+    ("4-2-2-2", "Narrow: two tens, two strikers", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 2, "ST": 2}),
+    ("5-2-3 Wide", "Back five, front three on the break", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("4-3-1-2", "Diamond midfield, ten behind two strikers", {"DL/DR": 2, "DC": 2, "DM": 1, "MC": 2, "AMC": 1, "ST": 2}),
+    ("5-4-1", "Deep low block, counter-attacks", {"DC": 3, "WBL/WBR": 2, "ML/MR": 2, "MC": 2, "ST": 1}),
+    ("5-2-2-1", "Back five, two inside forwards, lone striker", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("4-2-4", "All-out attack, two wingers and two strikers", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "ST": 2}),
+    ("3-5-2", "Wing backs, midfield three, two strikers", {"DC": 3, "WBL/WBR": 2, "DM": 1, "MC": 2, "ST": 2}),
+    ("5-3-2", "Back five, midfield three, direct to two strikers", {"DC": 3, "WBL/WBR": 2, "MC": 3, "ST": 2}),
+    ("4-1-4-1", "A holder behind a midfield four, compact", {"DL/DR": 2, "DC": 2, "DM": 1, "ML/MR": 2, "MC": 2, "ST": 1}),
+    ("4-4-1-1", "Compact 4-4-2 with a deep-lying forward", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "AMC": 1, "ST": 1}),
+    ("3-4-1-2", "Back three, a ten feeding two strikers", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AMC": 1, "ST": 2}),
+    ("4-3-2-1", "Christmas tree: narrow, two tens", {"DL/DR": 2, "DC": 2, "MC": 3, "AMC": 2, "ST": 1}),
+    ("3-4-3-0", "Strikerless: false nine and inside forwards", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "AMC": 1}),
 ]
 FORMATION_ORDER = ["GK", "DC", "DL/DR", "WBL/WBR", "DM", "MC", "ML/MR", "AMC", "AML/AMR", "ST"]
+LINES = {"Defence": {"DC", "DL/DR", "WBL/WBR"}, "Midfield": {"DM", "MC", "ML/MR"}, "Attack": {"AMC", "AML/AMR", "ST"}}  # Formations' lines
 # Without FM's positions, a player's best position (from attributes) and the ones next to it: so a midfielder isn't put
 # at full-back just because his attributes would score there
 NEAR = {"GK": ["GK"], "DC": ["DC", "DL/DR", "DM"], "DL/DR": ["DL/DR", "WBL/WBR", "DC"], "WBL/WBR": ["WBL/WBR", "DL/DR", "ML/MR"],
@@ -570,35 +590,78 @@ NEAR = {"GK": ["GK"], "DC": ["DC", "DL/DR", "DM"], "DL/DR": ["DL/DR", "WBL/WBR",
         "AMC": ["AMC", "MC", "AML/AMR", "ST"], "AML/AMR": ["AML/AMR", "ML/MR", "AMC", "ST", "MC"], "ST": ["ST", "AMC", "AML/AMR"]}
 
 
+OFF_SIDE = 1.5  # a wide slot: someone who doesn't play that side counts this much lower when picking (his score stays)
+
+
+def side_ok(r, group, side):
+    """Whether r plays that side (L / R) of a wide position: FM's Position column, else the foot."""
+    sides = fm_sides(r.get("position")).get(group)
+    if sides:
+        return side in sides
+    return (r.get("left") == "yes") == (side == "L")
+
+
 def best_xi(players, need, plays):
-    """The strongest side for need ({position: count}): the best player-position pair first, each player once, only where
-    they play. Returns ([(position, player, score)], unfilled count)."""
+    """The strongest side for need ({slot: count}; a wide pair is two slots, "DL/DR|L" and "DL/DR|R"): the best
+    player-slot pair first, each player once, only where they play; on the wrong side of a wide slot he counts OFF_SIDE
+    lower. Returns ([(slot, player, score)], unfilled count)."""
     left = dict(need)
-    pairs = sorted(((r[pos], i, pos) for i, r in enumerate(players) for pos in need
-                    if r.get(pos) is not None and plays(r, pos)), reverse=True)
+    def pick(r, slot):
+        pos, _, side = slot.partition("|")
+        return r[pos] - (OFF_SIDE if side and not side_ok(r, pos, side) else 0)
+    pairs = sorted(((pick(r, slot), i, slot) for i, r in enumerate(players) for slot in need
+                    if r.get(slot.partition("|")[0]) is not None and plays(r, slot.partition("|")[0])), reverse=True)
     used, xi = set(), []
-    for v, i, pos in pairs:
-        if left[pos] and i not in used:
-            used.add(i); left[pos] -= 1
-            xi.append((pos, players[i], v))
+    for _, i, slot in pairs:
+        if left[slot] and i not in used:
+            used.add(i); left[slot] -= 1
+            xi.append((slot, players[i], players[i][slot.partition("|")[0]]))
     return xi, sum(left.values())
 
 
+def wide_slots(need):
+    """need with each wide pair (DL/DR, WBL/WBR, ML/MR, AML/AMR × 2) split into a left and a right slot."""
+    out = {}
+    for pos, n in need.items():
+        if pos in WIDE_GROUPS and n == 2:
+            out[f"{pos}|L"] = out[f"{pos}|R"] = 1
+        else:
+            out[pos] = n
+    return out
+
+
 def formations(players, plays):
-    """How the squad fits each of FORMATIONS: its best XI's average score, a second XI's (depth), the weakest spot."""
+    """How the squad fits each of FORMATIONS: its best XI's average score, a second XI's (depth), and each position as a
+    group: its starters and their backups averaged. The weakest spot is a position missing a backup, else the lowest
+    group average; the strongest, the highest with every backup there."""
     out = []
     for name, note, shape in FORMATIONS:
         need = {"GK": 1, **shape}
-        xi, short = best_xi(players, need, plays)
+        slots = wide_slots(need)
+        def split(side_list):  # (slot, player, score) -> (position, player, score, side)
+            return [(slot.partition("|")[0], r, v, slot.partition("|")[2] or None) for slot, r, v in side_list]
+        xi, short = best_xi(players, slots, plays)
         taken = {r["name"] for _, r, _ in xi}
-        second, short2 = best_xi([r for r in players if r["name"] not in taken], need, plays)
-        avg = lambda side, miss: sum(v for *_, v in side) / len(side) if side else 0  # over the slots filled
-        outfield = [t for t in xi if t[0] != "GK"]
-        weak = min(outfield, key=lambda t: t[2]) if outfield else None
+        second, short2 = best_xi([r for r in players if r["name"] not in taken], slots, plays)
+        xi, second = split(xi), split(second)
+        avg = lambda side, miss: sum(t[2] for t in side) / len(side) if side else 0  # over the slots filled
+        groups = []
+        for pos, n in need.items():
+            vs = [v for p, _, v, _ in xi if p == pos] + [v for p, _, v, _ in second if p == pos]
+            starters = sum(p == pos for p, *_ in xi)
+            groups.append({"pos": pos, "v": sum(vs) / len(vs) if vs else 0, "starters": starters, "backups": len(vs) - starters,
+                           "missing": n * 2 - len(vs)})  # n starters and n backups wanted
+        weak = min(groups, key=lambda g: (g["missing"] == 0, g["v"]))
+        full = [g for g in groups if not g["missing"]]
+        strong = max(full, key=lambda g: g["v"]) if full else None
+        side = lambda xs: [{"pos": pos, "name": r["name"], "v": v, "age": r["age"], "left": r.get("left") == "yes",
+                            "sides": fm_sides(r.get("position")), "side": sd, "off": bool(sd) and not side_ok(r, pos, sd)}
+                           for pos, r, v, sd in sorted(xs, key=lambda t: (FORMATION_ORDER.index(t[0]), t[3] or "", -t[2]))]
+        lines = {k: [v for pos, _, v, _ in xi if pos in group] for k, group in LINES.items()}
         out.append({"name": name, "note": note, "xi": avg(xi, short), "depth": avg(second, short2), "short": short,
-                    "weak": {"pos": weak[0], "name": weak[1]["name"], "v": weak[2]} if weak else None,
-                    "players": [{"pos": pos, "name": r["name"], "v": v}
-                                for pos, r, v in sorted(xi, key=lambda t: (FORMATION_ORDER.index(t[0]), -t[2]))]})
+                    "weak": weak, "strong": strong, "groups": groups,
+                    "shape": need, "players": side(xi), "second": side(second),
+                    "lines": {k: sum(vs) / len(vs) if vs else None for k, vs in lines.items()}})
     return sorted(out, key=lambda f: (f["short"], -f["xi"], -f["depth"]))  # shapes you can't fill go last
 
 
@@ -748,7 +811,9 @@ def grid(squad, w, cfg, intake):
             "spare": [short(r, r["score"]) for r in sorted(spare, key=lambda r: r["score"], reverse=True)],
             "spareYouth": [short(r, r["score"]) for r in sorted(spare_youth + spare_new, key=lambda r: r["vsAge"], reverse=True)],
             "loanOut": [short(r, r["score"]) for r in squad if r["loan"] == "out" and r["name"] not in pinned],
-            "formations": formations([r for r in available if r["loan"] != "out"], plays)}
+            "formations": formations([r for r in available if r["loan"] != "out"], plays),
+            "plays": {r["name"]: [g for g in FORMATION_ORDER if r.get(g) is not None and plays(r, g)] for r in squad},
+            "sides": {r["name"]: fm_sides(r.get("position")) for r in squad}}
 
 
 # --- staff ---
@@ -786,12 +851,12 @@ def staff_row(name, person, roles):
     return row
 
 
-def staff_cols(roles):
-    """The staff tables' columns: who, then a score per job."""
+def staff_cols(roles, names=None):
+    """The staff tables' columns: who, then a score per job (its full name as the title, [staff_names])."""
     def col(key, label, **more):
         return {"key": key, "label": label, **more}
     return [col("name", "Name"), col("club", "Club"), col("age", "Age", num=True), col("job", "Job"),
-            col("personality", "Personality"), *(col(role, role, num=True, fmt="f1") for role in roles)]
+            col("personality", "Personality"), *(col(role, role, num=True, fmt="f1", title=(names or {}).get(role, role)) for role in roles)]
 
 
 def staff_filters(all_staff, roles, words, names):
@@ -975,6 +1040,11 @@ def build(save, config):
     last_staff = [r for r in staff_rows if staff[r["name"]]["files"] & staff_batch or r["name"] in staff_named]
 
     lineup = grid(squad, w, cfg, latest_intake(people, sources))
+    # Lineup: per position, the best on your imported lists whose best position it is (to beat your starter)
+    lineup["targets"] = {pos: [{"name": r["name"], "club": r["club"], "age": r["age"], "wage": r["wage"], "v": r[pos]}
+                               for r in sorted((r for r in others if r["best"] == pos and r.get(pos) is not None),
+                                               key=lambda r: r[pos], reverse=True)[:8]]
+                         for pos in FORMATION_ORDER}
     players_table, others_table = player_cols(w, False), player_cols(w, True)
     def import_label(files):  # "Player Search, exported 2026-11-14 13:08" from an import's observation file names
         for f in sorted(files):
@@ -986,7 +1056,10 @@ def build(save, config):
         return ""
     many = lambda n, word: f"{n} {word}{'' if n == 1 else 's'}"
     info = {
-        "squad": f"{many(len(squad), 'player')} at {managed}",
+        "squad": f"{many(len(squad), 'player')} at {managed} · click a position on the pitch for everyone who plays it",
+        "formations": "20 shapes, ranked by how well your squad fits them · click one for its eleven and the numbers",
+        "analysis": "your team position by position, against the players you've imported",
+        "development": "how your players changed between two squad exports",
         "elsewhere": f"{many(len(others), 'player')} at other clubs, from everything you've imported",
         "last": " · ".join(filter(None, [many(len(last_rows), 'player'), import_label(batch)])) + " (your latest import)",
         "filters": "your best at each position, and the minimums to set in FM's player search (Filter)",
@@ -997,6 +1070,7 @@ def build(save, config):
     }
     return cfg, with_info({
         "squad": (players_table, squad, {"lineup": lineup}),
+        "formations": ([], {"formations": lineup["formations"]}),
         "development": (players_table, development(rows, people, sources, managed, squad)),
         "analysis": (players_table, analysis(squad, others, lineup, w)),
         "elsewhere": (others_table, others),
@@ -1004,8 +1078,8 @@ def build(save, config):
         "filters": ([], filters(squad, w)),
         "charts": ([], charts(rows, squad, w, cfg, {r["name"] for r in last_rows})),
         "compare": ([], compare_page(rows, squad, w, cfg)),
-        "staff": (staff_cols(roles), staff_rows),
-        "last_staff": (staff_cols(roles), last_staff),
+        "staff": (staff_cols(roles, w.get("staff_names", {})), staff_rows),
+        "last_staff": (staff_cols(roles, w.get("staff_names", {})), last_staff),
         "staff_filters": ([], staff_filters(staff_rows, roles, words, w.get("staff_names", {}))),
         "attributes": ([], attributes_page(cfg, w, rows, save_dir)),
         "guide": ([], GUIDE),
@@ -1152,23 +1226,35 @@ GUIDE = [
              "<li>A player whose scouted attributes are mostly unknown (FM shows -) isn't scored until you know more.</li></ul>"},
     {"key": "", "title": "A player's profile",
      "text": "<b>Click a name</b> on any page (or double-click a row, or press <b>Enter</b>) to open it; <b>Esc</b> closes it.<br>"
-             "<b>Scout report:</b> two or three lines like FM's scout: what kind of player he is at his position (FM's own, "
-             "or his best by attributes), his level, his strengths and weaknesses for that position, and how he's doing for his age.<br>"
-             "<b>Scores:</b> one row per snapshot, oldest first: club, age, every position score, Best, Score and vs Age, each "
-             "with its change since the row before (<span class='t4'>+1.2</span>, <span class='t0'>−0.3</span>); the "
-             "<b>Change</b> row at the bottom is the total change since the first snapshot.<br>"
-             "<b>Attributes:</b> every attribute at each snapshot, oldest to newest, each with its change, and <b>Change</b>: the "
-             "total since the first snapshot. The attributes that matter most at his position come first."},
-    {"key": "squad", "title": "Squad",
-     "text": "<b>Lineup</b> (top left): your squad by position. <b>Starter</b> and <b>Backup</b>; <b>Third</b> = surplus, "
-             "players to sell or loan out; <b>Youth</b> = 18 and under, best for their age first. Each player goes to his best "
-             "position; an empty slot (often DM, MC or AMC) is filled from Third by whoever plays it best (marked <b>↑</b>).<br>"
-             "<b>Formations</b> (top right): 20 common systems ranked by how well your squad fits them. <b>XI</b> = the average "
-             "score of your best eleven for that shape, <b>Depth</b> = a second eleven's, <b>Weakest spot</b> = where that "
-             "eleven is thinnest. Click a formation to see its eleven.<br>"
+             "<b>Overview:</b> a scout report (what kind of player he is, his level, how he's doing for his age), his key facts, "
+             "<b>Good for</b> (the positions FM lists for him, then others his attributes suit), his Technical / Mental / "
+             "Physical values at his best position, <b>Strengths</b> and <b>Weaknesses</b> among what counts there, "
+             "<b>Train first</b> (the attributes that would lift his score most: +1 → what it adds) and what isn't scouted yet.<br>"
+             "<b>Positions:</b> every position score, best first, with his level and whether FM lists it.<br>"
+             "<b>Attributes:</b> every attribute by group; the bar shows how much it counts at the position you pick.<br>"
+             "<b>History:</b> his scores and attributes at every snapshot, each with its change, and the total change.<br>"
+             "Staff profiles: every job ranked, strengths and weaknesses, attributes and history."},
+    {"key": "squad", "title": "Lineup",
+     "text": "<b>Pitch</b> (left): your best eleven for the formation you pick (the best fit first), each box the starter "
+             "and his score there; on the wide positions each goes to the side he plays (FM's position, else his foot). "
+             "<b>Score</b> colours a box by that score, <b>Depth</b> by how many backups he has there: "
+             "everyone else of yours who plays it (that side, at a wide position), not counting those who start elsewhere "
+             "(green = 2 or more, yellow = 1, red = none).<br>"
+             "<b>Click a position</b>: on the right, everyone of yours who plays it (FM's positions, else his best and the ones "
+             "next to it), best first: his role in this formation (Starter, Backup, or where he starts instead), FM position, "
+             "age, score there, vs Age, wage. Under it, the best on your imported lists who'd beat your starter, with the "
+             "compare icon.<br>"
              "<b>Table</b> (below): every player at your club with all his scores. Sort by clicking a heading, filter with the "
              "Search box (see <b>Searching and filtering</b>).<br>"
-             "<b>Use it to:</b> spot thin positions (no backup), surplus (a long Third), who's next in line, and the shape that suits you."},
+             "<b>Use it to:</b> spot thin positions, who's next in line, and who to buy."},
+    {"key": "formations", "title": "Formations",
+     "text": "<b>Shows:</b> 20 common systems ranked by how well your squad fits them: <b>XI</b> = the average score of your "
+             "best eleven for that shape, <b>2nd XI</b> = a second eleven's, and the <b>weakest spot</b>: the position whose "
+             "starters and backups together average lowest (one without a backup counts first).<br>"
+             "<b>Click one</b>: its eleven on a pitch (with the backup under each), and the numbers: both elevens' averages, "
+             "<b>Defence</b>, <b>Midfield</b> and <b>Attack</b>, every position's group average (starters + backups), the "
+             "strongest and weakest spot, how many spots are good, average or weak, where there's no real backup, and the "
+             "eleven's average age."},
     {"key": "analysis", "title": "Analysis",
      "text": "<b>Shows:</b> your team position by position, as the Lineup places them, ranked by what you pick in "
              "<b>Rank by</b>: the <b>position score</b> (the default), <b>Speed</b> (Pace and Acceleration together), or any "
@@ -1190,6 +1276,9 @@ GUIDE = [
              "<b>Listed players by position</b> (how many there are, their middle and best score, your best there, how many "
              "beat him and the cheapest of those; click a row to pick the position), then one graph at a time, picked in "
              "<b>Graph</b>, with how to read it underneath.<br>"
+             "<b>My squad (by age)</b> in <b>compare with</b>: your team on its own, per position: who plays it, the best "
+             "and his age, average age, how many are 30+ or 21 or under, and advice (an ageing starter with no successor, "
+             "no backup, a young player ready to step up); the graphs colour your players by age.<br>"
              "<b>Controls:</b> <b>compare with</b> = whom to compare with: your <b>Last player import</b>, <b>All imported "
              "players</b>, or a division you've imported with ratings. <b>position</b> picks the position for the "
              "score vs wage and rating charts. Hover a dot to see who it is.<br>"
@@ -1282,8 +1371,8 @@ GUIDE = [
              "score is more reliable.</li>"
              "<li>Use the <b>Search - Outfield Players View</b> for searches, so everyone gets a score at every position.</li></ul>"},
     {"key": "", "title": "Keyboard shortcuts",
-     "text": "<ul><li><b>1</b>–<b>6</b>, <b>a</b>, <b>g</b>: go to a page (the numbers in the menu). <b>5</b> Players and "
-             "<b>6</b> Staff open on Last import; press it again for the next sub-tab.</li>"
+     "text": "<ul><li><b>1</b>–<b>4</b>, <b>a</b>, <b>g</b>: go to a page (the numbers in the menu): <b>1</b> Squad opens on "
+             "Lineup, <b>3</b> Players and <b>4</b> Staff on Last import; press it again for the next sub-tab.</li>"
              "<li><b>Arrow keys</b>: move around a table; <b>Enter</b>: the player's profile; <b>s</b>: sort by the current column.</li>"
              "<li><b>/</b> or <b>f</b>: the Search box; <b>Esc</b>: clear it, or close a profile.</li>"
              "<li><b>c</b>: copy the player's name, to paste into FM's search; <b>x</b>: add him to <b>Players › Compare</b>.</li>"

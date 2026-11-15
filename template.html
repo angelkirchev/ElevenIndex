@@ -67,6 +67,30 @@ __THEME__
   #detail .tile { width: min(1400px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow: auto; }
   #detail table + .ttitle { margin-top: 14px; }
   #detail .chg { margin-left: 4px; font-size: 11px; }
+  /* the profile's tabs */
+  .dtabs { display: flex; gap: 2px; margin: 8px 0 12px; border-bottom: 1px solid var(--line); }
+  .dtabs button { padding: 7px 14px 6px; color: var(--dim); font: 600 13px var(--body); background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+  .dtabs button:hover { color: var(--fg); } .dtabs button.on { color: var(--fg); border-bottom-color: var(--blue); }
+  .dcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .dcard { padding: 8px 10px; background: var(--row); border: 1px solid var(--line); border-radius: 8px; }
+  .dcard .dlab { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .dcard .dval { margin-top: 2px; color: var(--fg); font-size: 15px; font-weight: 600; line-height: 1.3; }
+  .dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px; }
+  .dhead { margin: 12px 0 6px; color: var(--cyan); font: 700 14px var(--head); text-transform: uppercase; letter-spacing: .03em; }
+  .dhead .sub { text-transform: none; letter-spacing: 0; font: 400 11px var(--body); }
+  .dhead select { margin-left: 4px; padding: 2px 6px; color: var(--fg); font: 600 12px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; text-transform: none; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 3px 9px; color: var(--fg); background: var(--row); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; }
+  .chip i { color: var(--dim); font-style: normal; font-size: 11px; }
+  .chip.also { opacity: .6; border-style: dashed; }
+  .chip.t4, .chip.t3 { border-color: #4ade8066; } .chip.t2 { border-color: #fbd13d55; } .chip.t1, .chip.t0 { border-color: #f8717166; }
+  table.dtable { width: auto; min-width: 280px; } table.dtable.wide { min-width: 460px; }
+  table.dtable td, table.dtable th { padding: 4px 10px; } table.dtable tr.on td { background: #ff3d9614; } table.dtable tr.minor td { color: var(--dim); }
+  .dbar { display: inline-block; width: 140px; height: 8px; vertical-align: 1px; background: #ffffff10; border-radius: 4px; overflow: hidden; }
+  .dbar i { display: block; height: 100%; border-radius: 4px; }
+  .dbar i.t4, .dbar i.t3 { background: var(--green); } .dbar i.t2 { background: var(--yellow); } .dbar i.t1, .dbar i.t0 { background: var(--red); }
+  .agrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  td.wcell { width: 70px; } .wdot { display: block; height: 6px; background: var(--blue); border-radius: 3px; opacity: .8; }
   #detail .scout { max-width: 900px; margin: 2px 0 10px; padding: 8px 12px; color: var(--fg); line-height: 1.6;
                    background: var(--row); border-left: 3px solid var(--blue); border-radius: 6px; }
   #detail .scout b { color: var(--cyan); }
@@ -88,24 +112,57 @@ __THEME__
   /* ---- Squad: the Lineup and Formations boxes, side by side and one height ---- */
   #squadtop { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-bottom: 10px; }
   #squadtop[hidden] { display: none; }
-  #lineup { display: flex; flex: 0 1 auto; flex-direction: column; }
-  #lineup table { flex: 1 1 auto; width: auto; height: 100%; }
-  #lineup th { color: var(--purple); cursor: default; }
-  #lineup td { padding: 3px 12px; }
-  #lineup td.slot { color: var(--cyan); }
-  #lineup .split { border-left: 1px solid var(--line); }
-  #lineup .v, #lineup .age { margin-left: 6px; }
-  #lineup .age { color: var(--dim); font-size: 11px; }
-  #lineup .foot { margin-left: 5px; color: var(--yellow); font-size: 11px; }
-  #lineup .from { margin-left: 5px; padding: 0 4px; color: var(--cyan); font-size: 10px; border: 1px solid var(--line); border-radius: 4px; }
-  #lineup [data-name] { cursor: pointer; }
-  #lineup .notes { margin-top: 8px; line-height: 1.7; white-space: normal; }
-  .lhead { display: flex; align-items: center; gap: 10px; }
-  #formations { flex: 1 1 380px; min-width: 0; }
-  #formations td, #formations th { padding: 3px 8px; }
-  #formations tr.f { cursor: pointer; }
-  #formations tr.f:hover td { background: var(--hover); }
-  #formations tr.xi td { padding-bottom: 8px; color: var(--dim); font-size: 12px; white-space: normal; }
+  #lineup { flex: 0 1 470px; min-width: 340px; }
+  #formations { flex: 1 1 520px; min-width: 0; }
+  .lhead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .lhead select { padding: 3px 6px; color: var(--fg); font: 600 13px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+                  text-transform: none; letter-spacing: 0; }
+  .lhead .seg button { padding: 3px 10px; font-size: 12px; text-transform: none; letter-spacing: 0; }
+  /* the pitch: grass stripes, the lines, a box per slot */
+  .pitch { position: relative; width: 100%; aspect-ratio: 68 / 88; margin-top: 8px; overflow: hidden; border-radius: 8px;
+           background: repeating-linear-gradient(180deg, #1d5a3e 0 9%, #1a5238 9% 18%); border: 1px solid #ffffff22; }
+  .pitch i { position: absolute; border: 1.5px solid #ffffff40; pointer-events: none; }
+  .pitch .half { left: 0; right: 0; top: 50%; border-width: 1.5px 0 0; }
+  .pitch .circle { left: 50%; top: 50%; width: 22%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); }
+  .pitch .box { left: 22%; right: 22%; height: 15%; } .pitch .box.top { top: -1px; border-top: 0; } .pitch .box.bottom { bottom: -1px; border-bottom: 0; }
+  .pslot { position: absolute; z-index: 1; min-width: 74px; padding: 3px 6px; text-align: center; transform: translate(-50%, -50%); cursor: pointer;
+           background: #111317ee; border: 1px solid #ffffff2a; border-radius: 6px; box-shadow: 0 2px 6px #0007; line-height: 1.25; }
+  .pslot:hover { border-color: #ffffff80; }
+  .pslot.on { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue), 0 2px 8px #000a; }
+  .pslot .plab { color: var(--dim); font: 700 10px var(--body); letter-spacing: .04em; }
+  .pslot .pname { color: var(--fg); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .pslot .pval { font-weight: 700; font-size: 13px; white-space: nowrap; }
+  .pslot .psec { color: var(--dim); font-size: 10px; white-space: nowrap; }
+  .pslot.t4 .pval, .pslot.t3 .pval { color: var(--green); } .pslot.t2 .pval { color: var(--yellow); } .pslot.t1 .pval, .pslot.t0 .pval { color: var(--red); }
+  .pslot.t4, .pslot.t3 { border-bottom: 3px solid var(--green); } .pslot.t2 { border-bottom: 3px solid var(--yellow); } .pslot.t1, .pslot.t0 { border-bottom: 3px solid var(--red); }
+  .pslot.deep3 { border-bottom: 3px solid var(--green); } .pslot.deep3 .pval { color: var(--green); }
+  .pslot.deep2 { border-bottom: 3px solid var(--yellow); } .pslot.deep2 .pval { color: var(--yellow); }
+  .pslot.deep1 { border-bottom: 3px solid var(--red); } .pslot.deep1 .pval { color: var(--red); }
+  .pslot.empty { border-style: dashed; }
+  .pfoot { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; color: var(--dim); }
+  .pfoot b { color: var(--fg); }
+  table.plist td, table.plist th { padding: 4px 8px; }
+  .ytag { padding: 0 5px; color: var(--cyan); font-size: 10px; border: 1px solid var(--line); border-radius: 4px; }
+  .ytag.offtag { color: var(--orange); }
+  table.plist tr:has(.offtag) td { opacity: .55; }
+  .pslot .offside { color: var(--orange); }
+  /* Formations page */
+  table.flist tr.f { cursor: pointer; } table.flist tr.f:hover td { background: var(--hover); }
+  table.flist tr.on td { background: #ff3d9614; } table.flist tr.on td:first-child { box-shadow: inset 3px 0 var(--blue); }
+  table.flist td { padding: 5px 8px; vertical-align: top; } table.flist .sub { white-space: normal; }
+  .fview { display: grid; grid-template-columns: minmax(280px, 380px) minmax(240px, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 1100px) { .fview { grid-template-columns: minmax(0, 1fr); } }
+  table.fstats { width: 100%; table-layout: fixed; }
+  .fgroup { margin-bottom: 10px; padding: 8px 10px 6px; background: var(--row); border: 1px solid var(--line); border-radius: 8px; }
+  .fghead { margin-bottom: 4px; color: var(--cyan); font: 700 14px/1.2 var(--head); text-transform: uppercase; letter-spacing: .03em; }
+  .fghead .sub { text-transform: none; letter-spacing: 0; font: 400 11px var(--body); }
+  .fgroup table.fstats td { padding: 4px 4px; border: 0; background: none !important; }
+  .gpos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gpos .gp { display: inline-flex; flex-direction: column; align-items: center; min-width: 58px; padding: 3px 6px; background: var(--bg);
+              border: 1px solid var(--line); border-radius: 6px; }
+  .gpos .gp i { color: var(--dim); font: 600 10px var(--body); font-style: normal; }
+  .gpos .gweak { border-color: var(--red); } .gpos .gstrong { border-color: var(--green); }
+  table.fstats td { padding: 5px 8px; white-space: normal; } table.fstats td:first-child { width: 48%; color: var(--dim); }
 
   /* ---- Analysis and Development ---- */
   .rankby { margin-left: 6px; color: var(--dim); font: 500 13px var(--body); text-transform: none; letter-spacing: 0; }
@@ -209,7 +266,7 @@ __THEME__
   <table>
     <colgroup><col style="width:190px"><col></colgroup>
     <tr><th colspan="2">Moving between pages</th></tr>
-    <tr><td><kbd>1</kbd>–<kbd>6</kbd></td><td>the pages in the menu, in order: Squad, Analysis, Development, Research, Players, Staff. <kbd>5</kbd> and <kbd>6</kbd> open on Last import; press again for the next sub-tab</td></tr>
+    <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>the pages in the menu: Squad, Research, Players, Staff. <kbd>1</kbd> opens on Lineup, <kbd>3</kbd> and <kbd>4</kbd> on Last import; press again for the next sub-tab</td></tr>
     <tr><td><kbd>A</kbd> <kbd>G</kbd></td><td>Attributes (the attribute weights) and the Guide</td></tr>
     <tr><td><kbd>?</kbd></td><td>open or close this list</td></tr>
     <tr><th colspan="2">In a table</th></tr>
@@ -236,7 +293,7 @@ const LINEUP = __LINEUP__;
 const INFO = __INFO__;  // the line about the page's list, at the right of the strip under the bar (with_info() in score.py)
 if (INFO) { document.getElementById("pinfo").textContent = INFO; document.getElementById("fm-info").dataset.on = "1"; }  // the squad page's lineup panel (grid() in score.py), else null
 // pages drawn as tiles: no table to search or move around in
-const TABLE = !["analysis", "development", "filters", "compare", "staff_filters", "attributes", "guide"].includes(PAGE);
+const TABLE = !["formations", "analysis", "development", "filters", "compare", "staff_filters", "attributes", "guide"].includes(PAGE);
 const input = document.getElementById("filter"), help = document.getElementById("help"), detail = document.getElementById("detail");
 const loanLabel = r => r.loan === "trial" ? "trial" : `loan ${r.loan}`;  // loan in, loan out, trial
 
@@ -415,7 +472,7 @@ function scoutReport(r, H) {
   let s3 = v == null ? "" : v >= 1.05 ? `Well ahead of his age (${FMT.pct(v)} at ${age})` : v >= 0.97 ? `On track for his age (${FMT.pct(v)} at ${age})`
     : v >= 0.9 ? `A little behind for his age (${FMT.pct(v)} at ${age})` : `Behind for his age (${FMT.pct(v)} at ${age})`;
   if (s3) s3 += age <= 21 ? ", with time to grow" : age >= 31 ? ", and may start to decline" : "";
-  if (H.length > 1) { const d = last.score - first.score; s3 += `${s3 ? "; " : ""}${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)} since ${fmtDate(first.date)}`; }
+  if (H.length > 1) { const d = last.score - first.score; s3 += `${s3 ? "; " : ""}${Math.abs(d) < 0.05 ? "no change" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`} since ${fmtDate(first.date)}`; }
   return [s1, s2 && s2[0].toUpperCase() + s2.slice(1) + ".", s3 && s3 + "."].filter(Boolean).join(" ");
 }
 // HTML-safe text
@@ -426,6 +483,103 @@ function changeMark(now, before, text = d => FMT.delta(d)) {
   return `<span class="chg ${now > before ? "t4" : "t0"}">${text(now - before)}</span>`;
 }
 const pctPoints = d => `${d > 0 ? "+" : "−"}${Math.round(Math.abs(d) * 100)}`;
+// ---- the profile's tabs ----
+let detailTab = "Overview";  // the tab a profile opens on: the one used last
+const ATTR_GROUPS = {  // FM's attribute groups (ATTRIBUTE_GROUPS in score.py)
+  Technical: ["Corners", "Crossing", "Dribbling", "Finishing", "First Touch", "Free Kick Taking", "Heading", "Long Shots", "Long Throws",
+              "Marking", "Passing", "Penalty Taking", "Tackling", "Technique"],
+  Mental: ["Aggression", "Anticipation", "Bravery", "Composure", "Concentration", "Decisions", "Determination", "Flair", "Leadership",
+           "Off The Ball", "Positioning", "Teamwork", "Vision", "Work Rate"],
+  Physical: ["Acceleration", "Agility", "Balance", "Jumping Reach", "Natural Fitness", "Pace", "Stamina", "Strength"],
+  Goalkeeping: ["Aerial Reach", "Command of Area", "Communication", "Eccentricity", "Handling", "Kicking", "One on Ones", "Reflexes",
+                "Rushing Out (Tendency)", "Punching (Tendency)", "Throwing"],
+};
+const levelWord = v => v >= 14 ? "excellent" : v >= 13 ? "very good" : v >= 12 ? "good" : v >= 11 ? "decent" : v >= 10 ? "average" : "weak";
+const colLabel = k => { const c = COLS.find(c => c.key === k); return c?.title || c?.label || k; };
+const bar = (v, lo = 6, hi = 15) => `<span class="dbar"><i class="${tier(v, RANGE.f1)}" style="width:${Math.max(4, Math.min(100, (v - lo) / (hi - lo) * 100)).toFixed(0)}%"></i></span>`;
+const card = (label, value, sub = "") => `<div class="dcard"><div class="dlab">${label}</div><div class="dval">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
+function playerOverview(r, s, groups, snaps, scored) {
+  const a = s.attrs, best = s.best, w = WEIGHTS[best] || {};
+  const known = Object.keys(w).filter(k => a[k] != null), wsum = known.reduce((t, k) => t + w[k], 0);
+  const scores = groups.map(k => [k, s[k]]).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
+  const fm = r.plays || [];
+  // good for: his best positions, the ones FM lists for him marked
+  // good for: the positions FM lists for him first (when known), then up to three more his attributes suit, dimmed
+  const chipFor = ([pos, v], extra) => `<span class="chip ${tier(v, RANGE.f1)}${extra ? " also" : ""}" title="${extra ? "by his attributes; FM doesn't list it for him" : fm.length ? "FM lists this position for him" : ""}">${pos}${fm.includes(pos) ? " ✓" : ""} <b>${v.toFixed(1)}</b> <i>${levelWord(v)}</i></span>`;
+  const listed = fm.length ? scores.filter(([pos]) => fm.includes(pos)) : scores.slice(0, 5);
+  const also = fm.length ? scores.filter(([pos, v]) => !fm.includes(pos) && v >= (listed[0]?.[1] ?? 0) - 0.5).slice(0, 3) : [];
+  const goodFor = listed.map(x => chipFor(x, false)).join("") + (also.length ? `<span class="sub" style="align-self:center">by attributes also:</span>` + also.map(x => chipFor(x, true)).join("") : "");
+  // FM's groups at his best position, weighted by it (as on Research)
+  const gv = g => { let t = 0, k = 0, sum = 0; for (const x of ATTR_GROUPS[g]) { if (!w[x]) continue; t += w[x]; if (a[x] != null) { k += w[x]; sum += a[x] * w[x]; } } return t && k >= t / 2 ? sum / k : null; };
+  const groupRows = Object.keys(ATTR_GROUPS).filter(g => g !== "Goalkeeping" || best === "GK").map(g => [g, gv(g)]).filter(([, v]) => v != null)
+    .map(([g, v]) => `<tr><td>${g}</td><td class="num ${tier(v, RANGE.f1)}"><b>${v.toFixed(1)}</b></td><td class="barcell">${bar(v)}</td></tr>`).join("");
+  // strengths, weaknesses, what to train, what's still unscouted: among what counts at his best position
+  const weighted = known.slice().sort((x, y) => w[y] - w[x]);
+  const strengths = weighted.filter(k => a[k] >= 13).sort((x, y) => a[y] - a[x] || w[y] - w[x]).slice(0, 5);
+  const weaknesses = weighted.filter(k => a[k] <= 10).slice(0, 4);
+  const train = weighted.filter(k => a[k] < 20).sort((x, y) => w[y] * (20 - a[y]) - w[x] * (20 - a[x])).slice(0, 3);
+  const unscouted = Object.keys(w).sort((x, y) => w[y] - w[x]).slice(0, 10).filter(k => a[k] == null);
+  const attrList = (ks, extra = () => "") => ks.length ? ks.map(k => `<span class="chip">${esc(k)} <b class="${attrTier(a[k])}">${a[k]}</b>${extra(k)}</span>`).join("") : `<span class="dim">none stand out</span>`;
+  const gain = k => wsum ? ` <i title="what each +1 adds to his ${best} score">+1 → +${(w[k] / wsum).toFixed(2)}</i>` : "";
+  const facts = [card("Best position", `${best} <b class="${tier(s.score, RANGE.f1)}">${FMT.f1(s.score)}</b>`, levelWord(s.score)),
+                 card("vs Age", s.vsAge == null ? "–" : `<b class="${tier(s.vsAge, RANGE.pct)}">${FMT.pct(s.vsAge)}</b>`, s.age != null ? `at ${s.age}` : ""),
+                 card("FM position", esc(r.position || "–")), card("Foot", esc(r.foot || "–")),
+                 card("Wage", r.wage == null ? "–" : `${FMT.money(r.wage)} <span class="sub">p/w</span>`),
+                 card("Value", r.value == null ? "–" : r.valueLo != null && r.valueLo !== r.value ? `${FMT.money(r.valueLo)}–${FMT.money(r.value)}` : FMT.money(r.value))].join("");
+  return `${scored ? `<div class="scout">${scoutReport(r, snaps)}</div>` : ""}
+    <div class="dcards">${facts}</div>
+    <div class="dgrid">
+      <div><div class="dhead">Good for</div><div class="chips">${goodFor || `<span class="dim">no scores yet</span>`}</div>
+        <div class="dhead">At ${esc(best)}, by group</div><table class="dtable">${groupRows || `<tr><td class="dim">not enough known</td></tr>`}</table></div>
+      <div><div class="dhead">Strengths <span class="sub">(13+, what counts at ${esc(best)})</span></div><div class="chips">${attrList(strengths)}</div>
+        <div class="dhead">Weaknesses <span class="sub">(10 or less)</span></div><div class="chips">${attrList(weaknesses)}</div>
+        <div class="dhead">Train first <span class="sub">(the most to gain at ${esc(best)})</span></div><div class="chips">${attrList(train, gain)}</div>
+        ${unscouted.length ? `<div class="dhead">Not scouted yet <span class="sub">(they count at ${esc(best)})</span></div><div class="chips">${unscouted.map(k => `<span class="chip dim">${esc(k)}</span>`).join("")}</div>` : ""}</div>
+    </div>`;
+}
+function playerPositions(r, s, groups) {
+  const fm = r.plays || [];
+  const rows = groups.map(k => [k, s[k]]).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
+  return `<table class="dtable wide"><thead><tr><th>Position</th><th class="num">Score</th><th></th><th>Level</th><th>FM</th></tr></thead><tbody>${rows.map(([pos, v]) =>
+    `<tr class="${pos === s.best ? "on" : ""}"><td><b>${pos}</b>${pos === s.best ? ` <span class="sub">best</span>` : ""}</td><td class="num ${tier(v, RANGE.f1)}"><b>${v.toFixed(1)}</b></td>
+     <td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td><td>${fm.length ? (fm.includes(pos) ? `<span class="t4">plays it</span>` : `<span class="dim">–</span>`) : ""}</td></tr>`).join("")}</tbody></table>
+    <div class="sub">${fm.length ? "Best = his highest score among the positions FM lists for him." : "No FM positions in his exports: best = his highest score anywhere."}</div>`;
+}
+function profileAttributes(r, s, groups, isStaff, at) {
+  const a = s.attrs, scores = groups.map(k => [k, s[k]]).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
+  at = at || (isStaff ? scores[0]?.[0] : s.best) || groups[0];
+  const w = WEIGHTS[at] || {}, top = Math.max(0.0001, ...Object.values(w));
+  const row = k => { const v = a[k]; return `<tr class="${w[k] ? "" : "minor"}"><td>${esc(k)}</td><td class="wcell" title="${w[k] ? `weight ${w[k]} at ${at}` : `doesn't count at ${at}`}"><span class="wdot" style="width:${((w[k] || 0) / top * 100).toFixed(0)}%"></span></td>
+    <td class="num ${v == null ? "dim" : attrTier(v)}"><b>${v ?? "–"}</b></td></tr>`; };
+  const select = `<select class="aposSel">${groups.map(g => `<option value="${g}"${g === at ? " selected" : ""}>${esc(isStaff ? colLabel(g) : g)}</option>`).join("")}</select>`;
+  if (isStaff) {  // staff: one list, what counts for the job first
+    const ks = Object.keys(a).sort((x, y) => (w[y] || 0) - (w[x] || 0) || x.localeCompare(y));
+    return `<div class="dhead">Weights at ${select}</div><table class="dtable">${ks.map(row).join("")}</table>`;
+  }
+  const cols = Object.entries(ATTR_GROUPS).filter(([g]) => g !== "Goalkeeping" || at === "GK" || ATTR_GROUPS.Goalkeeping.some(k => a[k] != null && s.best === "GK"))
+    .map(([g, ks]) => { const list = ks.filter(k => k in a || w[k]).sort((x, y) => (w[y] || 0) - (w[x] || 0) || x.localeCompare(y));
+      return list.length ? `<div><div class="dhead">${g}</div><table class="dtable">${list.map(row).join("")}</table></div>` : ""; }).join("");
+  return `<div class="dhead">How much each counts at ${select} <span class="sub">(the bar; dimmed = doesn't count there)</span></div><div class="agrid">${cols}</div>`;
+}
+function staffOverview(r, s, groups) {
+  const a = s.attrs, jobs = groups.map(k => [k, s[k]]).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
+  const best = jobs[0]?.[0], w = WEIGHTS[best] || {};
+  const ks = Object.keys(a).filter(k => a[k] != null);
+  const strengths = ks.filter(k => a[k] >= 14).sort((x, y) => a[y] - a[x]).slice(0, 6);
+  const weaknesses = ks.filter(k => w[k] && a[k] <= 8).sort((x, y) => w[y] - w[x]).slice(0, 4);
+  const chip = k => `<span class="chip">${esc(k)} <b class="${attrTier(a[k])}">${a[k]}</b></span>`;
+  return `<div class="dcards">${card("Best job", best ? `${esc(colLabel(best))} <b class="${tier(jobs[0][1], RANGE.f1)}">${jobs[0][1].toFixed(1)}</b>` : "–", best ? levelWord(jobs[0][1]) : "")}
+      ${card("Preferred job", esc(r.job || "–"))}${card("Personality", esc(r.personality || "–"))}${card("Age", r.age ?? "–")}</div>
+    <div class="dgrid"><div><div class="dhead">Every job, best first</div><table class="dtable wide">${jobs.map(([k, v]) =>
+      `<tr class="${k === best ? "on" : ""}"><td>${esc(colLabel(k))}</td><td class="num ${tier(v, RANGE.f1)}"><b>${v.toFixed(1)}</b></td><td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td></tr>`).join("")}</table></div>
+      <div><div class="dhead">Strengths <span class="sub">(14+)</span></div><div class="chips">${strengths.length ? strengths.map(chip).join("") : `<span class="dim">none stand out</span>`}</div>
+        <div class="dhead">Weaknesses <span class="sub">(8 or less, for ${esc(colLabel(best || ""))})</span></div><div class="chips">${weaknesses.length ? weaknesses.map(chip).join("") : `<span class="dim">none</span>`}</div></div></div>`;
+}
+function showDetailRebind(r, s, groups, isStaff) {  // the Attributes tab's menu after it's redrawn
+  const sel = document.querySelector("#detailbody .aposSel");
+  if (sel) sel.onchange = () => { document.querySelector('#detailbody .dsec[data-sec="Attributes"]').innerHTML = profileAttributes(r, s, groups, isStaff, sel.value);
+    showDetailRebind(r, s, groups, isStaff); };
+}
 // A player's (or staff member's) profile: his scout report, his scores at every snapshot with their changes and the
 // total change, and every attribute over time
 function showDetail(r) {
@@ -462,16 +616,30 @@ function showDetail(r) {
     return `<td class="num ${attrTier(v)}">${v}${moved}</td>`;
   }).join("") + "</tr>";
   const about = [r.club, r.age != null && `${r.age}y`, ...(isStaff ? [r.job, r.personality] : [r.position && `FM: ${r.position}`, r.loan && loanLabel(r)])];
+  const history = `${several ? "" : `<div class="sub">Only one snapshot so far (${fmtDate(newest.date)}): changes show once you export again later.</div>`}
+    <table><thead><tr><th>Date</th><th>Club</th><th class="num">Age</th>${groups.map(k => `<th class="num">${k}</th>`).join("")}<th>Best</th>` +
+      `${scored ? `<th class="num">Score</th>` : ""}${withAge ? `<th class="num">vs Age</th>` : ""}</tr></thead><tbody>${rows}${totals}</tbody></table>
+    <div class="ttitle">Attributes over time</div>
+    <table><thead><tr><th>Attribute</th>${several ? `<th class="num wt" title="the total change, first snapshot to last">Change</th>` : ""}` +
+      `${snaps.map(s => `<th class="num">${fmtDate(s.date)}</th>`).join("")}</tr></thead><tbody>${order.map(attrRow).join("")}</tbody></table>`;
+  const sections = isStaff ? { Overview: staffOverview(r, newest, groups), Attributes: profileAttributes(r, newest, groups, isStaff), History: history }
+    : { Overview: playerOverview(r, newest, groups, snaps, scored), Positions: playerPositions(r, newest, groups),
+        Attributes: profileAttributes(r, newest, groups, isStaff), History: history };
+  if (!sections[detailTab]) detailTab = "Overview";
   document.getElementById("detailbody").innerHTML = `
     <div class="ttitle">${r.name} <span class="sub">· ${about.filter(Boolean).join(" · ")}</span>${isStaff ? "" :
       ` <button class="cadd"></button>`}</div>
-    ${isStaff || !scored ? "" : `<div class="scout">${scoutReport(r, snaps)}</div>`}
-    ${several ? "" : `<div class="sub">Only one snapshot so far (${fmtDate(newest.date)}): changes show once you export your squad again later.</div>`}
-    <table><thead><tr><th>Date</th><th>Club</th><th class="num">Age</th>${groups.map(k => `<th class="num">${k}</th>`).join("")}<th>Best</th>` +
-      `${scored ? `<th class="num">Score</th>` : ""}${withAge ? `<th class="num">vs Age</th>` : ""}</tr></thead><tbody>${rows}${totals}</tbody></table>
-    <div class="ttitle">Attributes</div>
-    <table><thead><tr><th>Attribute</th>${several ? `<th class="num wt" title="the total change, first snapshot to last">Change</th>` : ""}` +
-      `${snaps.map(s => `<th class="num">${fmtDate(s.date)}</th>`).join("")}</tr></thead><tbody>${order.map(attrRow).join("")}</tbody></table>`;
+    <div class="dtabs">${Object.keys(sections).map(t => `<button data-tab="${t}" class="${t === detailTab ? "on" : ""}">${t}</button>`).join("")}</div>
+    ${Object.entries(sections).map(([t, html]) => `<div class="dsec" data-sec="${t}"${t === detailTab ? "" : " hidden"}>${html}</div>`).join("")}`;
+  const body = document.getElementById("detailbody");
+  body.querySelectorAll(".dtabs button").forEach(b => b.onclick = () => {
+    detailTab = b.dataset.tab;
+    body.querySelectorAll(".dtabs button").forEach(x => x.classList.toggle("on", x === b));
+    body.querySelectorAll(".dsec").forEach(x => x.hidden = x.dataset.sec !== detailTab);
+  });
+  const atSel = body.querySelector(".aposSel");  // Attributes tab: weights at another position / job
+  if (atSel) atSel.onchange = () => { body.querySelector('.dsec[data-sec="Attributes"]').innerHTML = profileAttributes(r, newest, groups, isStaff, atSel.value);
+    showDetailRebind(r, newest, groups, isStaff); };
   const add = document.querySelector("#detailbody .cadd");
   const label = () => { const p = comparePicks(), on = p.includes(r.name), full = !on && p.every(Boolean);
     add.textContent = on ? "✓ In Compare (remove)" : full ? "Compare is full" : "+ Compare"; add.disabled = full; };
@@ -501,58 +669,173 @@ function renderFilters() {
     <table><thead><tr><th>Attribute</th>${entry.players.map(who).join("")}<th class="num search" title="the minimum to set in FM's search filter (Is At Least)">Filter</th></tr></thead>
     <tbody>${entry.rows.map(line).join("")}</tbody></table></div>`).join("");
 }
-// Squad page: the lineup panel above the table. LINEUP = { slots: [{ label, pos, left, senior: [[players] ×3],
-// extra: { youth, intake } }], extraCols, spare, spareYouth, loanOut } (grid() in score.py)
-function renderLineup() {
-  const box = document.getElementById("lineup"), d = LINEUP, n = 3;
-  if (!d) return;
-  const top = document.getElementById("squadtop");
-  top.hidden = false;
-  const surname = name => name.split(" ").pop();
-  const extra = d.extraCols;
-  const entry = (p, youth) => `<div data-name="${esc(p.name)}">` +
-    `<span title="${esc(p.name)}">${esc(surname(p.name))}</span>` +
-    `<span class="v ${tier(p.score, RANGE.f1)}">${FMT.f1(p.score)}</span><span class="age">${p.age}y</span>` + (youth && p.left ? `<span class="foot" title="left foot Fairly Strong or better">L</span>` : "") +
-    (p.from ? `<span class="from" title="moved up from Third (their best position, ${esc(p.from)}) to fill an empty slot">↑${esc(p.from)}</span>` : "") + (p.loan ? `<span class="loan ${p.loan}">${loanLabel(p)}</span>` : "") + "</div>";
-  const cell = (ps, youth, ci) => `<td class="${ci === n ? "split" : ""}">` +
-    (ps.length ? ps.map(p => entry(p, youth)).join("") : `<span class="dim">–</span>`) + "</td>";
-  const heads = ["Starter", "Backup", "Third"];
-  const list = (title, ps) => ps.length ? `<div><span class="sub">${title}:</span> ${ps.map(p =>
-    `<span title="${esc(p.name)}" data-name="${esc(p.name)}">${esc(surname(p.name))}</span> <span class="sub">${p.age}y ${p.pos} ${FMT.f1(p.v)}</span>`).join(" · ")}</div>` : "";
-  box.innerHTML = `<div class="ttitle lhead">Lineup</div><table>
-    <thead><tr><th></th>${heads.map(h => `<th>${h}</th>`).join("")}${extra.map((c, i) =>
-      `<th class="${i ? "" : "split"}" title="${esc(c.title)}">${esc(c.label)}</th>`).join("")}</tr></thead>
-    <tbody>${d.slots.map(s => `<tr><td class="slot" title="scored as ${esc(s.pos)}${s.left ? ", left-footed only" : ""}">${esc(s.label)}</td>` +
-      s.senior.map((ps, i) => cell(ps, false, i)).join("") + extra.map((c, i) => cell(s.extra[c.key], true, n + i)).join("") + "</tr>").join("")}</tbody>
-  </table>
-  <div class="notes">${list("Not placed", d.spare)}${list("Youngsters not placed", d.spareYouth)}${list("Out on loan", d.loanOut)}</div>`;
-  renderFormations();
+// ---- the pitch: Squad › Lineup and Squad › Formations ----
+// A formation (formations() in score.py): { name, shape: {pos: count}, players: [XI], second: [2nd XI], lines, xi, depth }
+const ROW_Y = { ST: 9, AMC: 27, "AML/AMR": 25, MC: 45, "ML/MR": 43, DM: 60, "WBL/WBR": 63, "DL/DR": 75, DC: 79, GK: 93 };
+const WIDE = { "DL/DR": ["DL", "DR"], "WBL/WBR": ["WBL", "WBR"], "ML/MR": ["ML", "MR"], "AML/AMR": ["AML", "AMR"] };
+const SPREAD = { 1: [50], 2: [36, 64], 3: [26, 50, 74], 4: [17, 39, 61, 83] };
+// which side a player plays at a wide position: FM's Position column (L / R) when exported, else his foot
+function playsSide(p, pos, side, sides) {
+  const s = (sides || p.sides || {})[pos];
+  if (s) return s.includes(side);
+  const left = p.left === true || p.left === "yes";
+  return side === "L" ? left : !left;
 }
-// Beside the lineup: how the squad fits common formations (formations() in score.py), best first; a row opens its XI
-let openFormation = null;
-function renderFormations() {
-  const box = document.getElementById("formations"), fs = LINEUP.formations || [];
-  const surname = name => name.split(" ").pop();
-  box.innerHTML = `<div class="ttitle">Formations <span class="sub">how your squad fits them · click one for its XI</span></div>
-    <table><thead><tr><th class="num">#</th><th>Formation</th><th class="num" title="the best XI's average score">XI</th>
-    <th class="num" title="a second XI's average, from the players left: how well you can rotate">Depth</th><th>Weakest spot</th></tr></thead>
-    <tbody>${fs.map((f, i) => `<tr class="f" data-f="${esc(f.name)}"><td class="num dim">${i + 1}</td>
-      <td title="${esc(f.note)}"><b>${esc(f.name)}</b></td>
-      <td class="num ${tier(f.xi, RANGE.f1)}">${f.xi.toFixed(2)}${f.short ? ` <span class="t0" title="positions nobody can fill">−${f.short}</span>` : ""}</td>
-      <td class="num ${tier(f.depth, RANGE.f1)}">${f.depth.toFixed(2)}</td>
-      <td>${f.weak ? `${esc(f.weak.pos)} <span class="dim">${esc(surname(f.weak.name))}</span> <span class="${tier(f.weak.v, RANGE.f1)}">${f.weak.v.toFixed(1)}</span>` : "–"}</td></tr>` +
-      (openFormation === f.name ? `<tr class="xi"><td></td><td colspan="4"><i>${esc(f.note)}.</i> ${f.players.map(p =>
-        `${esc(p.pos)} <span data-name="${esc(p.name)}" style="color:var(--fg);cursor:pointer">${esc(surname(p.name))}</span> ${p.v.toFixed(1)}`).join(" · ")}</td></tr>` : "")).join("")}</tbody></table>
-    <div class="sub">XI: your best eleven for that shape (each player once, at positions he plays: FM's own when your export has the
-    Position column, else any). Shapes with the same positions rank the same; roles and duties don't show in the scores.</div>`;
-  box.querySelectorAll("tr.f").forEach(tr => tr.onclick = () => {
-    openFormation = openFormation === tr.dataset.f ? null : tr.dataset.f; renderFormations();
-  });
+const sideWhy = (p, pos, sides) => {  // why he's greyed out at a wide slot: the side FM gives him, else his foot
+  const s = (sides || p.sides || {})[pos];
+  if (s) return s === "LR" ? "Plays on both sides" : `Plays on the ${s === "L" ? "Left" : "Right"}`;
+  return (p.left === true || p.left === "yes") ? "Left-footed" : "Right-footed";
+};
+function pitchSlots(f) {  // the formation's slots, each with its starter and backup (at a wide pair, each on the side he plays)
+  const slots = [];
+  for (const [pos, n] of Object.entries(f.shape)) {
+    const pick = list => list.filter(p => p.pos === pos);
+    let xi = pick(f.players), sec = pick(f.second);
+    const wide = WIDE[pos] && n === 2;
+    if (wide) {  // each on the side he was picked for (formations() picks one left, one right)
+      const order = l => ["L", "R"].map(sd => l.find(p => p.side === sd) || null);
+      xi = order(xi); sec = order(sec);
+    }
+    const xs = wide ? [11, 89] : SPREAD[n] || Array.from({ length: n }, (_, k) => 10 + 80 * (k + .5) / n);
+    for (let k = 0; k < n; k++)
+      slots.push({ pos, k, key: `${pos}|${k}`, label: wide ? WIDE[pos][k] : pos, side: wide ? "LR"[k] : null,
+                   x: xs[k], y: ROW_Y[pos] ?? 50, xi: xi[k] || null, sec: sec[k] || null });
+  }
+  return slots;
+}
+function pitchHtml(f, chosen, box, extra = "") {  // box(slot) -> the inside of a slot's box
+  return `<div class="pitch">${'<i class="half"></i><i class="circle"></i><i class="box top"></i><i class="box bottom"></i>'}
+    ${pitchSlots(f).map(s => `<div class="pslot ${box(s).cls || ""}${s.key === chosen ? " on" : ""}" data-key="${s.key}" style="left:${s.x}%;top:${s.y}%">${box(s).html}</div>`).join("")}${extra}</div>`;
+}
+const surnameOf = n => n.split(" ").pop();
+// a position group in words, for the weakest / strongest spot: "Weak central defence"
+const GROUP_NAMES = { GK: "goalkeeper", DC: "central defence", "DL/DR": "full backs", "WBL/WBR": "wing backs", DM: "defensive midfield",
+                      MC: "central midfield", "ML/MR": "wide midfield", AMC: "attacking midfield", "AML/AMR": "wingers", ST: "strikers" };
+const groupName = (pos, lead) => `${lead} ${GROUP_NAMES[pos] || pos}`;
+
+// Squad › Lineup: the pitch for a formation, and everyone of yours who plays the position you click
+const SHAPE_STORE = "fm:__SAVE__:lineup-shape", SLOT_STORE = "fm:__SAVE__:lineup-slot", MODE_STORE = "fm:__SAVE__:lineup-mode";
+const stored = (k, d) => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
+const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+function renderLineup() {
+  const d = LINEUP;
+  if (!d || !(d.formations || []).length) return;
+  document.getElementById("squadtop").hidden = false;
+  const fs = d.formations;
+  let f = fs.find(x => x.name === stored(SHAPE_STORE, "")) || fs[0];
+  const mode = stored(MODE_STORE, "score");
+  const slots = pitchSlots(f);
+  let chosen = stored(SLOT_STORE, "");
+  if (!slots.some(s => s.key === chosen)) chosen = (slots.find(s => s.pos === "ST") || slots[slots.length - 1]).key;
+  const plays = r => d.plays[r.name] || [];
+  const options = (pos, starter) => DATA.filter(r => r[pos] != null && plays(r).includes(pos) && r.loan !== "out" && (starter == null || r[pos] >= starter - 1));
+  const onSide = (r, s) => !s.side || playsSide(r, s.pos, s.side, d.sides[r.name]);  // a wide slot: plays that side
+  const box = s => {
+    if (!s.xi) return { cls: "empty", html: `<div class="plab">${s.label}</div><div class="pname dim">nobody</div>` };
+    if (mode === "depth") {
+      const elsewhere = new Set(f.players.filter(p => p.name !== s.xi.name).map(p => p.name));  // starting at another spot
+      // backups: everyone of yours who plays it (that side, at a wide slot), but the starter and those starting elsewhere
+      const b = options(s.pos).filter(r => r.name !== s.xi.name && !elsewhere.has(r.name) && onSide(r, s)).length;
+      return { cls: b >= 2 ? "deep3" : b === 1 ? "deep2" : "deep1",
+               html: `<div class="plab">${s.label}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${b ? `${b} backup${b === 1 ? "" : "s"}` : "no backup"}</div>` };
+    }
+    const off = s.side && s.xi.off;  // the starter on a side he doesn't play (no one who does was close enough)
+    return { cls: tier(s.xi.v, RANGE.f1), html: `<div class="plab">${s.label}${off ? ` <span class="offside" title="${esc(sideWhy(s.xi, s.pos))}: not his side">⚠</span>` : ""}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${s.xi.v.toFixed(1)}</div>` };
+  };
+  const weak = f.weak;  // the position whose starters + backups average lowest (one without a backup first)
+  document.getElementById("lineup").innerHTML = `<div class="ttitle lhead">Lineup
+      <select id="lshape">${fs.map(x => `<option${x.name === f.name ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
+      <span class="seg" id="lmode"><button data-m="score" class="${mode === "score" ? "on" : ""}">Score</button><button data-m="depth" class="${mode === "depth" ? "on" : ""}">Depth</button></span></div>
+    ${pitchHtml(f, chosen, box)}
+    <div class="pfoot"><span>Team average <b class="${tier(f.xi, RANGE.f1)}">${f.xi.toFixed(2)}</b></span>
+      ${weak ? `<span title="${esc(weak.pos)}: its starters and backups averaged">${groupName(weak.pos, "Weak")} <b class="${tier(weak.v, RANGE.f1)}">${weak.v.toFixed(1)}</b>${weak.missing ? ` <span class="t0">no backup</span>` : ""}</span>` : ""}
+      ${f.short ? `<span class="t0">${f.short} empty</span>` : ""}</div>`;
+  // the chosen position: everyone of yours who plays it, best first
+  const slot = slots.find(s => s.key === chosen), pos = slot.pos;
+  const role = r => {
+    const a = f.players.find(p => p.name === r.name), b = f.second.find(p => p.name === r.name);
+    if (a) return a.pos === pos ? `<b>Starter</b>` : `Starter at ${a.pos}`;
+    if (b) return b.pos === pos ? "Backup" : `Backup at ${b.pos}`;
+    return `<span class="dim">–</span>`;
+  };
+  const list = options(pos).sort((a, b) => onSide(b, slot) - onSide(a, slot) || b[pos] - a[pos]);  // a wide slot: that side first
+  const starter = slot.xi ? slot.xi.v : null;
+  const targets = (d.targets[pos] || []).filter(t => starter == null || t.v > starter).slice(0, 5);
+  document.getElementById("formations").innerHTML = `<div class="ttitle">${esc(slot.label)} <span class="sub">${list.length} of yours play ${esc(pos)}${slot.xi ? ` · starter ${esc(slot.xi.name)}` : ""}</span></div>
+    ${slot.side ? `<div class="sub">${slot.side === "L" ? "Left" : "Right"} side: those who play it first (FM's position when your export has it, else the foot); the rest are greyed out.</div>` : ""}
+    ${list.length ? `<table class="plist"><thead><tr><th class="num">#</th><th>Player</th><th>In ${esc(f.name)}</th><th>FM position</th>${slot.side ? "<th>Foot</th>" : ""}<th class="num">Age</th>
+      <th class="num">${esc(pos)}</th><th class="num">vs Age</th><th class="num">Wage</th></tr></thead><tbody>${list.map((r, i) => `<tr>
+      <td class="num dim">${i + 1}</td><td><span class="pl" data-name="${esc(r.name)}">${esc(r.name)}</span>${cmpIcon(r)}${r.age <= d.youthAge ? ` <span class="ytag">youth</span>` : ""}${
+        onSide(r, slot) ? "" : ` <span class="ytag offtag" title="not his side">${esc(sideWhy(r, pos, d.sides[r.name]))}</span>`}</td>
+      <td class="text">${role(r)}</td><td class="text">${esc(r.position || "–")}</td>${slot.side ? `<td class="text">${esc(r.foot || "–")}</td>` : ""}<td class="num">${r.age ?? "–"}</td>
+      <td class="num ${tier(r[pos], RANGE.f1)}"><b>${r[pos].toFixed(1)}</b></td><td class="num ${tier(r.vsAge, RANGE.pct)}">${FMT.pct(r.vsAge)}</td>
+      <td class="num">${r.wage == null ? "–" : FMT.money(r.wage)}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">No player of yours plays ${esc(pos)}.</div>`}
+    <div class="ttitle" style="margin-top:14px">Better on your lists <span class="sub">imported players best at ${esc(pos)}${starter != null ? `, above ${starter.toFixed(1)}` : ""}</span></div>
+    ${targets.length ? `<table class="plist"><tbody>${targets.map(t => `<tr><td>${esc(t.name)}${cmpIcon(t)}</td><td class="text">${esc(t.club || "–")}</td>
+      <td class="num">${t.age ?? "–"}</td><td class="num">${t.wage == null ? "–" : FMT.money(t.wage) + " p/w"}</td>
+      <td class="num ${tier(t.v, RANGE.f1)}"><b>${t.v.toFixed(1)}</b></td>${starter != null ? `<td class="num t4">+${(t.v - starter).toFixed(1)}</td>` : ""}</tr>`).join("")}</tbody></table>`
+      : `<div class="sub">${(d.targets[pos] || []).length ? "No one on your lists beats your starter here." : "Nobody on your imported lists is best here yet."}</div>`}`;
+  // the controls
+  document.getElementById("lshape").onchange = e => { keep(SHAPE_STORE, e.target.value); renderLineup(); };
+  document.querySelectorAll("#lmode button").forEach(b => b.onclick = () => { keep(MODE_STORE, b.dataset.m); renderLineup(); });
+  document.querySelectorAll("#lineup .pslot").forEach(el => el.onclick = () => { keep(SLOT_STORE, el.dataset.key); renderLineup(); });
 }
 document.getElementById("squadtop").addEventListener("click", e => {
-  const el = e.target.closest("[data-name]");
+  const icon = e.target.closest(".cmpic");
+  if (icon) { if (!icon.classList.contains("full")) { fmCompareToggle(icon.dataset.name); renderLineup(); if (TABLE) render(); } return; }
+  const el = e.target.closest(".pl[data-name]");
   if (el && getSelection().isCollapsed) showDetail(DATA.find(r => r.name === el.dataset.name));
 });
+
+// Squad › Formations: DATA = { formations } (formations() in score.py): the shapes ranked; one opens on a pitch with its numbers
+const FORM_STORE = "fm:__SAVE__:formation";
+function renderFormationsPage() {
+  input.style.display = "none"; document.getElementById("count").style.display = "none";
+  const main = document.getElementById("main"), fs = DATA.formations || [];
+  main.className = "tiles";
+  if (!fs.length) { main.innerHTML = `<div class="tile wide"><div class="sub">Import your squad first.</div></div>`; return; }
+  const f = fs.find(x => x.name === stored(FORM_STORE, "")) || fs[0];
+  const list = `<div class="tile"><div class="ttitle">Formations <span class="sub">best fit first</span></div>
+    <table class="flist"><thead><tr><th class="num">#</th><th>Formation</th><th class="num">XI</th><th class="num">2nd XI</th><th>Weakest spot</th></tr></thead>
+    <tbody>${fs.map((x, i) => `<tr class="f${x.name === f.name ? " on" : ""}" data-f="${esc(x.name)}"><td class="num dim">${i + 1}</td>
+      <td><b>${esc(x.name)}</b><div class="sub">${esc(x.note)}</div></td>
+      <td class="num ${tier(x.xi, RANGE.f1)}">${x.xi.toFixed(2)}</td><td class="num ${tier(x.depth, RANGE.f1)}">${x.depth.toFixed(2)}</td>
+      <td title="${x.weak ? `${esc(x.weak.pos)}: its ${x.weak.starters} starter(s) and ${x.weak.backups} backup(s) averaged` : ""}">${x.weak ?
+        `${groupName(x.weak.pos, "Weak")} <span class="${tier(x.weak.v, RANGE.f1)}">${x.weak.v.toFixed(1)}</span>${x.weak.missing ? ` <span class="t0">no backup</span>` : ""}` : "–"}${x.short ? ` <span class="t0">${x.short} empty</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+  // the chosen shape: its eleven, the backup under each, and the numbers
+  const box = s => s.xi ? { cls: tier(s.xi.v, RANGE.f1), html: `<div class="plab">${s.label}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div>
+      <div class="pval">${s.xi.v.toFixed(1)}</div><div class="psec">${s.sec ? `${esc(surnameOf(s.sec.name))} ${s.sec.v.toFixed(1)}` : "no backup"}</div>` }
+    : { cls: "empty", html: `<div class="plab">${s.label}</div><div class="pname dim">nobody</div>` };
+  const slots = pitchSlots(f), xi = f.players, out = xi.filter(p => p.pos !== "GK");
+  const strong = f.strong, weak = f.weak;  // by position group: starters + backups averaged
+  const level = v => ({ t4: "good", t3: "good", t2: "average" })[tier(v, RANGE.f1)] || "weak";
+  const counts = { good: 0, average: 0, weak: 0 };
+  xi.forEach(p => counts[level(p.v)]++);
+  const thin = slots.filter(s => s.xi && (!s.sec || s.sec.v < s.xi.v - 1.5));
+  const age = side => side.length ? (side.reduce((a, p) => a + (p.age || 0), 0) / side.length).toFixed(1) : "–";
+  const num = (label, v, fmt = x => x.toFixed(2)) => `<tr><td>${label}</td><td class="num ${v == null ? "dim" : tier(v, RANGE.f1)}"><b>${v == null ? "–" : fmt(v)}</b></td></tr>`;
+  const group = (title, rows) => `<div class="fgroup"><div class="fghead">${title}</div><table class="fstats"><tbody>${rows}</tbody></table></div>`;
+  const row = (label, value) => `<tr><td>${label}</td><td class="num">${value}</td></tr>`;
+  const val = (v, d = 2) => v == null ? "–" : `<b class="${tier(v, RANGE.f1)}">${v.toFixed(d)}</b>`;
+  const stats = group("Elevens", row("Best eleven (XI)", val(f.xi)) + row("Second eleven", val(f.depth)) +
+        row("Average age", `${age(xi)} <span class="sub">· 2nd XI ${age(f.second)}</span>`) +
+        (f.short ? row("Empty spots", `<span class="t0">${f.short}</span>`) : "")) +
+    group("Lines <span class=\"sub\">(the eleven)</span>", Object.entries(f.lines).map(([k, v]) => row(k, val(v))).join("")) +
+    group("Positions <span class=\"sub\">(starters + backups averaged)</span>",
+      `<tr><td colspan="2"><div class="gpos">${f.groups.map(g => `<span class="gp${g.pos === weak?.pos ? " gweak" : ""}${g.pos === strong?.pos ? " gstrong" : ""}"
+        title="${g.starters} starter(s) + ${g.backups} backup(s)${g.missing ? ", a backup missing" : ""}"><i>${g.pos}</i>${val(g.v, 1)}${g.missing ? `<span class="t0">!</span>` : ""}</span>`).join("")}</div></td></tr>` +
+      row("Strongest", strong ? `${groupName(strong.pos, "Strong")} ${val(strong.v, 1)}` : "–") +
+      row("Weakest", weak ? `${groupName(weak.pos, "Weak")} ${val(weak.v, 1)}${weak.missing ? ` <span class="t0">no backup</span>` : ""}` : "–") +
+      row(`No real backup <span class="sub">(none, or 1.5 below)</span>`, thin.length ? thin.map(s => s.label).join(", ") : `<span class="t4">none</span>`)) +
+    group("Spots <span class=\"sub\">(the eleven, by score colour)</span>",
+      row("Good · average · weak", `<b class="t4">${counts.good}</b> · <b class="t2">${counts.average}</b> · <b class="t0">${counts.weak}</b>`));
+  const view = `<div class="tile"><div class="ttitle">${esc(f.name)} <span class="sub">${esc(f.note)}</span></div>
+    <div class="fview">${pitchHtml(f, null, box)}<div>${stats}<div class="sub">Each box: the starter and his score; under it, the backup.
+      A position's level is its starters and backups averaged; ! = a backup missing.
+      Good / average / weak follow the score colours (green / yellow / red).</div></div></div></div>`;
+  main.innerHTML = list + view;
+  main.querySelectorAll("tr.f").forEach(tr => tr.onclick = () => { keep(FORM_STORE, tr.dataset.f); renderFormationsPage(); });
+}
 // Analysis page: DATA = { positions: [{ pos, players: [{ name, age, role, from, score, attrs }], imported, importedAvg,
 // importedScore }], attrs, players } (analysis() in score.py): the squad by position, ranked by what "Rank by" picks
 const ANALYSIS_STORE = "fm:__SAVE__:analysis-by";  // a new name: everyone starts from Score once
@@ -971,7 +1254,7 @@ input.addEventListener("input", () => { cur.r = 0; render(); });
 for (const overlay of [help, detail]) overlay.addEventListener("click", e => { if (e.target === overlay) overlay.classList.remove("show"); });
 if (PAGE.endsWith("staff")) input.title = "Type a name, or filters like job:coach PosTct>=12 personality:prof";
 const DRAW = { filters: renderFilters, staff_filters: renderFilters, development: renderDevelopment, analysis: renderAnalysis,
-               compare: renderCompare, attributes: renderAttributes, guide: renderGuide };
+               compare: renderCompare, formations: renderFormationsPage, attributes: renderAttributes, guide: renderGuide };
 if (PAGE === "squad") renderLineup();
 (DRAW[PAGE] || render)();
 compareTray();

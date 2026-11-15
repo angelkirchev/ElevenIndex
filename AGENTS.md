@@ -26,23 +26,25 @@ and `FMANALYST_HOME` when set (tests). Data: `config.toml`, `saves/`, `out/`, `a
 
 ## Pages
 
-The top menu is `MENU` in score.py: keys 1-6, then A and G. **Players** (5) and **Staff** (6) are groups whose pages
-show as sub-tabs under the bar (`SUB_LABELS`); a group's key opens it on its Last import and, pressed again, the next sub-tab
-(`NAV_SCRIPT`, `fmNavTarget`). `PAGE_LABELS` holds each page's full name.
+The top menu is `MENU` in score.py: keys 1-4, then A and G. **Squad** (1), **Players** (3) and **Staff** (4) are groups
+whose pages show as sub-tabs under the bar (`SUB_LABELS`); a group's key opens it on its first page (Lineup, Last import)
+and, pressed again, the next sub-tab (`NAV_SCRIPT`, `fmNavTarget`). `PAGE_LABELS` holds each page's full name. Each list
+page has a line about its list at the strip's right (`with_info`).
 
 | Key | File | Menu | What it shows |
 |---|---|---|---|
-| 1 | squad | Squad | the Lineup and Formations panels, then every player at the club |
-| 2 | analysis | Analysis | the squad position by position, ranked by score (or an attribute), against imported players |
-| 3 | development | Development | two squad snapshots compared |
-| 4 | charts | Research | per position, the listed players against your best; then one chart at a time |
-| 5 | elsewhere | Players › All players | everyone imported who isn't at the club |
-| 5 | last | Players › Last import | the latest player import only |
-| 5 | filters | Players › Search | per position, the squad's best and suggested search minimums (Filter) |
-| 5 | compare | Players › Compare | two players side by side (`compare_page`; two picks in localStorage, by the icon by a name, x or + Compare) |
-| 6 | staff | Staff › All staff | every staff member, scored for each job |
-| 6 | last_staff | Staff › Last import | the latest staff import only |
-| 6 | staff_filters | Staff › Search | per job, the best staff imported and suggested minimums |
+| 1 | squad | Squad › Lineup | a pitch for a formation (`pitchSlots`); click a position for everyone who plays it and the best on your lists (`targets`); the squad table below |
+| 1 | formations | Squad › Formations | the 20 shapes ranked (`formations`); one on a pitch with its XI, backups and numbers |
+| 1 | analysis | Squad › Analysis | the squad position by position, ranked by score (or an attribute), against imported players |
+| 1 | development | Squad › Development | two squad snapshots compared |
+| 2 | charts | Research | per position, the listed players against your best; then one graph at a time |
+| 3 | elsewhere | Players › All players | everyone imported who isn't at the club |
+| 3 | last | Players › Last import | the latest player import only |
+| 3 | filters | Players › Search | per position, the squad's best and suggested search minimums (Filter) |
+| 3 | compare | Players › Compare | two players side by side (`compare_page`; two picks in localStorage, by the icon by a name, x or + Compare) |
+| 4 | staff | Staff › All staff | every staff member, scored for each job |
+| 4 | last_staff | Staff › Last import | the latest staff import only |
+| 4 | staff_filters | Staff › Search | per job, the best staff imported and suggested minimums |
 | a | attributes | Attributes | the attribute weights (1-20), editable, exported and imported as a list |
 | g | guide | Guide | how to use everything (`GUIDE`; Menu → About shows `settings_tile`) |
 
@@ -84,7 +86,7 @@ score.py; bump `VERSION` with each release (tag `v<VERSION>`).
 
 ## Squad page details
 
-- **Lineup** (`grid`): slots from save.toml's `grid` (else one per position). Seniors (older than `youth_age`, default 18)
+- **The old Lineup table** (`grid`, still used by Analysis for each player's role): slots from save.toml's `grid` (else one per position). Seniors (older than `youth_age`, default 18)
   go best first to their best position in the formation: its first free Starter, then Backup, else Third (surplus).
   Empty Starter/Backup slots are then filled from Third by whoever plays them best, marked with where he came from.
   Youngsters go to one Youth list per slot, best for their age first; a new intake (a file whose source contains

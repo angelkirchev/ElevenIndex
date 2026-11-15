@@ -19,7 +19,7 @@ __THEME__
   select { padding: 3px 6px; color: var(--fg); font: 500 12px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
   select:focus { outline: 1px solid var(--blue); }
   .key { display: flex; gap: 8px; margin-left: auto; color: var(--fg); }
-  .key > span { padding: 3px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; }
+  .key > span, .key .agekey { padding: 3px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; }
   .key i { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: 0; }
   .key .them i { border: 1.6px solid var(--blue); border-radius: 50%; }
   .key .us i { background: var(--orange); border-radius: 1px; transform: rotate(45deg); }
@@ -75,6 +75,14 @@ __THEME__
   .mark.them { fill: var(--bg); stroke: var(--blue); stroke-width: 1.6; }
   .mark.tick { fill: var(--blue); fill-opacity: .55; stroke: none; }
   .mark.us { fill: var(--orange); stroke: #141414; stroke-width: 1.5; }
+  .mark.age { stroke: #141414; stroke-width: 1.4; } .mark.age.young { fill: var(--cyan); } .mark.age.prime { fill: #c9cfd8; } .mark.age.old { fill: var(--orange); }
+  .agekey i { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; }
+  .agekey.young i { background: var(--cyan); } .agekey.prime i { background: #c9cfd8; } .agekey.old i { background: var(--orange); }
+  .agetag { padding: 0 5px; color: var(--fg); font-size: 11px; border: 1px solid var(--line); border-radius: 4px; }
+  .agetag.young { color: var(--cyan); border-color: #8fe3cf66; } .agetag.old { color: var(--orange); border-color: #fb923c66; }
+  .advice { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 8px; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; }
+  .advice.bad { color: var(--red); border-color: #f8717166; } .advice.warn { color: var(--yellow); border-color: #fbd13d55; }
+  .advice.good { color: var(--green); border-color: #4ade8066; } .advice.ok { color: var(--dim); }
   .mark.lit { fill-opacity: 1; stroke: var(--fg); stroke-width: 2; }
   .name-tag { fill: var(--orange); font-size: 10px; pointer-events: none; }
   .name-tag.them { fill: var(--fg); }
@@ -127,14 +135,17 @@ function groupValue(p, pos, group) {
 }
 
 // whom yours are compared with: the latest import, everyone imported, or a division with a league-wide search (20+ rated)
-const LATEST = "Last player import", EVERYONE = "All imported players", LEAGUE_SIZE = 20;
+const LATEST = "Last player import", EVERYONE = "All imported players", SQUAD = "My squad (by age)", LEAGUE_SIZE = 20;
 const perDivision = {};
 for (const p of PLAYERS) if (p.division) perDivision[p.division] = (perDivision[p.division] || 0) + 1;
 const CHOICES = [
   ...(PLAYERS.some(p => !p.squad && p.last) ? [LATEST] : []),
   ...(PLAYERS.some(p => !p.squad) ? [EVERYONE] : []),
   ...Object.keys(perDivision).filter(d => perDivision[d] >= LEAGUE_SIZE).sort(),
+  ...(PLAYERS.some(p => p.squad) ? [SQUAD] : []),
 ];
+const ageMode = () => choice.against === SQUAD;  // your squad on its own, by age
+const ageBand = p => p.age == null ? "prime" : p.age <= 21 ? "young" : p.age >= 30 ? "old" : "prime";
 const shortName = d => d.replace(/^Sky Bet /, "");
 
 // ---- what's chosen, kept between visits ----
@@ -152,8 +163,8 @@ function choose(key, value) {
   try { localStorage.setItem(KEPT, JSON.stringify(choice)); } catch (e) {}
   draw();
 }
-const compared = p => !p.squad && (choice.against === EVERYONE || (choice.against === LATEST ? p.last : p.division === choice.against));
-const shown = () => PLAYERS.filter(p => p.squad || compared(p));
+const compared = p => !ageMode() && !p.squad && (choice.against === EVERYONE || (choice.against === LATEST ? p.last : p.division === choice.against));
+const shown = () => PLAYERS.filter(p => p.squad || compared(p));  // in age mode: your squad only
 const atBest = (p, pos) => p.best === pos && p.scores[pos] != null;  // each player counts at his best position
 
 // ---- small helpers ----
@@ -252,7 +263,7 @@ function point(p, e) {
   tip.style.top = `${y + h > innerHeight ? e.clientY - h - 10 : y}px`;
 }
 function marker(svg, p, x, y, asTick) {
-  const node = p.squad
+  const node = ageMode() ? svgEl("circle", { cx: x, cy: y, r: 4.5, class: `mark age ${ageBand(p)}`, "data-name": p.name }, svg) : p.squad
     ? svgEl("rect", { x: x - 5, y: y - 5, width: 10, height: 10, rx: 1.5, transform: `rotate(45 ${x} ${y})`, class: "mark us", "data-name": p.name }, svg)
     : svgEl("circle", { cx: x, cy: y, r: asTick ? 2.6 : 4, class: `mark them${asTick ? " tick" : ""}`, "data-name": p.name }, svg);
   node.addEventListener("mousemove", e => point(p, e));
@@ -277,7 +288,7 @@ function byPosition(boxId, value, title, counts, step, labelMiddle, floor, only)
   ticks(svg, scale, true, height - 24, height - 24, title);
   const endText = (y, text, cls) => { svgEl("text", { x: width, y: y + 4, "text-anchor": "end", class: cls }, svg).textContent = text; };
   lines.forEach(({ pos, people }, i) => {
-    const y = i * row + row / 2, them = people.filter(p => !p.squad), us = people.filter(p => p.squad);
+    const y = i * row + row / 2, them = ageMode() ? people : people.filter(p => !p.squad), us = people.filter(p => p.squad);
     if (i % 2) svgEl("rect", { x: left - 6, y: y - row / 2, width: width - left - right + 12, height: row, class: "stripe" }, svg);
     const name = svgEl("text", { x: 0, y: y + 4, class: `pos${pos === choice.pos ? " on" : ""}` }, svg);
     name.textContent = pos;
@@ -290,8 +301,9 @@ function byPosition(boxId, value, title, counts, step, labelMiddle, floor, only)
       svgEl("rect", { x: q1, y: y - 7, width: Math.max(2, q3 - q1), height: 14, rx: 4, class: "middle-half" }, svg);
       svgEl("rect", { x: x(mid) - 1.5, y: y - 10, width: 3, height: 20, rx: 1.5, class: "middle" }, svg);
       if (labelMiddle) svgEl("text", { x: x(mid), y: y - 13, "text-anchor": "middle", class: "middle-value" }, svg).textContent = mid.toFixed(1);
-      them.forEach(p => marker(svg, p, x(value(p, pos)), y + 15, true));
-      if (us.length) {
+      if (!ageMode()) them.forEach(p => marker(svg, p, x(value(p, pos)), y + 15, true));
+      if (ageMode()) endText(y, String(us.length), "count");
+      else if (us.length) {
         const lead = Math.max(...us.map(p => value(p, pos))) - mid;
         endText(y, `${lead >= 0 ? "+" : "−"}${Math.abs(lead).toFixed(1)}`, `lead ${lead >= 0 ? "up" : "down"}`);
       } else endText(y, String(them.length), "count");
@@ -305,11 +317,11 @@ function plot({ x: getX, y: getY, xTitle, yTitle, wages, zones, spreadX }) {
   const box = document.getElementById("chartBox");
   box.innerHTML = "";
   const has = p => atBest(p, choice.pos) && getX(p) != null && getY(p) != null;
-  const people = shown().filter(has), them = people.filter(p => !p.squad), us = people.filter(p => p.squad);
-  const r = correlation(them.filter(compared).map(p => [wages ? Math.log(getX(p)) : getX(p), getY(p)]));
+  const people = shown().filter(has), them = ageMode() ? people : people.filter(p => !p.squad), us = ageMode() ? [] : people.filter(p => p.squad);
+  const r = correlation((ageMode() ? them : them.filter(compared)).map(p => [wages ? Math.log(getX(p)) : getX(p), getY(p)]));
   const note = document.createElement("div");
   note.className = "note";
-  note.innerHTML = `${them.length} ${shortName(choice.against)}${us.length ? ` + ${us.length} ${CLUB}` : ""} at ${choice.pos}` +
+  note.innerHTML = `${ageMode() ? `${them.length} of your players` : `${them.length} ${shortName(choice.against)}${us.length ? ` + ${us.length} ${CLUB}` : ""}`} at ${choice.pos}` +
     `${r == null ? "" : ` · r = <b>${r.toFixed(2)}</b>`}`;
   box.appendChild(note);
   if (!people.length) return;
@@ -361,10 +373,10 @@ function draw() {
     bar.appendChild(b);
   }
   const people = shown();
-  document.getElementById("themName").textContent = shortName(choice.against);
-  document.getElementById("themCount").textContent = people.filter(p => !p.squad).length;
-  document.getElementById("usName").textContent = CLUB;
-  document.getElementById("usCount").textContent = people.filter(p => p.squad).length;
+  const key = document.querySelector(".bar .key");
+  key.innerHTML = ageMode()
+    ? `<span class="agekey young"><i></i>21 or under</span><span class="agekey prime"><i></i>22–29</span><span class="agekey old"><i></i>30+</span>`
+    : `<span class="them"><i></i>${shortName(choice.against)} ${people.filter(p => !p.squad).length}</span><span class="us"><i></i>${CLUB} ${people.filter(p => p.squad).length}</span>`;
   const pos = choice.pos, scoreOf = p => p.scores[pos];
   summary(people);
   // the charts, one at a time
@@ -408,14 +420,63 @@ function draw() {
   const c = charts[choice.chart];
   document.getElementById("chartTitle").textContent = c.name;
   document.getElementById("chartSub").textContent = c.sub;
-  document.getElementById("chartHow").innerHTML = c.how + (rated ? "" : ` <br>The score vs average rating charts appear once you import a whole division ` +
+  document.getElementById("chartHow").innerHTML = (ageMode() ? `<b>Your squad on its own:</b> each dot is one of your players, coloured by age ` +
+    `(<span class="good">mint</span> 21 or under, grey 22–29, <span class="bad">orange</span> 30+); the pink bar is your squad's own spread. ` : "") + c.how + (rated ? "" : ` <br>The score vs average rating charts appear once you import a whole division ` +
     `with Division, Minutes and Average Rating columns (rename the export after the league, e.g. league-one.csv).`);
   document.getElementById("chartBox").innerHTML = "";
   c.draw();
 }
 
+// ---- My squad (by age): per position, who plays it, how old, and what to do about it ----
+function squadSummary(people) {
+  const fmtAge = v => v == null ? "–" : v.toFixed(1);
+  const rows = POSITIONS.map(pos => {
+    const ps = people.filter(p => p.scores[pos] != null && (p.plays || [p.best]).includes(pos)).sort((a, b) => b.scores[pos] - a.scores[pos]);
+    const best = ps[0], ages = ps.map(p => p.age).filter(a => a != null);
+    const avg = ages.length ? ages.reduce((a, b) => a + b, 0) / ages.length : null;
+    const old = ps.filter(p => p.age >= 30), young = ps.filter(p => p.age != null && p.age <= 21);
+    const advice = [];
+    if (!best) advice.push(["bad", "Nobody plays it"]);
+    else {
+      if (ps.length < 2) advice.push(["bad", "No backup"]);
+      if (best.age >= 30 && !ps.slice(1).some(p => p.age <= 28 && p.scores[pos] >= best.scores[pos] - 1)) advice.push(["bad", "Ageing starter: find a successor"]);
+      const talent = young.find(p => p !== best && p.scores[pos] >= best.scores[pos] - 1);
+      if (talent) advice.push(["good", `Young talent ready: ${talent.name}`]);
+      if (ps.length >= 3 && old.length * 2 > ps.length) advice.push(["warn", "Mostly 30+"]);
+      if (!advice.length) advice.push(["ok", "Fine"]);
+    }
+    return { pos, ps, best, avg, old, young, advice };
+  });
+  const ages = people.map(p => p.age).filter(a => a != null);
+  const avgAll = ages.length ? ages.reduce((a, b) => a + b, 0) / ages.length : null;
+  const olds = people.filter(p => p.age >= 30), youngs = people.filter(p => p.age != null && p.age <= 21);
+  const attention = rows.filter(r => r.advice.some(([k]) => k === "bad")).map(r => r.pos);
+  const ready = rows.filter(r => r.advice.some(([k]) => k === "good")).map(r => r.pos);
+  const lead = `<b>${people.length}</b> players, average age <b>${fmtAge(avgAll)}</b>: <span class="bad">${olds.length}</span> are 30 or older, ` +
+    `<span class="good">${youngs.length}</span> are 21 or under. ` +
+    (attention.length ? `Needs attention: <span class="bad">${attention.join(", ")}</span>. ` : "No position needs urgent attention. ") +
+    (ready.length ? `Young players ready to step up at <span class="good">${ready.join(", ")}</span>.` : "");
+  const agecls = a => a == null ? "" : a <= 21 ? "young" : a >= 30 ? "old" : "";
+  const body = rows.map(r => `<tr data-pos="${r.pos}" class="${r.pos === choice.pos ? "on" : ""}">
+      <td class="pos-cell">${r.pos}</td><td class="num">${r.ps.length || "–"}</td>
+      <td>${r.best ? `${r.best.name} <b>${r.best.scores[r.pos].toFixed(1)}</b> <span class="agetag ${agecls(r.best.age)}">${r.best.age ?? "–"}</span>` : "–"}</td>
+      <td class="num">${fmtAge(r.avg)}</td>
+      <td class="num" title="${r.old.map(p => `${p.name} (${p.age})`).join(", ")}">${r.old.length ? `<span class="down">${r.old.length}</span>` : "–"}</td>
+      <td class="num" title="${r.young.map(p => `${p.name} (${p.age})`).join(", ")}">${r.young.length ? `<span class="up">${r.young.length}</span>` : "–"}</td>
+      <td>${r.advice.map(([k, t]) => `<span class="advice ${k}">${t}</span>`).join(" ")}</td></tr>`).join("");
+  const box = document.getElementById("summary");
+  box.innerHTML = `<div class="ttitle">My squad by age</div><div class="lead-line">${lead}</div>
+    <div class="wrapx"><table class="market"><thead><tr><th>Position</th><th class="num">Players</th><th>Best (age)</th><th class="num">Average age</th>
+      <th class="num">30+</th><th class="num">21 or under</th><th>Advice</th></tr></thead><tbody>${body}</tbody></table></div>
+    <div class="subtitle" style="margin:8px 0 0"><b>Players</b>: everyone of yours who plays the position (FM's positions, else his best and its neighbours).
+      <b>Ageing starter</b>: your best there is 30+ and no one of 28 or under is within a point of him, so plan a successor.
+      <b>Young talent ready</b>: someone 21 or under within a point of the best. Hover the 30+ and 21-or-under counts for the names; click a row for its graphs.</div>`;
+  box.querySelectorAll("tr[data-pos]").forEach(tr => tr.onclick = () => choose("pos", tr.dataset.pos));
+}
+
 // ---- the analysis on top: per position, the listed players against yours ----
 function summary(people) {
+  if (ageMode()) return squadSummary(people);
   const fmtWage = w => w == null ? "–" : `${wageText(w)} p/w`;
   const last = n => n.split(" ").pop();
   const rows = POSITIONS.map(pos => {
