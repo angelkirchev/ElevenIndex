@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="400" alt="FMAnalyst">
+  <img src="docs/fmanalyst-logo.png" width="400" alt="FMAnalyst">
 </p>
 
 <p align="center">
