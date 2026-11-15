@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="docs/logo.png" width="120" alt="FMAnalyst">
+  <img src="docs/logo.png" width="400" alt="FMAnalyst">
 </p>
-
-<h1 align="center">FMAnalyst</h1>
 
 <p align="center">
   <b>Squad, player and staff analysis for Football Manager 2027</b><br>
