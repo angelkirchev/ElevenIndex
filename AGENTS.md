@@ -12,7 +12,7 @@ and track them over time. Everything runs locally; the user's data never leaves 
 - `import_export.py`: an FM27 Exporter file (CSV or HTML) → observation CSVs in the save. Players go to
   `saves/<save>/obs/<date>_<source>_<gk|outfield>.csv`, staff to `saves/<save>/staff/<date>_<source>.csv`.
 - `score.py`: reads a save's observations, scores them, and writes `out/<save>/<page>.html` from `template.html`
-  (every page but Market) and `charts.html` (Market), with `theme.css` and `logo.svg` inlined. Standard library only.
+  (every page but Research) and `charts.html` (Research), with `theme.css` and `logo.svg` inlined. Standard library only.
   `python score.py [--save NAME] [--open PAGE]` rebuilds a save's pages.
 - `build.py`: `dist/FMAnalyst.exe` with PyInstaller (one file, windowed, `docs/FMAnalyst.ico`), holding app.py, the two
   templates, the theme, the logo and `weights/`. A release publishes it as the `FMAnalyst.exe` asset, which README's
@@ -26,22 +26,25 @@ and `FMANALYST_HOME` when set (tests). Data: `config.toml`, `saves/`, `out/`, `a
 
 ## Pages
 
-`PAGES` in score.py, in menu order, with their keys and menu names (`PAGE_LABELS`, groups from `NAV_GROUP_STARTS`):
+The top menu is `MENU` in score.py: keys 1-6, then A and G. **Players** (5) and **Staff** (6) are groups whose pages
+show as sub-tabs under the bar (`SUB_LABELS`); a group's key opens it on its Last import and, pressed again, the next sub-tab
+(`NAV_SCRIPT`, `fmNavTarget`). `PAGE_LABELS` holds each page's full name.
 
 | Key | File | Menu | What it shows |
 |---|---|---|---|
 | 1 | squad | Squad | the Lineup and Formations panels, then every player at the club |
-| 2 | analysis | Analysis | the squad position by position, ranked by an attribute, against imported players |
+| 2 | analysis | Analysis | the squad position by position, ranked by score (or an attribute), against imported players |
 | 3 | development | Development | two squad snapshots compared |
-| 4 | charts | Market | the squad against imported players, by position, and score vs wage |
-| 5 | elsewhere | All players | everyone imported who isn't at the club |
-| 6 | last | Last player import | the latest player import only |
-| 7 | filters | Player search | per position, the squad's best and suggested search minimums |
-| 8 | staff | All staff | every staff member, scored for each job |
-| 9 | last_staff | Last staff import | the latest staff import only |
-| 0 | staff_filters | Staff search | per job, the best staff imported and suggested minimums |
-| a | attributes | Attributes | the position weights, editable |
-| g | guide | Guide | how to use everything (`GUIDE`), ending with an About tile (`settings_tile`) |
+| 4 | charts | Research | per position, the listed players against your best; then one chart at a time |
+| 5 | elsewhere | Players › All players | everyone imported who isn't at the club |
+| 5 | last | Players › Last import | the latest player import only |
+| 5 | filters | Players › Search | per position, the squad's best and suggested search minimums (Filter) |
+| 5 | compare | Players › Compare | two players side by side (`compare_page`; two picks in localStorage, by the icon by a name, x or + Compare) |
+| 6 | staff | Staff › All staff | every staff member, scored for each job |
+| 6 | last_staff | Staff › Last import | the latest staff import only |
+| 6 | staff_filters | Staff › Search | per job, the best staff imported and suggested minimums |
+| a | attributes | Attributes | the attribute weights (1-20), editable, exported and imported as a list |
+| g | guide | Guide | how to use everything (`GUIDE`; Menu → About shows `settings_tile`) |
 
 `write_pages` deletes page files it no longer writes. The version (`VERSION`) and project link (`PROJECT_URL`) are in
 score.py; bump `VERSION` with each release (tag `v<VERSION>`).

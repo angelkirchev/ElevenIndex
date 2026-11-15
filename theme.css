@@ -32,11 +32,20 @@
                       box-shadow: 0 0 0 2px var(--club-dark), 0 2px 6px #0004; }
   .pages .brand > span { color: #bfe9e2; }  /* "Analyst"; "FM" in bold ink */
   .pages .brand b { margin: 0; color: var(--club-ink); font-weight: 700; }
+  /* a group's sub-tabs (Players, Staff), in a darker strip right under the bar */
+  .subnav { display: flex; gap: 2px; margin: -14px -14px 14px; padding: 0 14px 0 64px; background: var(--club-dark);
+            border-bottom: 1px solid #0004; box-shadow: 0 2px 8px #0006; }
+  .subnav a { padding: 8px 14px 7px; color: #cde9e4; font: 600 13px var(--body); text-decoration: none;
+              border-bottom: 2px solid transparent; }
+  .subnav a:hover:not(.on) { color: #fff; background: #ffffff12; }
+  .subnav a.on { color: #fff; border-bottom-color: var(--cyan); }
+  .subnav { min-height: 35px; align-items: stretch; }
+  .subnav .info { margin-left: auto; align-self: center; padding: 0 2px; color: #cde9e4; font-size: 12px; white-space: nowrap;
+                  overflow: hidden; text-overflow: ellipsis; }
   /* the search box and count, on the bar: light, like FM's search */
   .bar #filter { color: #fff; background: #ffffff1f; border-color: #ffffff3d; }
   .bar #filter::placeholder { color: #cde9e4; }
   .bar #filter:focus { background: #ffffff2e; border-color: #fff; }
-  .bar #count { color: #d8efeb; }
 
   /* the logo, large and faint, in the bottom-right corner (clicks pass through) */
   .watermark { position: fixed; right: -40px; bottom: -50px; z-index: 5; width: 360px; height: 360px; opacity: .04;

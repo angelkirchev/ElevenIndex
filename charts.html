@@ -465,7 +465,7 @@ function summary(people) {
 }
 document.addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === "SELECT") return;
-  const page = SITE.pages[e.key];
+  const page = window.fmNavTarget && fmNavTarget(e.key);  // the menu's keys (a group's: its next sub-tab)
   if (page && page !== "charts") location.href = `${page}.html`;
   if (e.key === "ArrowLeft" || e.key === "ArrowRight") {  // the previous or next position, round the end
     const n = POSITIONS.length, i = POSITIONS.indexOf(choice.pos) + (e.key === "ArrowRight" ? 1 : -1);

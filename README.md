@@ -43,12 +43,12 @@ you've imported.
 
 ![Development page](docs/screenshots/development.png)
 
-**Market**: per position, how the players you've imported compare with your best (who beats him, and the cheapest of
+**Research**: per position, how the players you've imported compare with your best (who beats him, and the cheapest of
 those), then one chart at a time: role score, Technical, Mental, Physical and Goalkeeping by position, and score vs wage.
 
-![Market page](docs/screenshots/market.png)
+![Research page](docs/screenshots/market.png)
 
-**Player search**: your best players per position, and the minimums (**Filter**) to type into FM's player search to find
+**Players › Search**: your best players per position, and the minimums (**Filter**) to type into FM's player search to find
 better ones.
 
 ![Player search page](docs/screenshots/filters.png)
@@ -154,26 +154,27 @@ On your squad screen, point at the list and press **F8**. In the app, click **Im
 | You export | It becomes |
 |---|---|
 | Your squad (file starts `First Team` or `Squad`) | Your squad. Players missing from a newer squad export count as gone. |
-| A search or shortlist | A list of its own, shown on **Last player import** (key 6) and kept on **All players** (key 5) |
-| Staff from a staff search (the `Search - Staff View`) | Staff, shown on **Last staff import** (key 9) and kept on **All staff** (key 8) |
-| A whole division, with Division, Minutes and Average Rating columns | Adds the division and the rating charts to **Market** (key 4). Rename the file first, e.g. `league-one.csv`. |
+| A search or shortlist | A list of its own, shown on **Players › Last import** and kept on **Players › All players** (key 5) |
+| Staff from a staff search (the `Search - Staff View`) | Staff, shown on **Staff › Last import** and kept on **Staff › All staff** (key 6) |
+| A whole division, with Division, Minutes and Average Rating columns | Adds the division and the rating chart to **Research** (key 4). Rename the file first, e.g. `league-one.csv`. |
 
 **The pages:** press the number keys to switch, **?** for all shortcuts. Click a column to sort, double-click a player
 for their history, and type in the filter box, e.g. `age<=21 best=DC`.
 
-| Key | Page | Key | Page |
-|---|---|---|---|
-| **Your team** | | **Staff** | |
-| 1 | Squad: your lineup (starter / backup / third, youth), how you fit 20 formations, and every player | 8 | All staff: every staff member you've imported |
-| 2 | Analysis: your team position by position, ranked by speed or any attribute | 9 | Last staff import |
-| 3 | Development: how your players changed between two squad exports | 0 | Staff search: the best staff you've imported, and what to search for |
-| 4 | Market: your squad against the players you've imported, and score vs wage | | |
-| **Players** | | **More** | |
-| 5 | All players: everyone you've imported | a | Attributes: the attribute weights (1–20), change, export or import them |
-| 6 | Last player import: your latest import | g | Guide: how to use each page, and your settings |
-| 7 | Player search: what to search for to beat your players | | |
+| Key | Page |
+|---|---|
+| 1 | **Squad**: your lineup (starter / backup / third, youth), how you fit 20 formations, and every player |
+| 2 | **Analysis**: your team position by position, ranked by position score or any attribute |
+| 3 | **Development**: how your players changed between two squad exports |
+| 4 | **Research**: the players you've imported against your best at each position, and the charts |
+| 5 | **Players**: *All players* (everyone you've imported), *Last import*, *Search* (what to search for to beat your players) and *Compare* (two players side by side: click the compare icon by a name in any list) |
+| 6 | **Staff**: *All staff*, *Last import* and *Search* (the best staff you've imported, and what to search for) |
+| a | **Attributes**: the attribute weights (1–20); change, export or import them |
+| g | **Guide**: how to use each page |
 
-**More than one save:** click **Saves** to switch, or to start a save for a new game or club.
+Players and Staff open on Last import; press 5 or 6 again for the next sub-tab.
+
+**More than one save:** **Menu → Saves** (bottom right) to switch, or to start a save for a new game or club.
 
 **Tidying up:** **Clear old lists** on All players and All staff (click twice) moves old searches to an archive. It keeps
 your squad and your latest list, and nothing is deleted.
@@ -202,9 +203,9 @@ and FM27 Exporter must be in **`BepInEx\plugins`**. `BepInEx\LogOutput.log` show
 **The window stays blank.** The app needs Microsoft's WebView2, built into Windows 11 and up-to-date Windows 10.
 Install the **Evergreen Runtime** from Microsoft's [WebView2 page](https://developer.microsoft.com/microsoft-edge/webview2/).
 
-**What does Market compare?** Your squad (orange) with the players in **compare with** at the top: your **Last
-player import** (the default), **All imported players**, or a whole division if you've imported one. The two average-rating
-charts need a division export with Minutes and Average Rating columns.
+**What does Research compare?** Your squad (orange) with the players in **compare with** at the top: your **Last
+player import** (the default), **All imported players**, or a whole division if you've imported one. The average-rating
+chart needs a division export with Minutes and Average Rating columns.
 
 **What does Staff search show?** For each job, the best staff you've imported from staff searches and the minimums
 (FM's words) to set in FM's staff search to find staff at least that good.
