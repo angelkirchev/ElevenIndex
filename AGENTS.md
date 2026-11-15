@@ -15,9 +15,12 @@ and track them over time. Everything runs locally; the user's data never leaves 
   (every page but Research) and `charts.html` (Research), with `theme.css` and `logo.svg` inlined. Standard library only.
   `python score.py [--save NAME] [--open PAGE]` rebuilds a save's pages.
 - `build.py`: `dist/FMAnalyst.exe` with PyInstaller (one file, windowed, `docs/FMAnalyst.ico`), holding app.py, the two
-  templates, the theme, the logo and `weights/`. A release publishes it as the `FMAnalyst.exe` asset, which README's
-  download link points to.
-- `views/`: FM27 views (`.fmf`) that give FM's lists the columns the imports need.
+  templates, the theme, the logo and `weights/`, and `dist/FMAnalyst-FM27-views-and-filters.zip` (`fm_zip`: `views/`,
+  `player search filters/` and `staff search filters/` in FM's own folder names, to unzip into
+  `Documents\Sports Interactive\Football Manager 27`). A release publishes both as assets (`FMAnalyst.exe`,
+  `FMAnalyst-FM27-views-and-filters.zip`), which README's download links point to.
+- `views/`, `player search filters/`, `staff search filters/`: the user's FM27 views and search filters (`.fmf`); views give
+  FM's lists the columns the imports need.
 - `FMAnalyst.bat`: runs the app from source (installs pywebview when it's missing). CRLF line endings.
 
 Two folders: `score.APP` holds the program's files (PyInstaller's unpack folder in the .exe), `score.ROOT` the user's

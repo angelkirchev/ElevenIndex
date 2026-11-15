@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" shape-rendering="geometricPrecision">
   <!-- FMAnalyst's icon for the pages' dark top bar (score.py inlines it): a magenta shield, the rising line and ball in
-       white. docs/logo-icon.svg is the app icon (the shield on a white disc), docs/FMAnalyst.ico the .exe's, docs/fmanalyst-logo.png the README's banner. -->
+       white. docs/logo-icon.svg is the app icon (the shield on a white disc), docs/FMAnalyst.ico the .exe's, docs/fmanalyst-banner.png the README's banner. -->
   <defs>
     <path id="logo-shield" d="M14 16 Q50 6 86 16 L86 50 Q84 78 50 95 Q16 78 14 50 Z"/>
     <clipPath id="logo-in"><use href="#logo-shield"/></clipPath>

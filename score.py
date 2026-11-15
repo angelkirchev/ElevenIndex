@@ -38,7 +38,7 @@ APP = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 ROOT = Path(os.environ["FMANALYST_HOME"]) if os.environ.get("FMANALYST_HOME") else \
     documents() / "FMAnalyst" if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.6.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.6.2"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/FMAnalyst"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -1193,7 +1193,7 @@ def write_pages(save, config, cfg, pages):
 # A tile with a key links to that page. The version and settings are in Menu → About (settings_tile()).
 GUIDE = [
     {"key": "", "title": "Getting started",
-     "text": "<ol><li>In FM, open your <b>squad</b> screen with the <b>Squad - Outfield Players View</b> (see the README for the views).</li>"
+     "text": "<ol><li>In FM, open your <b>squad</b> screen with the <b>Squad - All Players View</b> (see the README for the views).</li>"
              "<li>Point the mouse at the list and press <b>F8</b>: FM27 Exporter saves the list as a file.</li>"
              "<li>Here, open <b>Menu</b> (bottom right) → <b>Import file…</b> and pick that file.</li></ol>"
              "The app works out what it is (your squad, a search, staff), scores everyone and opens the right page. "

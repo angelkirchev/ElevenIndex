@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/fmanalyst-logo.png" width="400" alt="FMAnalyst">
+  <img src="docs/fmanalyst-banner.png" width="400" alt="FMAnalyst">
 </p>
 
 <p align="center">
@@ -59,39 +59,86 @@
 
 ## Get started
 
-About 15 minutes, once. Nothing here changes your FM saves.
+About 15 minutes, once. Nothing here changes your FM saves. Quit FM before steps 1–3.
 
-### 1 · Add the F8 export to FM
+> **FM's game folder:** in Steam, right-click **Football Manager 27** → **Manage → Browse local files**.
+> It's the folder with **`fm.exe`** in it.
 
-FMAnalyst reads the lists that the free **[FM27 Exporter](https://github.com/v1adicke/fm27-exporter)** mod saves when you
-press **F8** in FM (it isn't made by Sports Interactive or this project).
+### 1 · Install BepInEx 6 (the mod loader)
 
-1. Quit FM. Open FM's game folder: in Steam, right-click **Football Manager 27** → **Manage → Browse local files**.
-2. Download **`FM27Exporter-1.0.0.zip`** from [FM27 Exporter's releases](https://github.com/v1adicke/fm27-exporter/releases),
-   extract it, and copy everything in its **`payload`** folder into FM's game folder. That installs BepInEx 6 and the
-   exporter in one go.
-3. Start FM (the first start takes a few minutes; a Windows note about `winhttp.dll` is fine).
+BepInEx lets FM load the small export mod in step 2. You need the **Unity IL2CPP, Windows x64** build of BepInEx 6.
+
+1. Open **[BepInEx's builds page](https://builds.bepinex.dev/projects/bepinex_be)** and download the newest
+   **`BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.…zip`**
+   (currently [`BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.793+dbc82f0.zip`](https://builds.bepinex.dev/projects/bepinex_be/793/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.793%2Bdbc82f0.zip)).
+   Not the *Unity.Mono* or *NET* builds: FM needs **Unity.IL2CPP** and **win-x64**.
+2. Right-click the zip → **Extract All…** and extract it **into FM's game folder**, so the BepInEx files sit next to
+   `fm.exe`:
+
+   ```
+   Football Manager 27\          ← FM's game folder
+   ├── BepInEx\
+   ├── dotnet\
+   ├── doorstop_config.ini
+   ├── winhttp.dll
+   └── fm.exe
+   ```
+3. Start FM once and wait: the first start with BepInEx takes a few minutes (a black console window may open). When the
+   main menu shows, quit FM. `BepInEx` now has `plugins`, `config` and a `LogOutput.log`: BepInEx works.
+
+### 2 · Install FM27 Exporter (the F8 export)
+
+1. Download **`FM27Exporter-…-plugin-only.zip`** from
+   **[FM27 Exporter's releases](https://github.com/v1adicke/fm27-exporter/releases)** (a free mod, not made by Sports
+   Interactive or this project).
+2. Extract it and copy its **`BepInEx`** folder into FM's game folder, onto the one from step 1 (Windows merges them).
+   The exporter ends up in `BepInEx\plugins\FM27Exporter`.
+3. Start FM: **F8** now exports the list under the mouse to `Documents\Sports Interactive\Football Manager 27\exports`.
 
 <details>
-<summary>Already have BepInEx 6, or F8 does nothing?</summary>
+<summary>Shortcut: steps 1 and 2 in one go</summary>
 
-- With BepInEx 6 already installed, download **`FM27Exporter-1.0.0-plugin-only.zip`** instead and copy the exporter
-  into **`BepInEx\plugins`**.
-- If F8 does nothing: FM's game folder needs a `BepInEx` folder and `winhttp.dll`, and the exporter must be in
-  `BepInEx\plugins`. `BepInEx\LogOutput.log` says whether it loaded.
+FM27 Exporter's full **`FM27Exporter-….zip`** (without *plugin-only*) includes BepInEx 6: extract it and copy
+everything in its **`payload`** folder into FM's game folder. Then start FM and wait the few minutes.
 
 </details>
 
-In FM, **F8** exports the list under the mouse (every row), and **Ctrl + F8** adds all 47 attribute columns to the view.
+| Key in FM | What it does |
+|---|---|
+| **F8** | exports the list under the mouse (every row) |
+| **Ctrl + F8** | adds all attribute columns to the current view |
 
-### 2 · Get the app and set up your save
+### 3 · Add the views and search filters
 
-**[Download FMAnalyst.exe](https://github.com/angelkirchev/FMAnalyst/releases/latest/download/FMAnalyst.exe)**, put it
-somewhere permanent (e.g. **Documents**) and double-click it. If Windows says *Windows protected your PC*, click
-**More info → Run anyway** (it asks once).
+1. Download **[`FMAnalyst-FM27-views-and-filters.zip`](https://github.com/angelkirchev/FMAnalyst/releases/latest/download/FMAnalyst-FM27-views-and-filters.zip)**.
+2. Right-click it → **Extract All…** and extract it into **`Documents\Sports Interactive\Football Manager 27`**
+   (inside OneDrive if your Documents are there). It already has FM's folders, so everything lands in place:
 
-The first time, it asks for the **club you manage** (exactly as FM writes it, e.g. "Man Utd"), the **currency** FM
-shows wages in, and **FM27 Exporter's folder** (usually found for you). Click **Start**.
+   ```
+   Football Manager 27\          ← in Documents\Sports Interactive
+   ├── views\                    5 views
+   ├── player search filters\    FB, WB, DM, MC, MLR, AMC, AMLR, ST
+   └── staff search filters\     one per job: Assistant Manager … U18 Manager
+   ```
+   If Windows asks about replacing files of yours, choose **Skip**.
+3. In FM, pick the view that fits each screen (the view menu at the top of the list):
+
+   | Screen in FM | View | Filter |
+   |---|---|---|
+   | Your squad | **`Squad - All Players View`** (the one to export) | |
+   | Your squad, at a glance | **`Squad - General View`** | |
+   | Player search, outfield | **`Search - Outfield Players View`** | the position: FB, WB, DM, MC, MLR, AMC, AMLR, ST |
+   | Player search, goalkeepers | **`Search - Goalkeepers View`** | |
+   | Staff search | **`Search - Staff View`** | the job: Assistant Manager, Coach, Director of Football… |
+
+### 4 · Start FMAnalyst
+
+1. Download **[`FMAnalyst.exe`](https://github.com/angelkirchev/FMAnalyst/releases/latest/download/FMAnalyst.exe)**,
+   put it somewhere permanent (e.g. **Documents**) and double-click it. If Windows says *Windows protected your PC*,
+   click **More info → Run anyway** (it asks once).
+2. The first time it asks for the **club you manage** (exactly as FM writes it, e.g. "Man Utd"), the **currency** FM
+   shows wages in, and **FM27 Exporter's folder** (usually found for you). Tick **Desktop shortcut** if you want one,
+   then click **Start**.
 
 <details>
 <summary>Or run it from source, with Python</summary>
@@ -102,24 +149,14 @@ pywebview, which the app needs.
 
 </details>
 
-### 3 · Add the views to FM
+### 5 · Import your squad
 
-The views give FM's lists the columns the app reads.
+In FM, open your squad screen with **`Squad - All Players View`**, point at the list and press **F8**. In the app,
+open **Menu → Import file…** (bottom right) and choose the export. Done: your Lineup and Formations are ready.
 
-1. **[Download the project ZIP](https://github.com/angelkirchev/FMAnalyst/archive/refs/heads/main.zip)** and extract it.
-2. Quit FM and copy the files in its **`views`** folder into `Documents\Sports Interactive\Football Manager 27\views`
-   (copy the files, not the folder; choose **Skip** if Windows asks about replacing your own).
-3. In FM, use **`Squad - Outfield Players View`** on your squad, **`Search - Outfield Players View`** on player search
-   and **`Search - Staff View`** on staff search. On each player view, press **Ctrl + F8** once so every attribute shows.
+From then on, press **F8** on any player search, shortlist or staff search and import it the same way. Everything else
+is explained in the app's **Guide** (key **G**).
 
-> **Tip:** add FM's **Position** column to your player views. Then a player's best position comes only from the
-> positions FM says he plays, and wide players go to the side they play.
-
-### 4 · Import your squad
-
-On your squad screen in FM, point at the list and press **F8**. In the app, open **Menu → Import file…** (bottom right)
-and choose the export. Done: your squad, lineup and formations are ready. Import searches, shortlists and staff the
-same way whenever you're scouting.
 
 ---
 
@@ -131,6 +168,8 @@ same way whenever you're scouting.
 - **Several saves:** **Menu → Saves** switches between them or starts a new one.
 - **Players left out of an import** have too many unscouted attributes to score: scout them more and export again.
 - **"The export has no attributes":** press **Ctrl + F8** on the list in FM, then **F8** again.
+- **F8 does nothing:** check that FM's game folder has `BepInEx`, `winhttp.dll` and `BepInEx\plugins\FM27Exporter`;
+  `BepInEx\LogOutput.log` says whether the exporter loaded.
 - **The window stays blank:** install Microsoft's **WebView2 Evergreen Runtime** from the
   [WebView2 page](https://developer.microsoft.com/microsoft-edge/webview2/).
 - **Something else:** `app.log` in your data folder says what happened.
