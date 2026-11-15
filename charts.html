@@ -24,9 +24,8 @@ __THEME__
   .key .them i { border: 1.6px solid var(--blue); border-radius: 50%; }
   .key .us i { background: var(--orange); border-radius: 1px; transform: rotate(45deg); }
 
-  /* ---- the chart panels ---- */
-  .pair { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 10px; }
-  @media (max-width: 900px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+  /* ---- the analysis on top, then the chart panel ---- */
+  .tile { margin-bottom: 10px; }
   .tile { min-width: 0; padding: 14px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 2px 10px #0004; }
   .ttitle { margin-bottom: 2px; color: var(--fg); font: 700 17px/1.2 var(--head); text-transform: uppercase; letter-spacing: .02em; }
   .subtitle { margin-bottom: 8px; color: var(--dim); font-size: 12px; }
@@ -38,6 +37,25 @@ __THEME__
   .howto b { color: var(--fg); font-weight: 600; }
   .howto .us { color: var(--orange); font-weight: 600; } .howto .them { color: #ff7ab5; font-weight: 600; }
   .howto .good { color: var(--green); font-weight: 600; } .howto .bad { color: var(--red); font-weight: 600; }
+  .chead { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .chead .pick { display: flex; gap: 6px; align-items: center; color: var(--dim); font-weight: 600; }
+  .chead .pick select { padding: 4px 8px; font-size: 13px; }
+  .lead-line { margin: 4px 0 10px; color: var(--fg); font-size: 13px; line-height: 1.6; }
+  .lead-line b { font-weight: 600; } .lead-line .good { color: var(--green); } .lead-line .bad { color: var(--red); }
+  table.market { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.market th { padding: 6px 8px; color: var(--dim); font-weight: 600; font-size: 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.market td { padding: 6px 8px; border-bottom: 1px solid #ffffff0a; white-space: nowrap; }
+  table.market th.num, table.market td.num { text-align: right; }
+  table.market tbody tr { cursor: pointer; }
+  table.market tbody tr:nth-child(even) { background: var(--row); }
+  table.market tbody tr:hover { background: var(--hover); }
+  table.market tbody tr.on { box-shadow: inset 3px 0 0 var(--blue); background: #ff3d9614; }
+  table.market .pos-cell { color: var(--purple); font-weight: 700; }
+  table.market tr.on .pos-cell { color: var(--cyan); }
+  table.market .faint { color: var(--dim); font-size: 12px; }
+  table.market .up { color: var(--green); font-weight: 600; } table.market .down { color: var(--red); font-weight: 600; }
+  table.market .us { color: var(--orange); }
+  .wrapx { overflow-x: auto; }
   .note { margin-bottom: 4px; color: var(--dim); font-size: 12px; }
   .note b { color: var(--fg); font-weight: normal; }
   svg { display: block; width: 100%; overflow: visible; font: 11px var(--body); }
@@ -80,22 +98,33 @@ __THEME__
   <span class="pages">__NAV__</span>
   <span class="ctl"><span class="name">compare with</span><select id="against"></select></span>
   <span class="ctl" id="positions"><span class="name">position</span></span>
-  <span class="ctl"><span class="name">attribute</span><select id="attribute"></select></span>
   <span class="key"><span class="them"><i></i><span id="themName"></span> <span id="themCount"></span></span><span class="us"><i></i><span id="usName"></span> <span id="usCount"></span></span></span>
 </div>
-<div class="pair">
-  <div class="tile"><div class="ttitle">Role score by position</div><div class="subtitle">How good your players are at each position, against the others</div>
-    <div id="scoreChart"></div><div class="howto" id="scoreHow"></div></div>
-  <div class="tile"><div class="ttitle" id="attributeTitle"></div><div class="subtitle" id="attributeSub"></div>
-    <div id="attributeChart"></div><div class="howto" id="attributeHow"></div></div>
+<div class="tile" id="summary"></div>
+<div class="tile">
+  <div class="chead"><span class="ttitle" id="chartTitle"></span><span class="pick">chart <select id="chart"></select></span></div>
+  <div class="subtitle" id="chartSub"></div>
+  <div id="chartBox"></div>
+  <div class="howto" id="chartHow"></div>
 </div>
-<div class="pair" id="plots"></div>
 <div id="tip"></div>
 <script>
 // ---- the data: every player (yours flagged squad), each position's most important attributes ----
 const MARKET = __DATA__, SITE = __SITE__;
 const POSITIONS = MARKET.positions, PLAYERS = MARKET.players, CLUB = MARKET.managed;
 const topAttributes = pos => MARKET.tops[pos] || [];
+// a player's Technical / Mental / Physical / Goalkeeping value at a position: the group's attributes averaged with the
+// position's weights (as on the Attributes page); null when the group has no weight there or under half of it is known
+function groupValue(p, pos, group) {
+  const w = MARKET.weights[pos] || {};
+  let total = 0, known = 0, sum = 0;
+  for (const a of MARKET.groups[group]) {
+    if (!w[a]) continue;
+    total += w[a];
+    if (p.attrs[a] != null) { known += w[a]; sum += p.attrs[a] * w[a]; }
+  }
+  return total && known >= total / 2 ? sum / known : null;
+}
 
 // whom yours are compared with: the latest import, everyone imported, or a division with a league-wide search (20+ rated)
 const LATEST = "Last player import", EVERYONE = "All imported players", LEAGUE_SIZE = 20;
@@ -110,10 +139,11 @@ const shortName = d => d.replace(/^Sky Bet /, "");
 
 // ---- what's chosen, kept between visits ----
 const KEPT = "fm:__SAVE__:charts";
-const choice = { pos: POSITIONS.find(p => p !== "GK") || POSITIONS[0], attr: "Acceleration", against: CHOICES[0] };
+const choice = { pos: POSITIONS.find(p => p !== "GK") || POSITIONS[0], against: CHOICES[0], chart: "score" };
 try {
   const old = JSON.parse(localStorage.getItem(KEPT) || "{}");  // an older version called these speed and division
-  Object.assign(choice, { pos: old.pos ?? choice.pos, attr: old.attr ?? old.speed ?? choice.attr, against: old.against ?? old.division ?? choice.against });
+  Object.assign(choice, { pos: old.pos ?? choice.pos, against: old.against ?? old.division ?? choice.against,
+                          chart: old.chart ?? choice.chart });
 } catch (e) {}
 if (!POSITIONS.includes(choice.pos)) choice.pos = POSITIONS[0];
 if (!CHOICES.includes(choice.against)) choice.against = CHOICES[0];
@@ -232,7 +262,8 @@ function marker(svg, p, x, y, asTick) {
 
 // ---- by position: per position a range of the compared players and your players on it ----
 // value(p, pos); counts(p, pos): whether p belongs in pos's row; floor: where the scale starts (lower values sit at it)
-function byPosition(boxId, value, title, counts, step, labelMiddle, floor) {
+function byPosition(boxId, value, title, counts, step, labelMiddle, floor, only) {
+  const POSITIONS = only || MARKET.positions;  // only: just these rows (Goalkeeping: GK)
   const box = document.getElementById(boxId);
   box.innerHTML = "";
   const width = box.clientWidth, row = 46, left = 64, right = 50, height = POSITIONS.length * row + 30;
@@ -270,25 +301,19 @@ function byPosition(boxId, value, title, counts, step, labelMiddle, floor) {
 }
 
 // ---- two values against each other, at the chosen position ----
-function plot({ title, x: getX, y: getY, xTitle, yTitle, wages, zones, spreadX, howto }) {
-  const panel = document.createElement("div");
-  panel.className = "tile";
-  document.getElementById("plots").appendChild(panel);
+function plot({ x: getX, y: getY, xTitle, yTitle, wages, zones, spreadX }) {
+  const box = document.getElementById("chartBox");
+  box.innerHTML = "";
   const has = p => atBest(p, choice.pos) && getX(p) != null && getY(p) != null;
   const people = shown().filter(has), them = people.filter(p => !p.squad), us = people.filter(p => p.squad);
   const r = correlation(them.filter(compared).map(p => [wages ? Math.log(getX(p)) : getX(p), getY(p)]));
-  panel.innerHTML = `<div class="ttitle">${title}</div><div class="note">${them.length} ${shortName(choice.against)}` +
-    `${us.length ? ` + ${us.length} ${CLUB}` : ""}${r == null ? "" : ` · r = <b>${r.toFixed(2)}</b>`}</div>`;
+  const note = document.createElement("div");
+  note.className = "note";
+  note.innerHTML = `${them.length} ${shortName(choice.against)}${us.length ? ` + ${us.length} ${CLUB}` : ""} at ${choice.pos}` +
+    `${r == null ? "" : ` · r = <b>${r.toFixed(2)}</b>`}`;
+  box.appendChild(note);
   if (!people.length) return;
-  const box = document.createElement("div");
-  panel.appendChild(box);
-  if (howto) {  // how to read it, under the chart
-    const how = document.createElement("div");
-    how.className = "howto";
-    how.innerHTML = howto;
-    panel.appendChild(how);
-  }
-  const width = box.clientWidth, height = Math.max(240, Math.min(360, width * 0.62)), left = 40, bottom = 34, top = 14, right = 10;
+  const width = box.clientWidth, height = Math.max(260, Math.min(440, width * 0.5)), left = 40, bottom = 34, top = 14, right = 10;
   const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height }, box);
   const xs = people.map(getX), ys = people.map(getY);
   const sx = wages ? wageScale([Math.min(...xs) / 1.25, Math.max(...xs) * 1.25], [left, width - right]) : straightScale(padded(xs, 0.05), [left, width - right]);
@@ -326,9 +351,6 @@ function fillSelect(id, options, current, key) {
 }
 function draw() {
   fillSelect("against", CHOICES.map(c => [c, shortName(c)]), choice.against, "against");
-  const attrs = topAttributes(choice.pos);
-  if (!attrs.includes(choice.attr)) choice.attr = attrs[0];
-  fillSelect("attribute", attrs.map((a, i) => [a, `${i + 1}. ${a}`]), choice.attr, "attr");
   const bar = document.getElementById("positions");
   bar.querySelectorAll("button").forEach(b => b.remove());
   for (const pos of POSITIONS) {
@@ -343,35 +365,103 @@ function draw() {
   document.getElementById("themCount").textContent = people.filter(p => !p.squad).length;
   document.getElementById("usName").textContent = CLUB;
   document.getElementById("usCount").textContent = people.filter(p => p.squad).length;
-  const attr = choice.attr, pos = choice.pos, attrOf = p => p.attrs[attr], scoreOf = p => p.scores[pos];
-  document.getElementById("attributeTitle").textContent = `${attr} by position`;
-  document.getElementById("attributeSub").textContent = `Your players' ${attr.toLowerCase()} at each position, against the others (pick the attribute at the top)`;
+  const pos = choice.pos, scoreOf = p => p.scores[pos];
+  summary(people);
+  // the charts, one at a time
+  const rated = people.some(p => p.rating != null);
   const them = `<span class="them">${shortName(choice.against)}</span>`, us = `<span class="us">◆ your players</span>`;
-  document.getElementById("scoreHow").innerHTML = `Each row is a position. The pink bar is ${them}: the line runs from the worst to the best, ` +
-    `the box holds the middle half, and the white mark and number are the middle player. ${us} sit on top: right of the white mark = ` +
-    `better than most of them. The number at the far right is your best minus their middle (<span class="good">green</span> = you're ahead).`;
-  document.getElementById("attributeHow").innerHTML = `Read it like the chart beside it, for one attribute: further right = more ${attr.toLowerCase()}. ` +
-    `Pick another attribute in the menu at the top; hover a mark for the player.`;
-  byPosition("scoreChart", (p, at) => p.scores[at], "role score", atBest, undefined, true, 10);
-  byPosition("attributeChart", p => attrOf(p), attr, (p, at) => p.best === at, 2);
-  document.getElementById("plots").innerHTML = "";
-  plot({ title: `${pos} score vs wage`, x: p => p.wage || null, y: scoreOf, xTitle: "wage p/w (log)", yTitle: `${pos} score`, wages: true,
-         zones: ["better and cheaper", "worse and dearer"],
-         howto: `Every player at ${pos}: <b>higher = better</b>, <b>further left = cheaper</b>. The dashed lines are the middle of the others. ` +
-                `<span class="good">Top left</span>: better and cheaper than most (good value: worth a look). ` +
-                `<span class="bad">Bottom right</span>: worse and dearer. Hover a mark for the player.` });
-  if (people.some(p => p.rating != null)) {
-    plot({ title: `${pos} score vs average rating`, x: p => p.rating, y: scoreOf, xTitle: "average rating", yTitle: `${pos} score`,
-           howto: `Does a higher score mean better matches? Marks rising to the right (r near 1) say yes; a flat cloud (r near 0) says the score misses something.` });
-    plot({ title: `${attr} vs average rating`, x: attrOf, y: p => p.rating, xTitle: attr, yTitle: "rating", spreadX: 0.35,
-           howto: `Does more ${attr.toLowerCase()} go with better match ratings at ${pos}? The higher r, the more it does.` });
-  } else {
-    const panel = document.createElement("div");
-    panel.className = "tile";
-    panel.innerHTML = `<div class="ttitle">Score vs average rating</div><div class="note">These charts appear once you import a whole ` +
-      `division with Division, Minutes and Average Rating columns (rename the export after the league, e.g. league-one.csv).</div>`;
-    document.getElementById("plots").appendChild(panel);
-  }
+  const group = (key, name, what) => ({ name: `${name} by position`,
+    sub: `${what}, at each position: its ${name.toLowerCase()} attributes averaged with that position's weights`,
+    draw: () => byPosition("chartBox", (p, at) => groupValue(p, at, name), name.toLowerCase(), atBest, undefined, true, undefined,
+                           name === "Goalkeeping" ? ["GK"] : undefined),
+    how: `Each row is a position, each player at his best position. A player's value is his ${name.toLowerCase()} attributes ` +
+      `averaged with the position's weights (the Attributes page), so it counts what matters there; under half of that weight ` +
+      `scouted = no value. The pink bar is ${them}: the line runs from the worst to the best, the box holds the middle half, and ` +
+      `the white mark and number are the middle player. ${us} sit on top; the number at the far right is your best minus their ` +
+      `middle (<span class="good">green</span> = you're ahead).` });
+  const charts = {
+    score: { name: "Role score by position", sub: "How good your players are at each position, against the others",
+      draw: () => byPosition("chartBox", (p, at) => p.scores[at], "role score", atBest, undefined, true, 10),
+      how: `Each row is a position. The pink bar is ${them}: the line runs from the worst to the best, the box holds the middle half, ` +
+        `and the white mark and number are the middle player. ${us} sit on top: right of the white mark = better than most of them. ` +
+        `The number at the far right is your best minus their middle (<span class="good">green</span> = you're ahead). Click a position to pick it.` },
+    technical: group("technical", "Technical", "Corners to Technique: on the ball"),
+    mental: group("mental", "Mental", "Anticipation to Work Rate: reading the game and effort"),
+    physical: group("physical", "Physical", "Pace, Acceleration, Stamina, Strength and the rest"),
+    goalkeeping: group("goalkeeping", "Goalkeeping", "Handling, Reflexes, Aerial Reach and the rest (keepers only)"),
+    wage: { name: `${pos} score vs wage`, sub: `Every player whose best position is ${pos}: who gives the most for the money`,
+      draw: () => plot({ x: p => p.wage || null, y: scoreOf, xTitle: "wage p/w (log)", yTitle: `${pos} score`, wages: true,
+                         zones: ["better and cheaper", "worse and dearer"] }),
+      how: `<b>Higher = better</b>, <b>further left = cheaper</b>. The dashed lines are the middle of the others. ` +
+        `<span class="good">Top left</span>: better and cheaper than most (good value: worth a look). ` +
+        `<span class="bad">Bottom right</span>: worse and dearer. Pick the position at the top; hover a mark for the player.` },
+    ...(rated ? {
+      rating: { name: `${pos} score vs average rating`, sub: "Whether the score matches how players do in matches",
+        draw: () => plot({ x: p => p.rating, y: scoreOf, xTitle: "average rating", yTitle: `${pos} score` }),
+        how: `Does a higher score mean better matches? Marks rising to the right (r near 1) say yes; a flat cloud (r near 0) says the score misses something.` },
+    } : {}),
+  };
+  if (!charts[choice.chart]) choice.chart = "score";
+  fillSelect("chart", Object.entries(charts).map(([k, c]) => [k, c.name]).concat(rated ? [] : [["", "Score vs average rating (after a division import)"]]),
+             choice.chart, "chart");
+  document.querySelector('#chart option[value=""]')?.setAttribute("disabled", "");
+  const c = charts[choice.chart];
+  document.getElementById("chartTitle").textContent = c.name;
+  document.getElementById("chartSub").textContent = c.sub;
+  document.getElementById("chartHow").innerHTML = c.how + (rated ? "" : ` <br>The score vs average rating charts appear once you import a whole division ` +
+    `with Division, Minutes and Average Rating columns (rename the export after the league, e.g. league-one.csv).`);
+  document.getElementById("chartBox").innerHTML = "";
+  c.draw();
+}
+
+// ---- the analysis on top: per position, the listed players against yours ----
+function summary(people) {
+  const fmtWage = w => w == null ? "–" : `${wageText(w)} p/w`;
+  const last = n => n.split(" ").pop();
+  const rows = POSITIONS.map(pos => {
+    const them = people.filter(p => !p.squad && atBest(p, pos)).sort((a, b) => b.scores[pos] - a.scores[pos]);
+    // your best there: whoever of yours who plays it scores highest (FM's positions, else his best and its neighbours, as the Lineup)
+    const ours = people.filter(p => p.squad && p.scores[pos] != null && (p.plays || [p.best]).includes(pos))
+      .sort((a, b) => b.scores[pos] - a.scores[pos]);
+    const mine = ours[0], theirs = them[0], mid = them.length ? middleOf(them.map(p => p.scores[pos])) : null;
+    const better = mine ? them.filter(p => p.scores[pos] > mine.scores[pos]) : them;
+    const cheapest = better.filter(p => p.wage != null).sort((a, b) => a.wage - b.wage)[0];
+    return { pos, them, mine, theirs, mid, better, cheapest, gap: mine && theirs ? theirs.scores[pos] - mine.scores[pos] : null };
+  });
+  const listed = rows.reduce((n, r) => n + r.them.length, 0);
+  const upgrades = rows.filter(r => r.better.length && r.them.length);
+  const biggest = rows.filter(r => r.gap != null && r.gap > 0).sort((a, b) => b.gap - a.gap)[0];
+  const ahead = rows.filter(r => r.mine && r.them.length && r.gap <= 0).map(r => r.pos);
+  const empty = rows.filter(r => !r.mine).map(r => r.pos);
+  const elsewhere = r => r.mine && r.mine.best !== r.pos ? ` <span class="faint">(best ${r.mine.best})</span>` : "";
+  const sign = v => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`;
+  const lead = !listed ? `No listed players to compare with yet: import a search or shortlist.` :
+    `<b>${listed}</b> listed player${listed > 1 ? "s" : ""} (${shortName(choice.against)}), each at his best position. ` +
+    (upgrades.length ? `Better than your best at <b>${upgrades.length}</b> position${upgrades.length > 1 ? "s" : ""}: ` +
+      upgrades.map(r => `${r.pos} (${r.better.length})`).join(", ") + ". " : `No one listed beats your best anywhere. `) +
+    (biggest ? `Biggest gap: <span class="bad">${biggest.pos}</span>, ${biggest.theirs.name} is <b>${sign(biggest.gap)}</b> on ${biggest.mine.name}. ` : "") +
+    (ahead.length ? `You're ahead of everyone listed at <span class="good">${ahead.join(", ")}</span>. ` : "") +
+    (empty.length ? `<span class="faint">No player of yours plays ${empty.join(", ")}.</span>` : "");
+  const body = rows.map(r => `<tr data-pos="${r.pos}" class="${r.pos === choice.pos ? "on" : ""}">
+      <td class="pos-cell">${r.pos}</td>
+      <td class="num">${r.them.length || "–"}</td>
+      <td class="num">${r.mid == null ? "–" : r.mid.toFixed(1)}</td>
+      <td>${r.theirs ? `${r.theirs.name} <b>${r.theirs.scores[r.pos].toFixed(1)}</b> <span class="faint">${r.theirs.age} · ${fmtWage(r.theirs.wage)}</span>` : "–"}</td>
+      <td class="us">${r.mine ? `${r.mine.name} <b>${r.mine.scores[r.pos].toFixed(1)}</b>${elsewhere(r)}` : `<span class="faint">none</span>`}</td>
+      <td class="num ${r.gap == null ? "" : r.gap > 0 ? "down" : "up"}" title="their best minus your best">${r.gap == null ? "–" : sign(-r.gap)}</td>
+      <td class="num">${r.them.length ? r.better.length : "–"}</td>
+      <td>${r.cheapest ? `${r.cheapest.name} <b>${r.cheapest.scores[r.pos].toFixed(1)}</b> <span class="faint">${fmtWage(r.cheapest.wage)}</span>` : "–"}</td>
+    </tr>`).join("");
+  const box = document.getElementById("summary");
+  box.innerHTML = `<div class="ttitle">Listed players by position</div>
+    <div class="lead-line">${lead}</div>
+    <div class="wrapx"><table class="market"><thead><tr><th>Position</th><th class="num">Listed</th><th class="num">Middle</th><th>Their best</th>
+      <th>Your best</th><th class="num">You ±</th><th class="num">Better than yours</th><th>Cheapest of those</th></tr></thead><tbody>${body}</tbody></table></div>
+    <div class="subtitle" style="margin:8px 0 0">Listed players count at their best position; <b>Your best</b> is whoever of yours who plays there
+      scores highest (FM's positions, else his best and its neighbours; "best X" = his best is elsewhere). <b>Middle</b>: the middle listed player's score;
+      <b>You ±</b>: your best minus their best (<span style="color:var(--green)">green</span> = you're ahead); <b>Cheapest of those</b>: the lowest wage among
+      the listed players better than your best. Click a row to pick that position for the charts.</div>`;
+  box.querySelectorAll("tr[data-pos]").forEach(tr => tr.onclick = () => choose("pos", tr.dataset.pos));
 }
 document.addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === "SELECT") return;

@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).parent
-FILES = ["template.html", "charts.html", "theme.css", "logo.svg", "docs/FMAnalyst.ico", "weights"]  # what score.py reads from the program folder (APP)
+FILES = ["template.html", "charts.html", "theme.css", "logo.svg", "docs/FMAnalyst.ico", "docs/ca_costs_fm27.csv", "weights"]  # what score.py reads from the program folder (APP)
 
 
 def main():

@@ -1,198 +1,61 @@
-# FMAnalyst's default weights for FM27: FM's 10 position groups, weighted by both
-#   - CA cost (docs/ca_costs_fm27.csv): which attributes FM counts at each position, and
-#   - match impact (docs/attribute_impact_test.csv): harvestgreen22's FM27 attribute test, posted on sortitoutsi
-#     (https://sortitoutsi.net/content/78219/fm27-attribute-test-tactical-understanding-training-system-preset-tactics-ai-reverse-engineering-engine-for-test,
-#     4 Nov 2026; about 51,000 matches, preset Gegenpress 4-2-4) and tabled by squirrel_plays in FM-Arena's "Player Attributes"
-#     thread (https://fm-arena.com/threads/player-attributes.59/): the change in win rate when every player's attribute
-#     moves from 12 to 1-18, the rest at 12 (tested at 1, 6, 12, 18; linear between).
-# Outfield weight = CA cost x (impact + 1), scaled so each position's top weight is 10. Impact = the gain from 9 to 15
-# (where most players are); a loss counts as none. The + 1 keeps a little weight for attributes the test found no
-# gain in (Marking, Tackling, Passing...). Leadership and Teamwork aren't in the test: CA cost only.
-# Goalkeepers: CA cost only (the test is outfield).
-# Outfield attributes: only the 18 that the Search - Outfield Players View shows (Acceleration, Anticipation, Composure,
-# Decisions, Dribbling, Finishing, First Touch, Heading, Jumping Reach, Off The Ball, Pace, Passing, Positioning,
-# Stamina, Strength, Tackling, Teamwork, Work Rate), rescaled to a top weight of 10 per position. So searches exported
-# with that view score at every position, and the squad (exported with every attribute) is judged on the same ones.
-# Score = sum(attribute * weight) / sum(weights). Attributes not listed don't count.
+# FMAnalyst's default weights for FM27.
+#
+# A player's score at a position = sum(attribute x weight) / sum(weights), on FM's 1-20 scale. Each attribute's
+# weight at a position = its CA cost there x its attribute weight below, so one number per attribute moves it at every
+# position, keepers' included:
+#   - CA cost (docs/ca_costs_fm27.csv, fixed): how much FM charges for the attribute at each position, as FM Scout tables
+#     it (unchanged for many FM versions; 1 = the smallest cost, blank = none). No cost there = it doesn't count there.
+#   - Attribute weight (below, 1-20, like FM's attributes; not listed = doesn't count). Change it on the Attributes page.
+# The values = match impact, our main distribution: harvestgreen22's FM27 attribute test, posted on sortitoutsi
+#   (https://sortitoutsi.net/content/78219/fm27-attribute-test-tactical-understanding-training-system-preset-tactics-ai-reverse-engineering-engine-for-test#comment_910309,
+#   4 Nov 2026; about 51,000 matches, preset Gegenpress 4-2-4) and tabled by squirrel_plays in FM-Arena's "Player Attributes"
+#   thread (https://fm-arena.com/threads/player-attributes.59/), docs/attribute_impact_test.csv: the change in win rate
+#   when every player's attribute goes from 12 to 1-18. Value = the whole swing from 1 to 18 (the 1>6, 6>12 and 12>18
+#   gains together), scaled to 20 for the biggest (Pace, 59.4 points) and rounded; at least 1. So the attributes that
+#   hurt a lot when low (Work Rate, Anticipation, Strength) count as well as the ones that keep helping when high (Pace,
+#   Acceleration, Stamina, Jumping Reach). In the test's order: Pace, Acceleration and Stamina first; Jumping Reach;
+#   Anticipation, Strength and Work Rate; then Concentration and Balance.
+#   Not listed: the six that do worse at 18 than at 1 in the test (Positioning, Passing, Tackling, First Touch, Technique,
+#   Off The Ball), the ones it didn't test (Teamwork, Leadership…), and the ones without a CA cost, which can't count
+#   (Natural Fitness, Determination, and the hidden Pressure, Important Matches and Consistency).
+#   The 18 attributes the Search - Outfield Players View shows carry at least 85% of every position's weight, so searched
+#   players still score everywhere (the 85% rule).
+# Goalkeeping attributes (Handling, Reflexes, Aerial Reach, Command of Area, Communication, Kicking, One on Ones, Throwing):
+#   15, as the test has no keepers; with them a keeper's biggest weights are Handling and Reflexes, then Acceleration.
+#   Keepers share the other attributes' weights with outfield players (Decisions counts little for them too).
+# The pages show weights scaled so each position's biggest is 10.
 
-[outfield.DC]
-Pace = 10
-Acceleration = 9.3
-"Jumping Reach" = 7.4
-Stamina = 4.2
-Strength = 3.8
-Anticipation = 3.2
-Decisions = 2.2
-Positioning = 1.4
-Heading = 0.7
-"Work Rate" = 0.7
-Tackling = 0.4
-Composure = 0.2
-"First Touch" = 0.2
-Passing = 0.2
+outfield_positions = ["DC", "DL/DR", "WBL/WBR", "DM", "MC", "ML/MR", "AMC", "AML/AMR", "ST"]
 
-[outfield."DL/DR"]
-Acceleration = 10
-Pace = 9.2
-Stamina = 7.7
-Strength = 2.4
-"Jumping Reach" = 2.3
-Anticipation = 1.8
-Decisions = 1.4
-Positioning = 0.6
-"Work Rate" = 0.6
-Heading = 0.3
-Tackling = 0.3
-Composure = 0.2
-"First Touch" = 0.2
-Passing = 0.2
-Teamwork = 0.2
-
-[outfield."WBL/WBR"]
-Acceleration = 10
-Pace = 9.7
-Stamina = 7.9
-Strength = 2.1
-Anticipation = 1.6
-Decisions = 0.9
-Dribbling = 0.6
-"Work Rate" = 0.5
-Positioning = 0.4
-"First Touch" = 0.2
-Passing = 0.2
-Tackling = 0.2
-Composure = 0.1
-"Off The Ball" = 0.1
-Teamwork = 0.1
-
-[outfield.DM]
-Acceleration = 10
-Pace = 8.6
-Stamina = 6
-Anticipation = 3.5
-Strength = 3.4
-Decisions = 1.9
-"Work Rate" = 1.5
-Positioning = 0.9
-Dribbling = 0.8
-Finishing = 0.8
-Tackling = 0.6
-"First Touch" = 0.4
-Passing = 0.4
-Composure = 0.2
-Teamwork = 0.2
-
-[outfield.MC]
-Pace = 10
-Acceleration = 9.3
-Stamina = 8.4
-Strength = 2.6
-Anticipation = 1.9
-Decisions = 1.6
-"Work Rate" = 1
-Dribbling = 0.8
-Finishing = 0.7
-"First Touch" = 0.5
-Passing = 0.5
-Positioning = 0.5
-Composure = 0.2
-"Off The Ball" = 0.2
-Tackling = 0.2
-Teamwork = 0.2
-
-[outfield."ML/MR"]
-Acceleration = 10
-Pace = 9.7
-Stamina = 5.6
-Anticipation = 1.6
-Strength = 1.5
-Decisions = 0.9
-Dribbling = 0.9
-"Work Rate" = 0.8
-Finishing = 0.6
-"First Touch" = 0.3
-Composure = 0.2
-Passing = 0.2
-"Off The Ball" = 0.1
-Tackling = 0.1
-Teamwork = 0.1
-
-[outfield.AMC]
-Acceleration = 10
-Pace = 10
-Stamina = 6
-Anticipation = 1.4
-Strength = 1.4
-Decisions = 1
-Dribbling = 0.8
-Finishing = 0.8
-"Work Rate" = 0.7
-"First Touch" = 0.3
-Composure = 0.2
-"Off The Ball" = 0.2
-Passing = 0.2
-Positioning = 0.2
-Tackling = 0.1
-Teamwork = 0.1
-
-[outfield."AML/AMR"]
-Pace = 10
-Acceleration = 7.8
-Stamina = 4.9
-Anticipation = 1
-Dribbling = 1
-Strength = 1
-Decisions = 0.6
-"Work Rate" = 0.5
-Finishing = 0.4
-"First Touch" = 0.2
-Composure = 0.1
-"Off The Ball" = 0.1
-Passing = 0.1
-Tackling = 0.1
-Teamwork = 0.1
-
-[outfield.ST]
-Acceleration = 10
-Pace = 9
-Stamina = 5.4
-"Jumping Reach" = 4
-Strength = 2.5
-Anticipation = 2.1
-Finishing = 1.9
-Dribbling = 1.3
-Decisions = 0.7
-Heading = 0.6
-"Work Rate" = 0.4
-Composure = 0.3
-"First Touch" = 0.3
-"Off The Ball" = 0.3
-Positioning = 0.2
-Passing = 0.1
-
-[gk]
-Decisions = 10
-Agility = 8
-Handling = 8
-Reflexes = 8
-Acceleration = 6
-"Aerial Reach" = 6
-Bravery = 6
-"Command of Area" = 6
+[attributes]
+Pace = 20
+Acceleration = 16
+"Aerial Reach" = 15
+"Command of Area" = 15
+Communication = 15
+Handling = 15
+Kicking = 15
+"One on Ones" = 15
+Reflexes = 15
+Stamina = 15
+Throwing = 15
+"Jumping Reach" = 11
+Anticipation = 8
+Strength = 8
+"Work Rate" = 7
 Concentration = 6
-Communication = 5
-Kicking = 5
-Positioning = 5
-"One on Ones" = 4
-Strength = 4
-Anticipation = 3
-Pace = 3
-Passing = 3
-Throwing = 3
-Balance = 2
-Composure = 2
-Leadership = 2
-Teamwork = 2
+Balance = 5
+Dribbling = 4
+Agility = 3
+Finishing = 3
+"Long Shots" = 3
+Crossing = 2
+Heading = 2
+Bravery = 1
+Composure = 1
+Decisions = 1
+Marking = 1
+Vision = 1
 
 # vs Age: the score a player is expected to have reached by each age. It rises to a peak of 13.8 at 24 (where a good
 # Championship or low Premier League player sits with these weights) and grows more slowly as he nears it:

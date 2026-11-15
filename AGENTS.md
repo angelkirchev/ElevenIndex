@@ -62,7 +62,7 @@ score.py; bump `VERSION` with each release (tag `v<VERSION>`).
 ## Scoring
 
 - **Position score** = Σ(attribute × weight) ÷ Σ(weights) over the attributes known, on the 1–20 scale (`weighted`), when
-  those carry at least 85% of the position's weight (`MIN_KNOWN_WEIGHT`). Outfield players get every `[outfield.*]`
+  those carry at least 85% of the position's weight (`MIN_KNOWN_WEIGHT`). Outfield players get every outfield
   position, keepers only GK.
 - **Over time** (`carry_forward`): an attribute keeps its newest known value; club, age, wage, value and loan come from the
   newest observation that shows them.
@@ -73,8 +73,11 @@ score.py; bump `VERSION` with each release (tag `v<VERSION>`).
 - **Staff**: FM's words → the middle of their 1–20 range (`[staff_words]`); job score = the same weighted average, every
   weighted attribute known. Each `[staff.<label>]` table is a job; `[staff_names]` gives its full name. How the staff
   weights are set: `weights/staff_notes.md`.
-- **Weights**: `weights/default.toml` (see its header and `docs/README.md`), or a save's own `saves/<save>/weights.toml`
-  when its save.toml says `weights = "custom"` (`weights_path`). The Attributes page writes the latter.
+- **Weights**: one attribute weight per attribute, 1–20, one table for every position, keepers' too (`[attributes]`):
+  `weights/default.toml`'s (see its header and `docs/README.md`), or your own in `saves/attributes.toml`
+  (`ATTRIBUTES_FILE`), one table for every save, written by the Attributes page. A position's weight for an attribute =
+  its CA cost there (`docs/ca_costs_fm27.csv`, `COSTS_FILE`) × its attribute weight, scaled to a top of 10 (`compose`);
+  `load_weights` gives the composed `outfield` / `gk` tables the rest of the code reads.
 
 ## Squad page details
 

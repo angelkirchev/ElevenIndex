@@ -229,95 +229,83 @@ class App:
     # --- weights (the Attributes page) ----------------------------------------------------------------------------
 
     def rescore_with(self, change, notice):
-        """Change the save's weights (change() writes the files), rescore and reload the Attributes page. If scoring
-        fails, save.toml and the save's weights.toml go back to what they were."""
-        save_toml, own = self.save_dir / "save.toml", self.save_dir / "weights.toml"
-        before = save_toml.read_text(encoding="utf-8"), own.read_text(encoding="utf-8") if own.exists() else None
+        """Change the attribute weights (change() writes saves/attributes.toml), rescore this save and reload the
+        Attributes page; every other save is rescored when you switch to it. If scoring fails, the file goes back."""
+        own = score.ATTRIBUTES_FILE
+        before = own.read_text(encoding="utf-8") if own.exists() else None
         with self.lock:
             try:
                 change()
                 cfg, pages = score.build(self.save, self.config)
                 out = score.write_pages(self.save, self.config, cfg, pages)
             except (Exception, SystemExit):
-                save_toml.write_text(before[0], encoding="utf-8")
-                if before[1] is None:
+                if before is None:
                     own.unlink(missing_ok=True)
                 else:
-                    own.write_text(before[1], encoding="utf-8")
+                    own.write_text(before, encoding="utf-8")
                 raise
-            self.commit(f"{self.save}: {notice.lower()}")
-        self.notice = (notice + ". Every page is rescored.", False)
+            self.commit(f"attribute weights: {notice.lower()}")
+        self.notice = (notice + ". This save is rescored; the others are when you open them.", False)
         self.show_soon(url=(out / "attributes.html").resolve().as_uri())
 
     def current_weights(self):
-        return score.load_weights(score.load_toml(self.save_dir / "save.toml"), self.save_dir)
+        return score.load_weights()
 
-    def save_weights(self, positions):
-        """Save the page's weights as this save's own (saves/<save>/weights.toml, weights = "custom")."""
-        cfg = score.load_toml(self.save_dir / "save.toml")
-        base = score.with_positions(self.current_weights(), positions)
-        start = "your earlier weights" if cfg.get("weights") == score.CUSTOM else "the default weights"
+    def save_weights(self, values):
+        """Save the page's attribute weights (1-20, one table for every position) as your own, for every save
+        (saves/attributes.toml); the same as the default = back to the default (the file goes)."""
+        clean = score.check_values(values)
+        default = score.check_values(score.load_toml(score.weights_file(score.DEFAULT))["attributes"])
 
         def change():
-            (self.save_dir / "weights.toml").write_text(score.weights_toml(base, (
-                f"Your own weights for {self.save}, saved on FMAnalyst's Attributes page ({time.strftime('%Y-%m-%d')}),\n"
-                f"starting from {start}. Score = sum(attribute x weight) / sum(weights).")), encoding="utf-8")
-            score.set_save_key(self.save_dir, "weights", score.CUSTOM)
-        self.rescore_with(change, "Saved your weights")
+            if clean == default:
+                score.ATTRIBUTES_FILE.unlink(missing_ok=True)
+                return
+            score.ATTRIBUTES_FILE.write_text(score.weights_toml({"attributes": clean}, (
+                f"Your own attribute weights, saved on FMAnalyst's Attributes page ({time.strftime('%Y-%m-%d')}). Every save\n"
+                "scores with them. 1-20; not listed = doesn't count. An attribute's weight at a position = its CA cost there\n"
+                "x this value (see weights/default.toml).")), encoding="utf-8")
+        self.rescore_with(change, "Back to the default attribute weights" if clean == default else "Saved your attribute weights")
 
-    def use_weights(self, name):
-        """Score with the default weights, or the save's own (kept when you go back to the default)."""
-        if name not in (score.DEFAULT, score.CUSTOM):
-            raise ValueError(f"Unknown weights: {name}.")
-        if name == score.CUSTOM and not (self.save_dir / "weights.toml").is_file():
-            raise ValueError("You haven't saved weights of your own for this save yet: change some and click Save.")
-        self.rescore_with(lambda: score.set_save_key(self.save_dir, "weights", name),
-                          "Back to the default weights" if name == score.DEFAULT else "Now scoring with your own weights")
-
-    def export_weights(self, positions):
-        """Write the page's weights as a table you can open in Notepad or Excel: a row per attribute, a column per
-        position. .txt is tab-separated, .csv comma-separated."""
-        score.with_positions(self.current_weights(), positions)  # the same checks as saving
+    def export_weights(self, attrs=()):
+        """Write the attribute weights (your own if you've saved some, else the default; the same for every save) as one
+        list to edit in Notepad: "Acceleration 16, Pace 20, ...". attrs: every attribute the page lists, so the ones
+        that don't count are named too."""
+        values = score.attribute_values(self.current_weights())
         chosen = self.window.create_file_dialog(webview.FileDialog.SAVE, directory=str(Path.home() / "Documents"),
-                                                save_filename=f"{self.save}-weights.txt",
-                                                file_types=("Text table (*.txt)", "Excel table (*.csv)"))  # pywebview takes only letters and spaces in a name
+                                                save_filename="FMAnalyst attributes.txt",
+                                                file_types=("Text file (*.txt)",))  # pywebview takes only letters and spaces in a name
         if not chosen:
             return None
         path = Path(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)
-        path = path if path.suffix.lower() in (".txt", ".csv") else path.with_suffix(".txt")
-        clean = {p: {a: float(v) for a, v in t.items() if float(v) > 0} for p, t in positions.items()}
-        header = (f"FMAnalyst weights, exported from {self.save} on {time.strftime('%Y-%m-%d')}. One row per attribute, one column\n"
-                  "per position; blank = not used. Change the numbers, then Import it on the Attributes page.")
-        path.write_text(score.weights_table(clean, header, "," if path.suffix.lower() == ".csv" else "\t"), encoding="utf-8-sig")
+        path = path if path.suffix.lower() == ".txt" else path.with_suffix(".txt")
+        which = "your own" if score.ATTRIBUTES_FILE.is_file() else "the default"
+        header = (f"FMAnalyst attribute weights ({which}), exported on {time.strftime('%Y-%m-%d')}. One list for every save.\n"
+                  "Each attribute and its weight, from 1 to 20, separated by commas: Pace 20, Acceleration 16, ...\n"
+                  "At each position it counts by this weight x its CA cost there. Change the numbers, add or remove attributes\n"
+                  "(one left out doesn't count), then Import it on the Attributes page.\n"
+                  "Decimals: use a dot, like Pace 12.25 (a comma also works, as long as there's no space after it: 12,25).")
+        path.write_text(score.attributes_text(values, [str(a) for a in attrs or ()], header), encoding="utf-8")
         return str(path)
 
     def import_weights(self):
-        """Read weights you choose (a .txt or .csv table as Export writes, or a .toml weights file), for the page to
-        show: they're not saved until Save."""
+        """Read attribute weights you choose (a list as Export writes: "Pace 20, Acceleration 16, ...", or an earlier
+        version's table), for the page to show: they're not saved until Save."""
         chosen = self.window.create_file_dialog(webview.FileDialog.OPEN, directory=str(Path.home() / "Documents"),
-                                                file_types=("Weights (*.txt;*.csv;*.toml)", "All files (*.*)"))
+                                                file_types=("Attribute weights (*.txt;*.csv)", "All files (*.*)"))
         if not chosen:
             return None
         path = Path(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)
         try:
             text = path.read_text(encoding="utf-8-sig")
         except UnicodeDecodeError:
-            text = path.read_text(encoding="cp1252")  # saved by Excel in Windows' own encoding
+            text = path.read_text(encoding="cp1252")  # saved in Windows' own encoding
+        known = {a for t in score.load_costs(score.COSTS_FILE).values() for a in t}
         try:
-            if path.suffix.lower() == ".toml":
-                w = score.tomllib.loads(text)
-                positions = {**({"GK": w["gk"]} if isinstance(w.get("gk"), dict) else {}), **w.get("outfield", {})}
-                positions = {p: {a: v for a, v in t.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
-                             for p, t in positions.items() if isinstance(t, dict)}
-            else:
-                positions = score.read_weights_table(text)
+            values = score.check_values(score.read_attributes_text(text, known))
         except ValueError as e:
             raise ValueError(f"Couldn't read {path.name}: {e}")
-        known = set(self.current_weights()["outfield"]) | {"GK"}
-        positions = {p: t for p, t in positions.items() if p in known}
-        if not positions:
-            raise ValueError(f"{path.name} has none of the positions (GK, DC, DL/DR…) as columns.")
-        return {"positions": positions, "file": path.name}
+        return {"values": values, "file": path.name}
 
     def open_exports(self):
         if self.exports.is_dir() and sys.platform == "win32":
@@ -460,14 +448,11 @@ class MainApi:
     def browse_folder(self, current):
         return self._app.browse_folder(current)
 
-    def save_weights(self, positions):
-        return self._call(self._app.save_weights, positions)
+    def save_weights(self, values):
+        return self._call(self._app.save_weights, values)
 
-    def use_weights(self, name):
-        return self._call(self._app.use_weights, name)
-
-    def export_weights(self, positions):
-        return self._reply(self._app.export_weights, positions)
+    def export_weights(self, attrs=()):
+        return self._reply(self._app.export_weights, attrs)
 
     def import_weights(self):
         return self._reply(self._app.import_weights)

@@ -34,7 +34,8 @@ attribute over time.
 
 ![A player's profile](docs/screenshots/profile.png)
 
-**Analysis**: your team position by position, ranked by speed or any attribute, against the players you've imported.
+**Analysis**: your team position by position, ranked by position score (or speed, or any attribute), against the players
+you've imported.
 
 ![Analysis page](docs/screenshots/analysis.png)
 
@@ -42,8 +43,8 @@ attribute over time.
 
 ![Development page](docs/screenshots/development.png)
 
-**Market**: your squad (orange diamonds) against the players you've imported, position by position, and who's good value
-for his wage.
+**Market**: per position, how the players you've imported compare with your best (who beats him, and the cheapest of
+those), then one chart at a time: role score, Technical, Mental, Physical and Goalkeeping by position, and score vs wage.
 
 ![Market page](docs/screenshots/market.png)
 
@@ -56,7 +57,8 @@ better ones.
 
 ![Staff page](docs/screenshots/staff.png)
 
-**Attributes**: how much each attribute counts at each position, to change and save as your own, or export to Excel.
+**Attributes**: one weight per attribute (1–20) for every save, worked into each position by FM's CA costs; change it
+here or export it as a list to edit in Notepad.
 
 ![Attributes page](docs/screenshots/attributes.png)
 
@@ -167,7 +169,7 @@ for their history, and type in the filter box, e.g. `age<=21 best=DC`.
 | 3 | Development: how your players changed between two squad exports | 0 | Staff search: the best staff you've imported, and what to search for |
 | 4 | Market: your squad against the players you've imported, and score vs wage | | |
 | **Players** | | **More** | |
-| 5 | All players: everyone you've imported | a | Attributes: change the weights, import or export them |
+| 5 | All players: everyone you've imported | a | Attributes: the attribute weights (1–20), change, export or import them |
 | 6 | Last player import: your latest import | g | Guide: how to use each page, and your settings |
 | 7 | Player search: what to search for to beat your players | | |
 
@@ -175,21 +177,6 @@ for their history, and type in the filter box, e.g. `age<=21 best=DC`.
 
 **Tidying up:** **Clear old lists** on All players and All staff (click twice) moves old searches to an archive. It keeps
 your squad and your latest list, and nothing is deleted.
-
-**Your formation:** the Lineup (on the Squad page) uses one row per position until you set a formation. Add it to your save's
-`save.toml` (in your data folder, see [FAQ](#faq)), one line per slot; `pos` is one of GK, DC, DL/DR, WBL/WBR, DM, MC,
-ML/MR, AMC, AML/AMR, ST, and `left = true` means left-footed only:
-
-```toml
-grid = [
-  { label = "GK", pos = "GK" },
-  { label = "D R", pos = "DL/DR" }, { label = "D C", pos = "DC" },
-  { label = "D C left", pos = "DC", left = true }, { label = "D L", pos = "DL/DR", left = true },
-  { label = "DM", pos = "DM" }, { label = "DM", pos = "DM" },
-  { label = "AM R", pos = "AML/AMR" }, { label = "AM C", pos = "AMC" }, { label = "AM L", pos = "AML/AMR", left = true },
-  { label = "ST", pos = "ST" },
-]
-```
 
 ---
 
@@ -244,13 +231,15 @@ high-end Championship or low-end Premier League player in their prime.
 The weights come from FM27 research by the community:
 
 - **harvestgreen22**'s attribute test, measuring how much each attribute wins matches
-  ([sortitoutsi](https://sortitoutsi.net/content/78219/fm27-attribute-test-tactical-understanding-training-system-preset-tactics-ai-reverse-engineering-engine-for-test);
+  ([sortitoutsi](https://sortitoutsi.net/content/78219/fm27-attribute-test-tactical-understanding-training-system-preset-tactics-ai-reverse-engineering-engine-for-test#comment_910309);
   tabled by squirrel_plays on [FM-Arena](https://fm-arena.com/threads/player-attributes.59/)). Pace, Acceleration and
-  Stamina matter most.
-- FM's own **CA costs**: which attributes FM counts at each position.
+  Stamina matter most, then Jumping Reach, then Anticipation, Strength and Work Rate. Each attribute gets one weight,
+  1–20 like FM's attributes: its whole swing from 1 to 18 in the test.
+- FM's own **CA costs** (as tabled by FM Scout): how much FM counts each attribute at each position. A position's
+  weight for an attribute = its CA cost there × its attribute weight.
 
-Those are the default weights. To score your own way, change them on the **Attributes** page (key **A**): your weights
-are kept for that save, and **Back to default** returns to these.
+Those are the default weights. To score your own way, change them on the **Attributes** page (key **A**): it's one table
+for every save, kept in `savesttributes.toml` in the data folder. **Reset to default**, then **Save**, returns to these.
 
 Imports use [FM27 Exporter](https://github.com/v1adicke/fm27-exporter). MIT licence, see [LICENSE](LICENSE).
 Not affiliated with Sports Interactive or SEGA.

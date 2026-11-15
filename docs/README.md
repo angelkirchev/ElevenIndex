@@ -3,14 +3,16 @@
 What the weights are built from, and other research worth keeping:
 
 - `attribute_impact_test.csv`: harvestgreen22's FM27 attribute test (first posted on
-  [sortitoutsi](https://sortitoutsi.net/content/78219/fm27-attribute-test-tactical-understanding-training-system-preset-tactics-ai-reverse-engineering-engine-for-test),
+  [sortitoutsi](https://sortitoutsi.net/content/78219/fm27-attribute-test-tactical-understanding-training-system-preset-tactics-ai-reverse-engineering-engine-for-test#comment_910309),
   4 November 2026), as tabled by squirrel_plays in FM-Arena's [Player Attributes](https://fm-arena.com/threads/player-attributes.59/)
   thread. Each row: how a team's win rate changes when every player's value of one attribute is set to 1, 6, 12 or 18
-  (the rest at 12; 0% at 12), with straight lines between. The outfield weights in `weights/default.toml` use the gain
-  from 9 to 15.
-- `ca_costs_fm27.csv`: FM27's current-ability cost of each attribute at each position (a row per attribute, a column per
-  position; blank = it costs nothing there). The weights multiply the test's gains by these, so an attribute FM doesn't
-  count at a position gets no weight there.
+  (the rest at 12; 0% at 12), with straight lines between. The outfield attribute weights (1-20) in `weights/default.toml`
+  (one column for every position) are each attribute's whole swing from 1 to 18, scaled so Pace (the biggest) is 20;
+  the goalkeeping attributes, which the test doesn't cover, are 15.
+- `ca_costs_fm27.csv`: FM's current-ability cost of each attribute at each position, as FM Scout tables it (unchanged
+  for many FM versions; a row per attribute, a column per position; 1 = the smallest cost, blank = it costs nothing
+  there). An attribute's weight at a position = its CA cost there x its attribute
+  weight, so an attribute FM doesn't count at a position gets no weight there.
 - `attribute_importance_by_position.csv`: Purity's FM27 test from FM-Arena's
   [Attribute importance by position](https://fm-arena.com/threads/attribute-importance-by-position-in-fm27-a-test-on-my-own-tactic.125/)
   thread: goal difference per season from +1 in one attribute of one player, by position (ST, AM, WB, CB, DM) and for

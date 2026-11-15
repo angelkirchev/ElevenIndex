@@ -126,15 +126,20 @@ __THEME__
   .wbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: 2px 0 8px; }
   .seg { display: inline-flex; flex-wrap: wrap; gap: 4px; }
   .wbtns { display: inline-flex; gap: 6px; align-items: center; }
-  .seg button, .wbtns button, #wswitch { padding: 4px 10px; color: var(--fg); font: 600 13px var(--body); background: var(--row);
+  .seg button, .wbtns button { padding: 4px 10px; color: var(--fg); font: 600 13px var(--body); background: var(--row);
                                          border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
-  .seg button:hover, .wbtns button:hover:not(:disabled), #wswitch:hover { color: #141414; background: #8fe3cf; border-color: #8fe3cf; }
+  .seg button:hover, .wbtns button:hover:not(:disabled) { color: #141414; background: #8fe3cf; border-color: #8fe3cf; }
   .seg button.on, .wbtns button.primary { color: #fff; background: var(--accent-strong); border-color: var(--blue); }
   .wbtns button:disabled { opacity: .4; cursor: default; }
-  #wswitch { margin-left: 8px; padding: 3px 10px; font-size: 12px; border-color: var(--blue); }
   .unsaved { margin-right: 4px; color: var(--yellow); font-weight: 600; }
   .wnow { color: var(--fg); font-weight: 600; }
   table.weights { width: auto; min-width: 560px; }
+  .wscroll { overflow-x: auto; }
+  table.weights td.sh { min-width: 58px; color: var(--fg);
+                        background: color-mix(in srgb, var(--blue) calc(var(--s, 0) * 55%), transparent); }
+  table.weights tr.unused td.sh { color: var(--dim); }
+  .nosearch { margin-left: 6px; padding: 0 6px; color: var(--dim); font-size: 11px; border: 1px solid var(--line); border-radius: 9px; }
+  .warn { color: var(--red); }
   table.weights tr.unused td { color: var(--dim); }
   table.weights tr.divider td { padding-top: 12px; color: var(--dim); font-size: 12px; border-bottom: 1px solid var(--line); }
   input.wt { width: 72px; padding: 2px 6px; text-align: right; color: var(--fg); font: 600 13px var(--body); background: var(--desk);
@@ -168,7 +173,7 @@ __THEME__
     <colgroup><col style="width:190px"><col></colgroup>
     <tr><th colspan="2">Moving between pages</th></tr>
     <tr><td><kbd>1</kbd>–<kbd>9</kbd> <kbd>0</kbd></td><td>the pages in the menu, in order: Squad, Analysis, Development, Market · All players, Last player import, Player search · All staff, Last staff import, Staff search</td></tr>
-    <tr><td><kbd>A</kbd> <kbd>G</kbd></td><td>Attributes (the weights) and the Guide</td></tr>
+    <tr><td><kbd>A</kbd> <kbd>G</kbd></td><td>Attributes (the attribute weights) and the Guide</td></tr>
     <tr><td><kbd>?</kbd></td><td>open or close this list</td></tr>
     <tr><th colspan="2">In a table</th></tr>
     <tr><td><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd></td><td>move the marked cell</td></tr>
@@ -504,15 +509,15 @@ document.getElementById("squadtop").addEventListener("click", e => {
 });
 // Analysis page: DATA = { positions: [{ pos, players: [{ name, age, role, from, score, attrs }], imported, importedAvg,
 // importedScore }], attrs, players } (analysis() in score.py): the squad by position, ranked by what "Rank by" picks
-const ANALYSIS_STORE = "fm:__SAVE__:analysis";
-let rankBy = "Speed";
+const ANALYSIS_STORE = "fm:__SAVE__:analysis-by";  // a new name: everyone starts from Score once
+let rankBy = "Score";
 try { rankBy = localStorage.getItem(ANALYSIS_STORE) || rankBy; } catch (e) {}
 function renderAnalysis() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA;
   main.className = "tiles";
-  const options = ["Speed", "Score", ...d.attrs];
-  if (!options.includes(rankBy)) rankBy = "Speed";
+  const options = ["Score", "Speed", ...d.attrs];
+  if (!options.includes(rankBy)) rankBy = "Score";
   const mean = vs => { vs = vs.filter(v => v != null); return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null; };
   // Speed: Pace and Acceleration together; Score: the position score; else one attribute
   const val = (p, attrs, score) => rankBy === "Speed" ? mean([attrs.Pace, attrs.Acceleration]) : rankBy === "Score" ? score : attrs[rankBy] ?? null;
@@ -543,11 +548,11 @@ function renderAnalysis() {
     and <b>±</b> how your players compare with them.</div></div>`;
   const tiles = ps.map(g => `<div class="tile"><div class="ttitle">${esc(g.pos)} <span class="sub">${esc(label)} · your average
     <span class="${cls(g.avg)}">${avg1(g.avg)}</span>${g.imp != null ? ` · imported <span class="${cls(g.imp)}">${avg1(g.imp)}</span>` : ""}</span></div>
-    ${g.players.length ? `<table><thead><tr><th class="num">#</th><th>Player</th><th>Role</th><th class="num">Age</th><th class="num">${esc(label)}</th>
-      <th class="num">${esc(g.pos)} score</th></tr></thead><tbody>${g.players.map((p, i) => `<tr><td class="num dim">${i + 1}</td>
+    ${g.players.length ? `<table><thead><tr><th class="num">#</th><th>Player</th><th>Role</th><th class="num">Age</th><th class="num">${esc(rankBy === "Score" ? `${g.pos} score` : label)}</th>
+      ${rankBy === "Score" ? "" : `<th class="num">${esc(g.pos)} score</th>`}</tr></thead><tbody>${g.players.map((p, i) => `<tr><td class="num dim">${i + 1}</td>
       <td><span class="pl" data-name="${esc(p.name)}">${esc(p.name)}</span></td><td class="text">${esc(p.role)}${p.from ? ` <span class="sub">↑${esc(p.from)}</span>` : ""}</td>
       <td class="num">${p.age}</td><td class="num ${cls(p.v)}">${fmt(p.v)}</td>
-      <td class="num ${p.score == null ? "dim" : tier(p.score, RANGE.f1)}">${p.score == null ? "–" : p.score.toFixed(1)}</td></tr>`).join("")}</tbody></table>`
+      ${rankBy === "Score" ? "" : `<td class="num ${p.score == null ? "dim" : tier(p.score, RANGE.f1)}">${p.score == null ? "–" : p.score.toFixed(1)}</td>`}</tr>`).join("")}</tbody></table>`
       : `<div class="sub">No one here on the Lineup.</div>`}</div>`).join("");
   main.innerHTML = summary + tiles;
   document.getElementById("rankby").onchange = e => {
@@ -633,60 +638,68 @@ document.getElementById("main").addEventListener("click", e => {
   const el = PAGE === "development" && e.target.closest(".pl[data-name]");
   if (el && getSelection().isCollapsed && DATA.rows[el.dataset.name]) showDetail(DATA.rows[el.dataset.name]);
 });
-// Attributes page: DATA = { custom, hasCustom, saved, positions: { GK: {attr: weight}, DC: {...}… }, attrs: { outfield, gk } }
-// (attributes_page() in score.py). The weights can be changed here; the app saves them (pywebview.api.save_weights).
-const ATTR_STORE = "fm:__SAVE__:attributes";
-let attrPos = "DC", edited = null;
-try { attrPos = localStorage.getItem(ATTR_STORE) || attrPos; } catch (e) {}
+// Attributes page: DATA = { custom (your own saved, for every save), saved, values: {attr: 1-20}, defaults (the same, the
+// default's), costs: { GK: {attr: CA cost}, DC: {...}… }, search: [the 18 a player search shows], attrs: [every attribute with a
+// CA cost] } (attributes_page() in score.py). One weight per attribute (1-20) for every position, keepers' too; a position's
+// weights = CA cost there × the attribute's weight (compose() in score.py). The app saves them (pywebview.api.save_weights).
+let edited = null;
 function renderAttributes() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA, inApp = !!window.pywebview;
   main.className = "tiles";
-  if (!edited) edited = JSON.parse(JSON.stringify(d.positions));
-  const positions = Object.keys(edited);
-  if (!positions.includes(attrPos)) attrPos = positions.find(p => p !== "GK") || positions[0];
-  const changed = JSON.stringify(edited) !== JSON.stringify(d.positions);
-  const t = edited[attrPos], total = Object.values(t).reduce((a, b) => a + (+b || 0), 0);
-  const all = [...new Set([...(attrPos === "GK" ? d.attrs.gk : d.attrs.outfield), ...Object.keys(t)])];
-  const used = all.filter(a => +t[a] > 0).sort((a, b) => t[b] - t[a]), unused = all.filter(a => !(+t[a] > 0)).sort();
-  const top = Math.max(...used.map(a => +t[a]), 0.0001);  // the bars: against the position's biggest weight
-  const row = a => {
-    const v = +t[a] || 0, share = total ? v / total : 0;
-    return `<tr class="${v ? "" : "unused"}"><td>${esc(a)}</td>
-      <td class="num"><input class="wt" type="number" min="0" max="20" step="0.1" data-attr="${esc(a)}" value="${v || ""}" placeholder="0"></td>
-      <td class="num">${v ? (share * 100).toFixed(1) + "%" : ""}</td>
-      <td class="barcell"><span class="wfill" style="width:${(v / top * 100).toFixed(1)}%"></span></td></tr>`;
+  if (!edited) edited = JSON.parse(JSON.stringify(d.values));
+  const canon = v => JSON.stringify(Object.entries(v || {}).filter(([, x]) => x > 0).sort());
+  const changed = canon(edited) !== canon(d.values), isDefault = canon(edited) === canon(d.defaults);
+  const vals = edited;
+  const cols = Object.keys(d.costs);
+  // each position's share of the score per attribute: cost × weight ÷ the position's total
+  const share = {};
+  for (const p of cols) {
+    const raw = {}; let tot = 0;
+    for (const [a, v] of Object.entries(vals)) if (v > 0 && d.costs[p][a]) { raw[a] = d.costs[p][a] * v; tot += raw[a]; }
+    share[p] = Object.fromEntries(Object.entries(raw).map(([a, x]) => [a, x / tot]));
+  }
+  const empty = cols.filter(p => !Object.keys(share[p]).length);
+  const all = [...new Set([...d.attrs, ...Object.keys(vals)])];
+  const counted = all.filter(a => vals[a] > 0).sort((a, b) => vals[b] - vals[a] || a.localeCompare(b));
+  const unused = all.filter(a => !(vals[a] > 0)).sort();
+  const topShare = Math.max(0.0001, ...cols.flatMap(p => Object.values(share[p])));
+  const cell = (p, a) => {
+    const x = share[p][a];
+    if (x) return `<td class="num sh" style="--s:${(x / topShare).toFixed(2)}">${x >= 0.095 ? Math.round(x * 100) : (x * 100).toFixed(1)}%</td>`;
+    return `<td class="num sh" title="${d.costs[p][a] ? "" : "no CA cost at " + esc(p) + ": can't count there"}">${d.costs[p][a] ? "" : "·"}</td>`;
   };
+  const tag = a => Object.keys(d.costs).some(p => p !== "GK" && d.costs[p][a]) && !d.search.includes(a)
+    ? ` <span class="nosearch" title="Player searches exported with the Search - Outfield Players View don't have it">not in searches</span>` : "";
+  const row = a => `<tr class="${vals[a] > 0 ? "" : "unused"}"><td>${esc(a)}${tag(a)}</td>
+      <td class="num"><input class="wt" type="number" min="1" max="20" step="any" data-attr="${esc(a)}" value="${vals[a] || ""}" placeholder="–"></td>
+      ${cols.map(p => cell(p, a)).join("")}</tr>`;
   main.innerHTML = `<div class="tile wide">
-    <div class="ttitle">Attribute weights <span class="rankby">${d.custom ? `<b class="wnow">your own weights</b>${d.saved ? ` (saved ${esc(d.saved)})` : ""}
-      <button id="wswitch" data-to="default">Back to default</button>` :
-        d.hasCustom ? `<button id="wswitch" data-to="custom">Use my weights</button>` : ""}</span></div>
+    <div class="ttitle">Attribute weights <span class="rankby">${d.custom ? `<b class="wnow">your own</b>${d.saved ? ` (saved ${esc(d.saved)})` : ""}` : "the default"} · one table for every save</span></div>
     <div class="wbar">
-      <span class="seg" id="wpos">${positions.map(p => `<button data-pos="${esc(p)}" class="${p === attrPos ? "on" : ""}">${esc(p)}</button>`).join("")}</span>
+      <span></span>
       <span class="wbtns">${changed ? `<span class="unsaved">unsaved changes</span>` : ""}
-        <button id="wsave" class="primary"${inApp && changed ? "" : " disabled"}>Save</button>
+        <button id="wsave" class="primary"${inApp && changed && !empty.length ? "" : " disabled"}>Save</button>
         <button id="wundo"${changed ? "" : " disabled"}>Undo changes</button>
-        <button id="wreset"${JSON.stringify(edited) === JSON.stringify(d.defaults) ? " disabled" : ""} title="put the default weights back in every position (then Save)">Reset to default</button>
-        <button id="wimport"${inApp ? "" : " disabled"}>Import…</button>
-        <button id="wexport"${inApp ? "" : " disabled"}>Export…</button></span>
+        <button id="wreset"${isDefault ? " disabled" : ""} title="put the default attribute weights back in the page (then Save)">Reset to default</button>
+        <button id="wimport"${inApp ? "" : " disabled"} title="read an attribute weights list (.txt: Pace 20, Acceleration 16, …) into the page (then Save)">Import attributes…</button>
+        <button id="wexport"${inApp ? "" : " disabled"} title="write the attribute weights as one list to edit in Notepad (.txt: Pace 20, Acceleration 16, …)">Export attributes…</button></span>
     </div>
-    <div class="sub">A position's score = Σ(attribute × weight) ÷ Σ(weights), so only the weights' sizes against each other matter.
-      Blank or 0 = not used. <b>Save</b> keeps them as this save's own weights (the default stays as it is) and rescores every page; <b>Undo changes</b> drops
-      what you haven't saved, <b>Reset to default</b> puts the default weights back; <b>Export</b> writes
-      them as a table (.txt or .csv) to open in Notepad or Excel, and <b>Import</b> reads one back.${inApp ? "" :
+    <div class="sub">One weight per attribute, <b>1–20</b> like FM's attributes (decimals allowed; blank = doesn't count), for every position at once, keepers'
+      too. At each position an attribute counts by its weight × its CA cost there (FM's, fixed), and a position's
+      score = Σ(attribute × that) ÷ Σ(that). The columns show each attribute's share of the score at each position; · = no CA cost
+      there, so it can't count. <b>Save</b> keeps them for every save (Reset to default, then Save, goes back to the default) and rescores this save's pages; <b>Export attributes</b> writes them
+      as one list for Notepad (Pace 20, Acceleration 16, …; decimals with a dot, 12.25), <b>Import attributes</b> reads one back.${inApp ? "" :
       " <b>Open this page in the app to save, import or export.</b>"}</div>
   </div>
-  <div class="tile wide"><div class="ttitle">${esc(attrPos)} <span class="sub">${used.length} attributes used · total weight ${total.toFixed(1)}</span></div>
-    <table class="weights"><thead><tr><th>Attribute</th><th class="num">Weight</th><th class="num">Share</th><th></th></tr></thead>
-    <tbody>${used.map(row).join("")}${unused.length ? `<tr class="divider"><td colspan="4">Not used at ${esc(attrPos)}</td></tr>` + unused.map(row).join("") : ""}</tbody></table>
-    ${attrPos !== "GK" ? `<div class="sub">Player searches exported with the Search - Outfield Players View have 18 attributes. Weight others and a
-      searched player may not be scored (85% of a position's weight has to be known).</div>` : ""}</div>`;
-  main.querySelectorAll("#wpos button").forEach(b => b.onclick = () => {
-    attrPos = b.dataset.pos; try { localStorage.setItem(ATTR_STORE, attrPos); } catch (e) {} renderAttributes();
-  });
+  <div class="tile wide"><div class="ttitle">Attributes <span class="sub">${counted.length} attributes count${empty.length ? ` · <b class="warn">nothing counts at ${esc(empty.join(", "))}</b>` : ""}</span></div>
+    <div class="wscroll"><table class="weights"><thead><tr><th>Attribute</th><th class="num">Weight</th>${cols.map(p => `<th class="num">${esc(p)}</th>`).join("")}</tr></thead>
+    <tbody>${counted.map(row).join("")}${unused.length ? `<tr class="divider"><td colspan="${cols.length + 2}">Not counted: give one a weight to count it</td></tr>` + unused.map(row).join("") : ""}</tbody></table></div>
+    <div class="sub">Player searches exported with the Search - Outfield Players View have 18 attributes. A position needs 85% of its
+      weight known to score a player, so weight the others (not in searches) lightly or searched players may not be scored.</div></div>`;
   main.querySelectorAll("input.wt").forEach(i => i.onchange = () => {
-    const v = parseFloat(String(i.value).replace(",", "."));
-    if (v > 0) t[i.dataset.attr] = Math.round(v * 10) / 10; else delete t[i.dataset.attr];
+    const v = Math.round(parseFloat(String(i.value).replace(",", ".")) * 100) / 100;
+    if (v > 0) vals[i.dataset.attr] = Math.min(20, v); else delete vals[i.dataset.attr];
     renderAttributes();
     main.querySelector(`input.wt[data-attr="${CSS.escape(i.dataset.attr)}"]`)?.focus();
   });
@@ -697,29 +710,22 @@ function renderAttributes() {
   };
   document.getElementById("wundo").onclick = () => { edited = null; renderAttributes(); };
   document.getElementById("wreset").onclick = () => {
-    if (!confirm("Put the default weights back in every position? Nothing is saved until you click Save.")) return;
+    if (!confirm("Put the default attribute weights back? Nothing is saved until you click Save.")) return;
     edited = JSON.parse(JSON.stringify(d.defaults)); renderAttributes();
-    if (window.fmNotice) fmNotice("The default weights are back in the page. Click Save to score with them.", false);
-  };
-  const sw = document.getElementById("wswitch");
-  if (sw) sw.onclick = () => {
-    if (!inApp) return;
-    if (changed && !confirm("Switching drops your unsaved changes. Switch anyway?")) return;
-    if (sw.dataset.to === "default" && !confirm("Score with the default weights again? Your own stay saved: Use my weights brings them back.")) return;
-    sw.disabled = true; call(pywebview.api.use_weights, sw.dataset.to);
+    if (window.fmNotice) fmNotice("The default attribute weights are back in the page. Click Save to score with them.", false);
   };
   if (!inApp) return;
   document.getElementById("wsave").onclick = e => { e.target.disabled = true; e.target.textContent = "Saving…"; call(pywebview.api.save_weights, edited); };
   document.getElementById("wexport").onclick = async () => {
-    const r = await call(pywebview.api.export_weights, edited);
-    if (r && r.result) fmNotice(`Exported to ${r.result}`, false);
+    const r = await call(pywebview.api.export_weights, d.attrs);
+    if (r && r.result) fmNotice(`Exported ${d.custom ? "your" : "the default"} attribute weights to ${r.result}` +
+      (changed ? ". Your unsaved changes aren't in it: Save first to include them." : ""), false);
   };
   document.getElementById("wimport").onclick = async () => {
     const r = await call(pywebview.api.import_weights);
     if (!r || !r.result) return;
-    for (const [p, w] of Object.entries(r.result.positions)) if (edited[p]) edited[p] = w;
-    renderAttributes();
-    fmNotice(`Loaded ${Object.keys(r.result.positions).length} positions from ${r.result.file}. Check them, then Save.`, false);
+    edited = r.result.values; renderAttributes();
+    fmNotice(`Loaded the attribute weights from ${r.result.file}. Check them, then Save.`, false);
   };
 }
 // Guide page: DATA = [{ key, title, text }] (GUIDE in score.py): how to use each page; a tile links to its page

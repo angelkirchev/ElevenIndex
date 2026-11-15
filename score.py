@@ -38,7 +38,7 @@ APP = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 ROOT = Path(os.environ["FMANALYST_HOME"]) if os.environ.get("FMANALYST_HOME") else \
     documents() / "FMAnalyst" if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.4.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.5.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/FMAnalyst"
 PAGES = ["squad", "analysis", "development", "charts", "elsewhere", "last", "filters", "staff", "last_staff", "staff_filters",
          "attributes", "guide"]  # keys 1-9, then 0, then a and g, in this order
@@ -57,7 +57,17 @@ PARTIAL_SQUAD = re.compile(r"-(u\d+s?|reserves)$")  # an export of only part of 
 # weight, at least SEARCH_MIN_ATTRS and at most SEARCH_MAX_ATTRS: few where a handful of attributes dominate, more where
 # the weight is spread out (keepers)
 SEARCH_WEIGHT_SHARE, SEARCH_MIN_ATTRS, SEARCH_MAX_ATTRS = 0.85, 3, 8
-CHART_ATTRS, CHART_GK_ATTRS = 8, 5  # charts page: the attribute menu lists a position's top attributes by weight
+CHART_ATTRS, CHART_GK_ATTRS = 8, 5  # Market: a position's top attributes by weight, in a player's tooltip
+# FM's four attribute groups, for the Market's Technical / Mental / Physical / Goalkeeping charts
+ATTRIBUTE_GROUPS = {
+    "Technical": ["Corners", "Crossing", "Dribbling", "Finishing", "First Touch", "Free Kick Taking", "Heading", "Long Shots",
+                  "Long Throws", "Marking", "Passing", "Penalty Taking", "Tackling", "Technique"],
+    "Mental": ["Aggression", "Anticipation", "Bravery", "Composure", "Concentration", "Decisions", "Determination", "Flair",
+               "Leadership", "Off The Ball", "Positioning", "Teamwork", "Vision", "Work Rate"],
+    "Physical": ["Acceleration", "Agility", "Balance", "Jumping Reach", "Natural Fitness", "Pace", "Stamina", "Strength"],
+    "Goalkeeping": ["Aerial Reach", "Command of Area", "Communication", "Eccentricity", "Handling", "Kicking", "One on Ones",
+                    "Reflexes", "Rushing Out (Tendency)", "Punching", "Throwing"],
+}
 
 
 def load_toml(path):
@@ -72,18 +82,74 @@ def weights_file(name):
     return APP / "weights" / f"{name}.toml"
 
 
-# One built-in set, weights/default.toml. A save's own weights (changed on the Attributes page) live in its folder,
-# private to it: save.toml's weights = "custom". Any other name (an older version's fm27_test…) means the default.
-DEFAULT, CUSTOM = "default", "custom"
+# The attribute weights: weights/default.toml's, or your own, saved on the Attributes page as saves/attributes.toml.
+# One table for the whole app: every save scores with it.
+DEFAULT = "default"
+ATTRIBUTES_FILE = ROOT / "saves" / "attributes.toml"
 
 
-def weights_path(cfg, save_dir):
-    """The weights file a save uses: its own saves/<save>/weights.toml for "custom", else the default."""
-    return save_dir / "weights.toml" if cfg.get("weights") == CUSTOM else weights_file(DEFAULT)
+def flat_values(values):
+    """Attribute weights as one table {attribute: 1-20}; an earlier test version's outfield and gk tables are merged."""
+    values = values or {}
+    if isinstance(values.get("outfield"), dict) or isinstance(values.get("gk"), dict):
+        return {**values.get("gk", {}), **values.get("outfield", {})}
+    return dict(values)
 
 
-def load_weights(cfg, save_dir):
-    return load_toml(weights_path(cfg, save_dir))
+def compose(w):
+    """A weights file's position weights: an attribute's weight at a position = its CA cost there (COSTS_FILE) x its
+    attribute weight (1-20, [attributes]: one table for keepers and outfield players), scaled so each position's
+    biggest weight is 10. A file with per-position tables of its own and no [attributes] is used as it is."""
+    if not w.get("attributes"):
+        return w
+    values = flat_values(w["attributes"])
+    costs = load_costs(COSTS_FILE)
+
+    def position(cost):
+        raw = {a: cost[a] * float(v) for a, v in values.items() if float(v) > 0 and cost.get(a)}
+        top = max(raw.values(), default=0)
+        scaled = {a: round(x / top * 10, 1) for a, x in sorted(raw.items(), key=lambda kv: (-kv[1], kv[0]))} if top else {}
+        return {a: int(v) if v.is_integer() else v for a, v in scaled.items() if v > 0}
+    order = w.get("outfield_positions") or [p for p in costs if p != "GK"]
+    return {**w, "attributes": values, "gk": position(costs["GK"]), "outfield": {p: position(costs.get(p, {})) for p in order}}
+
+
+def default_weights():
+    return compose(load_toml(weights_file(DEFAULT)))
+
+
+def load_weights(cfg=None, save_dir=None):
+    """The weights every save scores with: the default file, with your own attribute weights (saves/attributes.toml,
+    just the [attributes] tables) in place of its own when you've saved some. cfg and save_dir: not used any more (one
+    table for every save), kept for the callers."""
+    w = load_toml(weights_file(DEFAULT))
+    if ATTRIBUTES_FILE.is_file():
+        own = load_toml(ATTRIBUTES_FILE).get("attributes")
+        if own:
+            w = {**w, "attributes": own}
+    return compose(w)
+
+
+def attribute_values(w):
+    """The attribute weights (1-20) w scores with: {attribute: weight}."""
+    return flat_values(w.get("attributes") or load_toml(weights_file(DEFAULT))["attributes"])
+
+
+def check_values(values):
+    """Attribute weights from the page or a file: numbers from 1 to 20, decimals allowed (kept to 2 places; blank or 0 =
+    doesn't count), and every position left with at least one attribute that counts."""
+    clean = {}
+    for a, v in flat_values(values).items():
+        v = round(float(v), 2)
+        if v == 0:
+            continue
+        if not (1 <= v <= 20):
+            raise ValueError(f"{a}'s weight should be from 1 to 20, not {v:g}.")
+        clean[str(a)] = int(v) if v.is_integer() else v
+    w = compose({**load_toml(weights_file(DEFAULT)), "attributes": clean})
+    if empty := [p for p, t in {"GK": w["gk"], **w["outfield"]}.items() if not t]:
+        raise ValueError(f"No attribute counts at {', '.join(empty)}: give one that has a CA cost there a weight.")
+    return clean
 
 
 def toml_key(k):
@@ -144,6 +210,59 @@ def weights_table(positions, header, sep="\t"):
     for a in sorted(total, key=lambda a: (-total[a], a)):
         lines.append(sep.join([a, *(fmt(positions[p].get(a)) for p in cols)]))
     return "\n".join(lines) + "\n"
+
+
+# FM27's current-ability cost of each attribute at each position: the fixed half of every weight (compose).
+COSTS_FILE = APP / "docs" / "ca_costs_fm27.csv"
+SEARCH_ATTRS = ("Acceleration", "Anticipation", "Composure", "Decisions", "Dribbling", "Finishing", "First Touch", "Heading",
+                "Jumping Reach", "Off The Ball", "Pace", "Passing", "Positioning", "Stamina", "Strength", "Tackling",
+                "Teamwork", "Work Rate")  # what the Search - Outfield Players View exports
+
+
+def load_costs(path):
+    return read_weights_table(path.read_text(encoding="utf-8-sig"))
+
+
+def attributes_text(values, attrs, header):
+    """The attribute weights as one list to edit in Notepad: "Acceleration 16, Pace 20, ...", biggest first. The
+    attributes that don't count are named in a note. Lines starting with # are notes."""
+    lines = [f"# {line}" for line in header.splitlines()]
+    counted = sorted((a for a, v in values.items() if v), key=lambda a: (-values[a], a.lower()))
+    lines.append(", ".join(f"{a} {values[a]:g}" for a in counted))
+    if rest := sorted(set(attrs) - set(counted), key=str.lower):
+        lines.append(f"# Not counted (add one with a weight to count it): {', '.join(rest)}")
+    return "\n".join(lines) + "\n"
+
+
+ATTRIBUTE_PAIR = re.compile(r"([A-Za-z][A-Za-z' ]*?)\s*[:=]?\s*(-?\d+(?:[.,]\d+)?)")
+
+
+def read_attributes_text(text, known=()):
+    """attributes_text's list back to {attribute: weight} (checked by check_values). Pairs are separated by commas
+    (or new lines or semicolons); a decimal can use a dot (12.25) or a comma (12,25: no space after it). An earlier
+    version's table (Attribute, Weight columns) is read too. known: the attribute names, matched whatever the case;
+    a name that isn't one of them is refused (a typo would otherwise drop the attribute)."""
+    body = "\n".join(l for l in text.splitlines() if l.strip() and not l.lstrip().startswith("#"))
+    if not body.strip():
+        raise ValueError("the file is empty")
+    if body.lstrip().lower().startswith("attribute"):  # the table an earlier version exported
+        cols = {name.strip().lower(): t for name, t in read_weights_table(body).items()}
+        values = cols.get("weight") or {**cols.get("gk", {}), **cols.get("outfield", {})} or next(iter(cols.values()), {})
+    else:
+        values = {}
+        for chunk in re.split(r"[,;\n](?!\d)", body):  # a comma straight before a digit is a decimal comma
+            if not chunk.strip():
+                continue
+            m = ATTRIBUTE_PAIR.fullmatch(chunk.strip())
+            if not m:
+                raise ValueError(f"couldn't read {chunk.strip()!r}: write an attribute and its weight, like Pace 20")
+            values[m.group(1).strip()] = float(m.group(2).replace(",", "."))
+    if known:
+        names = {k.lower(): k for k in known}
+        if unknown := [a for a in values if a.lower() not in names]:
+            raise ValueError(f"unknown attribute{'s' if len(unknown) > 1 else ''}: {', '.join(unknown)} (check the spelling)")
+        values = {names[a.lower()]: v for a, v in values.items()}
+    return values
 
 
 def read_weights_table(text):
@@ -353,7 +472,7 @@ def charts(rows, squad, w, cfg, last=frozenset()):
     weights = {"GK": w["gk"], **w["outfield"]}
     tops = {pos: [a for a, _ in sorted(table.items(), key=lambda item: item[1], reverse=True)][:CHART_GK_ATTRS if pos == "GK" else CHART_ATTRS]
             for pos, table in weights.items()}
-    shown = {a for names in tops.values() for a in names}
+    shown = {a for names in tops.values() for a in names} | {a for names in ATTRIBUTE_GROUPS.values() for a in names}
     mine = {id(r) for r in squad}
     players = []
     for r in [*(r for r in rows if id(r) not in mine), *squad]:
@@ -361,10 +480,12 @@ def charts(rows, squad, w, cfg, last=frozenset()):
         players.append({"name": r["name"], "club": r["club"], "division": r["division"], "age": r["age"],
                         "squad": id(r) in mine, "last": r["name"] in last, "wage": r["wage"], "rating": r["rating"],
                         "minutes": r["minutes"], "best": r["best"],
+                        # where he plays, as the Lineup sees it: FM's positions when exported, else his best and its neighbours
+                        **({"plays": r.get("plays") or NEAR.get(r["best"], [r["best"]])} if id(r) in mine else {}),
                         "scores": {g: r[g] for g in weights if r.get(g) is not None},
                         "attrs": {a: attrs[a] for a in shown if a in attrs}})
     return {"positions": list(weights), "players": players, "tops": tops, "managed": cfg["managed_club"],
-            "division": cfg.get("division")}
+            "division": cfg.get("division"), "weights": weights, "groups": ATTRIBUTE_GROUPS}
 
 
 def fm_positions(text):
@@ -731,21 +852,16 @@ def analysis(squad, others, lineup, w):
 
 
 def attributes_page(cfg, w, rows, save_dir):
-    """The attributes page: the weights the save scores with, to change in the page (saved by the app), plus every
-    attribute that could be given a weight: those in any weights set, and any seen in the save's players."""
-    outfield, gk = set(), set()
-    for other in (w, load_toml(weights_file(DEFAULT))):
-        gk.update(other.get("gk", {}))
-        for t in other.get("outfield", {}).values():
-            outfield.update(t)
-    for r in rows:
-        (gk if r.get("DC") is None and r.get("GK") is not None else outfield).update(r["history"][-1]["attrs"])
-    own = save_dir / "weights.toml"
-    return {"custom": cfg.get("weights") == CUSTOM, "hasCustom": own.is_file(),
+    """The attributes page: the attribute weights (1-20, one for every position) every save scores with, to change in
+    the page (saved by the app), and FM's CA costs (what turns them into each position's weights)."""
+    costs = load_costs(COSTS_FILE)
+    order = ["GK", *w["outfield"]]
+    own = ATTRIBUTES_FILE
+    return {"custom": own.is_file(),
             "saved": time.strftime("%Y-%m-%d", time.localtime(own.stat().st_mtime)) if own.is_file() else None,
-            "positions": {"GK": w["gk"], **w["outfield"]},
-            "defaults": (lambda dw: {"GK": dw["gk"], **dw["outfield"]})(load_toml(weights_file(DEFAULT))),  # Reset to default
-            "attrs": {"outfield": sorted(outfield), "gk": sorted(gk)}}
+            "values": attribute_values(w), "defaults": flat_values(load_toml(weights_file(DEFAULT))["attributes"]),
+            "costs": {p: costs.get(p, {}) for p in order}, "search": list(SEARCH_ATTRS),
+            "attrs": sorted({a for p in order for a in costs.get(p, {})}, key=str.lower)}
 
 
 def development(rows, players, obs_files, managed, squad):
@@ -767,7 +883,7 @@ def development(rows, players, obs_files, managed, squad):
 
 def settings_tile(config, cfg, save):
     """The guide's last tile: this save's main settings, and where to change them."""
-    rows = [("App version", f"FMAnalyst {VERSION}"), ("Save", save), ("Club", cfg.get("managed_club", "–")), ("Weights", "your own (Attributes page)" if cfg.get("weights") == CUSTOM else "default"),
+    rows = [("App version", f"FMAnalyst {VERSION}"), ("Save", save), ("Club", cfg.get("managed_club", "–")), ("Attribute weights", "your own (Attributes page; every save)" if ATTRIBUTES_FILE.is_file() else "default"),
             ("Currency", config.get("currency", "–")), ("Exports folder", config.get("exports_dir") or "found under Documents"),
             ("Data folder", str(ROOT))]
     table = "".join(f"<tr><td class=\"text\">{html.escape(k)}</td><td>{html.escape(str(v))}</td></tr>" for k, v in rows)
@@ -967,7 +1083,8 @@ GUIDE = [
              "<b>Use it to:</b> spot thin positions (no backup), surplus (a long Third), who's next in line, and the shape that suits you."},
     {"key": "2", "title": "Analysis",
      "text": "<b>Shows:</b> your team position by position, as the Lineup places them, ranked by what you pick in "
-             "<b>Rank by</b>: <b>Speed</b> (Pace and Acceleration together), the <b>position score</b>, or any single attribute.<br>"
+             "<b>Rank by</b>: the <b>position score</b> (the default), <b>Speed</b> (Pace and Acceleration together), or any "
+             "single attribute.<br>"
              "<b>Positions ranked:</b> your positions from strongest to weakest: your average, your best player there, the "
              "average of the imported players whose best position it is (<b>Imported</b>) and the difference (<b>±</b>; "
              "green = you're ahead).<br>"
@@ -981,11 +1098,15 @@ GUIDE = [
              "squad imports: export your squad every half-season or so.<br>"
              "<b>Use it to:</b> see whether training and game time are working, and who's stalling."},
     {"key": "4", "title": "Market",
-     "text": "<b>Shows:</b> your squad (orange) against players you've imported (pink), position by position.<br>"
+     "text": "<b>Shows:</b> your squad (orange) against players you've imported (pink), position by position: first a table, "
+             "<b>Listed players by position</b> (how many there are, their middle and best score, your best there, how many "
+             "beat him and the cheapest of those; click a row to pick the position), then one chart at a time, picked in "
+             "<b>chart</b>, with how to read it underneath.<br>"
              "<b>Controls:</b> <b>compare with</b> = whom to compare with: your <b>Last player import</b>, <b>All imported "
-             "players</b>, or a division you've imported with ratings. <b>position</b> picks the position for the lower "
-             "charts; <b>attribute</b> lists that position's most important attributes. Hover a dot to see who it is.<br>"
-             "<b>Charts:</b> <b>Role score by position</b> and <b>Attribute by position</b>: for each position the pink "
+             "players</b>, or a division you've imported with ratings. <b>position</b> picks the position for the "
+             "score vs wage and rating charts. Hover a dot to see who it is.<br>"
+             "<b>Charts:</b> <b>Role score</b>, <b>Technical</b>, <b>Mental</b>, <b>Physical</b> and <b>Goalkeeping by position</b> "
+             "(a group's value = its attributes averaged with that position's weights, so it counts what matters there): for each position the pink "
              "range is the players you compare with (the line from lowest to highest, the shaded box their middle half, the "
              "white bar and number their middle, a tick for each player); your players are the orange diamonds, and the "
              "number at the right is your best minus their middle (green = you're ahead). <b>Score vs wage</b>: four "
@@ -1025,14 +1146,15 @@ GUIDE = [
              "<b>Use it to:</b> set up FM's staff search when hiring: set each highlighted attribute to at least its "
              "<b>Search ≥</b> word. The more staff searches you import, the better the minimums get."},
     {"key": "a", "title": "Attributes",
-     "text": "<b>Shows:</b> the weight of every attribute at each position: how much it counts in that position's score "
-             "(Share = its part of the total).<br>"
-             "<b>Change them:</b> pick a position, type new numbers (blank or 0 = not used), then <b>Save</b>: they become this "
-             "save's own weights and every page is rescored. <b>Undo changes</b> drops what you haven't saved; "
-             "<b>Reset to default</b> puts the default weights back in the page (then Save); <b>Back to default</b> scores "
-             "with the defaults straight away (your own stay saved, <b>Use my weights</b> brings them back).<br>"
-             "<b>Share them:</b> <b>Export…</b> writes a table (.txt for Notepad, .csv for Excel); <b>Import…</b> reads one "
-             "back into the page, then Save. Search exports only have 18 attributes: weight others and searched players may "
+     "text": "<b>Shows:</b> one weight per attribute, 1–20 like FM's attributes, for every position at once (keepers too), and "
+             "what it comes to at each position: weight × FM's CA cost there, as the attribute's share of that position's "
+             "score.<br>"
+             "<b>Change them:</b> type a new weight (blank = doesn't count), then <b>Save</b>. It's one table for the whole app: "
+             "every save scores with it (the open save is rescored at once, the others when you open them). <b>Undo changes</b> "
+             "drops what you haven't saved; <b>Reset to default</b> puts the default weights back in the page (then Save).<br>"
+             "<b>Share them:</b> <b>Export attributes…</b> writes the attribute weights as one list for "
+             "Notepad: Pace 20, Acceleration 16, … (1–20; decimals with a dot, 12.25). Change it and <b>Import attributes…</b> "
+             "reads it back, then Save. Search exports only have 18 attributes: weight others and searched players may "
              "not get a score."},
     {"key": "", "title": "Searching and filtering",
      "text": "Type in the <b>Search</b> box at the top of a table (<b>/</b> or <b>f</b> jumps there, <b>Esc</b> clears it):"
@@ -1084,7 +1206,7 @@ def new_save(save, club, division="", weight=None):
     folder = ROOT / "saves" / save
     for sub in ("obs", "staff"):
         (folder / sub).mkdir(parents=True, exist_ok=True)
-    settings = {"weights": weight or DEFAULT, "managed_club": club, "short_name": save, "division": division}
+    settings = {"managed_club": club, "short_name": save, "division": division}
     lines = [f"# FMAnalyst save for {club}. The Guide's last tile shows these settings."]
     lines += [f"{key} = {toml_str(value)}" for key, value in settings.items()]
     lines += ["last_batch = []", "last_staff_batch = []"]
