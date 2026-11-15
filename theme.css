@@ -31,6 +31,9 @@
   .pages .brand svg { flex: none; width: 38px; height: 38px; padding: 4px; background: #fff; border-radius: 50%;
                       box-shadow: 0 0 0 2px var(--club-dark), 0 2px 6px #0004; }
   .pages .brand > span { color: #bfe9e2; }  /* "Analyst"; "FM" in bold ink */
+  .pages .brand .bname { display: flex; flex-direction: column; justify-content: center; line-height: 1; }
+  .pages .brand .bname > span { font-size: 26px; line-height: .95; }
+  .pages .brand small { margin-top: 2px; color: #d8efeb; font: 600 8.5px/1 var(--body); letter-spacing: .045em; text-transform: uppercase; }  /* the slogan */
   .pages .brand b { margin: 0; color: var(--club-ink); font-weight: 700; }
   /* a group's sub-tabs (Players, Staff), in a darker strip right under the bar */
   .subnav { display: flex; gap: 2px; margin: -14px -14px 14px; padding: 0 14px 0 64px; background: var(--club-dark);

@@ -3,9 +3,9 @@
 </p>
 
 <p align="center">
-  <b>Squad, player and staff analysis for Football Manager 2027</b><br>
-  Every player you look at, scored at every position: plan your lineup, find better signings, hire better staff<br>
-  and follow how your players develop.
+  <b>Squad, player and staff analysis for Football Manager 2027.</b><br>
+  Every player you look at, scored at every position: plan your lineup, find better signings,<br>
+  hire better staff and follow how your players develop.
 </p>
 
 <p align="center">
@@ -33,23 +33,23 @@
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/formations.png" alt="Formations"><br><sub><b>Formations</b>: 20 shapes ranked by how well your squad fits them, each with its numbers</sub></td>
-    <td width="50%"><img src="docs/screenshots/profile.png" alt="A player's profile"><br><sub><b>Profiles</b>: what he's good for, strengths, weaknesses, what to train first</sub></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/formations.png" alt="Formations"><br><sub><b>Formations</b>: 20 shapes ranked by how well your squad fits them, each with its numbers</sub></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/profile.png" alt="A player's profile"><br><sub><b>Profiles</b>: what he's good for, strengths, weaknesses, what to train first</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/compare.png" alt="Compare players"><br><sub><b>Compare</b>: two players side by side, at any position</sub></td>
-    <td><img src="docs/screenshots/research.png" alt="Research"><br><sub><b>Research</b>: your best at each position against everyone you've scouted, or your squad by age</sub></td>
+    <td valign="top"><img src="docs/screenshots/compare.png" alt="Compare players"><br><sub><b>Compare</b>: two players side by side, at any position</sub></td>
+    <td valign="top"><img src="docs/screenshots/research.png" alt="Research"><br><sub><b>Research</b>: your best at each position against everyone you've scouted, or your squad by age</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/analysis.png" alt="Analysis"><br><sub><b>Analysis</b>: your team position by position, ranked by score or any attribute</sub></td>
-    <td><img src="docs/screenshots/development.png" alt="Development"><br><sub><b>Development</b>: how your players changed between two squad exports</sub></td>
+    <td valign="top"><img src="docs/screenshots/analysis.png" alt="Analysis"><br><sub><b>Analysis</b>: your team position by position, ranked by score or any attribute</sub></td>
+    <td valign="top"><img src="docs/screenshots/development.png" alt="Development"><br><sub><b>Development</b>: how your players changed between two squad exports</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/filters.png" alt="Player search"><br><sub><b>Player search</b>: the minimums to type into FM's search to beat your players</sub></td>
-    <td><img src="docs/screenshots/staff.png" alt="Staff"><br><sub><b>Staff</b>: every staff member scored for every job</sub></td>
+    <td valign="top"><img src="docs/screenshots/filters.png" alt="Player search"><br><sub><b>Player search</b>: the minimums to type into FM's search to beat your players</sub></td>
+    <td valign="top"><img src="docs/screenshots/staff.png" alt="Staff"><br><sub><b>Staff</b>: every staff member scored for every job</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/attributes.png" width="50%" alt="Attributes"><br><sub><b>Attributes</b>: one weight per attribute (1–20) for every save, to tune the scoring your way</sub></td>
+    <td colspan="2" align="center" valign="top"><img src="docs/screenshots/attributes.png" width="50%" alt="Attributes"><br><sub><b>Attributes</b>: one weight per attribute (1–20) for every save, to tune the scoring your way</sub></td>
   </tr>
 </table>
 

@@ -38,7 +38,7 @@ APP = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 ROOT = Path(os.environ["FMANALYST_HOME"]) if os.environ.get("FMANALYST_HOME") else \
     documents() / "FMAnalyst" if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.6.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.6.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/FMAnalyst"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -1096,7 +1096,7 @@ def with_info(pages, info):
 
 # The menu's left end: the icon and the name; and the icon again, large and faint, in the page's corner
 _LOGO = (APP / "logo.svg").read_text(encoding="utf-8")
-BRAND = ('<span class="brand">' + re.sub(r"<!--.*?-->\s*", "", _LOGO, flags=re.S) + '<span><b>FM</b>Analyst</span></span>'
+BRAND = ('<span class="brand">' + re.sub(r"<!--.*?-->\s*", "", _LOGO, flags=re.S) + '<span class="bname"><span><b>FM</b>Analyst</span><small>Scout smarter. Build better.</small></span></span>'
          '<i class="watermark" style="background-image:url(data:image/svg+xml;base64,'
          + base64.b64encode(_LOGO.encode("utf-8")).decode() + ')"></i>')
 
