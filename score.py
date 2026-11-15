@@ -38,7 +38,7 @@ APP = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 ROOT = Path(os.environ["FMANALYST_HOME"]) if os.environ.get("FMANALYST_HOME") else \
     documents() / "FMAnalyst" if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.5.2"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.5.3"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/FMAnalyst"
 PAGES = ["squad", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff", "last_staff",
          "staff_filters", "attributes", "guide"]
@@ -1188,8 +1188,8 @@ GUIDE = [
     {"key": "charts", "title": "Research",
      "text": "<b>Shows:</b> your squad (orange) against players you've imported (pink), position by position: first a table, "
              "<b>Listed players by position</b> (how many there are, their middle and best score, your best there, how many "
-             "beat him and the cheapest of those; click a row to pick the position), then one chart at a time, picked in "
-             "<b>chart</b>, with how to read it underneath.<br>"
+             "beat him and the cheapest of those; click a row to pick the position), then one graph at a time, picked in "
+             "<b>Graph</b>, with how to read it underneath.<br>"
              "<b>Controls:</b> <b>compare with</b> = whom to compare with: your <b>Last player import</b>, <b>All imported "
              "players</b>, or a division you've imported with ratings. <b>position</b> picks the position for the "
              "score vs wage and rating charts. Hover a dot to see who it is.<br>"
