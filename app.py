@@ -2,7 +2,7 @@
 
     python app.py
 
-Click "Import file…" (bottom right of every page), choose an export, and it's imported straight away: dated with
+Open Menu → "Import file…" (bottom right of every page), choose an export, and it's imported straight away: dated with
 the date in the exporter's file name (export_date), as your squad if the file name
 starts with "First Team"/"Squad", else as a search named after the file. Then score.py runs and the 'last' page shows.
 Needs pywebview (pip install pywebview).
@@ -18,7 +18,6 @@ import time
 from pathlib import Path
 
 import webview
-from webview.menu import Menu, MenuAction
 
 import import_export
 import score
@@ -84,7 +83,7 @@ class App:
     # --- importing ------------------------------------------------------------------------------------------------
 
     def pick_file(self):
-        """The button (or File → Import a file…): choose an export and import it straight away."""
+        """Menu → Import file…: choose an export and import it straight away."""
         if self.save is None:  # still on the setup page
             return
         folder = self.exports if self.exports.is_dir() else Path.home()
@@ -224,7 +223,7 @@ class App:
             raise ValueError(f"There's already a save called {name}: give this one another name, e.g. {name}-2.")
         score.new_save(name, club, division)
         self.commit(f"{name}: new save")
-        self.switch_save(name, f"New save {name} for {club}. Now import your squad: press F8 on it in FM, then Import file…")
+        self.switch_save(name, f"New save {name} for {club}. Now import your squad: press F8 on it in FM, then Menu → Import file…")
 
     # --- weights (the Attributes page) ----------------------------------------------------------------------------
 
@@ -307,6 +306,11 @@ class App:
             raise ValueError(f"Couldn't read {path.name}: {e}")
         return {"values": values, "file": path.name}
 
+    def about(self):
+        """Menu → About: the version, this save's settings and the project page, as the page shows them."""
+        tile = score.settings_tile(self.config, score.load_toml(self.save_dir / "save.toml") if self.save_dir else {}, self.save or "–")
+        return {"title": f"FMAnalyst {score.VERSION}", "html": tile["text"]}
+
     def open_exports(self):
         if self.exports.is_dir() and sys.platform == "win32":
             os.startfile(self.exports)
@@ -354,7 +358,7 @@ class App:
         self.save, self.save_dir = name, score.ROOT / "saves" / name
         self.commit(f"{name}: new save")
         self.window.set_title(window_title(name))
-        self.notice = (f"All set up for {club}. Now import your squad: press F8 on it in FM, then Import file…", False)
+        self.notice = (f"All set up for {club}. Now import your squad: press F8 on it in FM, then Menu → Import file…", False)
         self.show_soon(html=START_HTML)
 
     def browse_folder(self, current):
@@ -378,9 +382,6 @@ class App:
         self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
         self.window.events.loaded += self.on_load
         self.window.events.closed += lambda: os._exit(0)  # closing the window ends the app
-        menu = [Menu("File", [MenuAction("Import a file…", self.pick_file),
-                              MenuAction("Saves…", lambda: self.window.evaluate_js("window.fmSaves && fmSaves()")),
-                              MenuAction("Open the exports folder", self.open_exports)])]
         # The shield in the title bar and taskbar, from source too (not Python's icon). Its own app ID keeps
         # Windows from grouping the window with other Python programs on the taskbar.
         if sys.platform == "win32":
@@ -390,7 +391,7 @@ class App:
             except (AttributeError, OSError):
                 pass
         icon = score.APP / "docs" / "FMAnalyst.ico"
-        webview.start(menu=menu, icon=str(icon) if icon.exists() else None)
+        webview.start(icon=str(icon) if icon.exists() else None)  # no menu bar: the page's Menu button has it all
 
 
 def log_error(what):
@@ -454,6 +455,12 @@ class MainApi:
     def export_weights(self, attrs=()):
         return self._reply(self._app.export_weights, attrs)
 
+    def about(self):
+        return self._reply(self._app.about)
+
+    def open_exports(self):
+        return self._call(self._app.open_exports)
+
     def import_weights(self):
         return self._reply(self._app.import_weights)
 
@@ -492,7 +499,7 @@ button.go { background: #e0187a; color: #fff; padding: 10px 22px; font-size: 15p
 </style></head><body><div class="box">
 <h1>Welcome to FMAnalyst</h1>
 <p class="lead">A few details about your Football Manager save, and you're ready. You can add more saves later with
-the <b>Saves</b> button.</p>
+<b>Menu → Saves</b> (bottom right).</p>
 <label for="club">Club you manage</label>
 <input id="club" placeholder="e.g. Man Utd" autofocus>
 <div class="hint">Exactly as FM writes it in its player lists: "Man Utd", not "Manchester United".</div>
@@ -523,24 +530,46 @@ document.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
 
 START_HTML = """<!doctype html><html><body style="font: 15px Inter, 'Segoe UI', system-ui; background: #16181c; color: #f4f4f2; padding: 40px">
 <h2>No players yet</h2><p>In FM, point at a player list and press F8 (Ctrl+F8 first, to add every attribute).</p>
-<p>Then click <b>Import file…</b> at the bottom right and choose the export.</p></body></html>"""
+<p>Then open <b>Menu</b> at the bottom right, click <b>Import file…</b> and choose the export.</p></body></html>"""
 
 TOOLBAR_JS = """(() => {
   if (document.getElementById("fm-import")) return;
   const bar = document.createElement("div");
   bar.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;gap:6px;align-items:center;" +
     "padding:6px;border-radius:8px;background:#16181c;box-shadow:0 2px 8px #0008;font:14px Inter,'Segoe UI',system-ui,sans-serif";
-  const b = document.createElement("button");
-  b.id = "fm-import"; b.textContent = "Import file…"; b.title = "Choose an FM27 Exporter file to import";
-  // each button gets its own colours (reading cssText back gives rgb(), so it can't be edited by search and replace)
   const BUTTON = "padding:7px 16px;border:0;border-radius:6px;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer;";
-  b.style.cssText = BUTTON + "background:#e0187a;color:#fff";
-  b.onclick = () => window.pywebview && pywebview.api.pick_file();
-  const sv = document.createElement("button");
-  sv.id = "fm-saves-button"; sv.textContent = "Saves"; sv.title = "Switch to another save, or start a new one";
-  sv.style.cssText = BUTTON + "background:#33363e;color:#f4f4f2";
-  sv.onclick = () => window.fmSaves();
-  bar.append(b, sv);
+  // Menu: Import file…, Open the exports folder, Saves…, About (it opens upwards, above the button)
+  const m = document.createElement("button");
+  m.id = "fm-import"; m.title = "Import a file, the exports folder, your saves, about";
+  m.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:8px" aria-hidden="true">' +
+    '<path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Menu';
+  m.style.cssText = BUTTON + "background:#e0187a;color:#fff";
+  const list = document.createElement("div");
+  list.id = "fm-menu";
+  list.style.cssText = "position:absolute;right:6px;bottom:52px;display:none;min-width:240px;padding:6px;border:1px solid #33363e;" +
+    "border-radius:10px;background:#16181c;box-shadow:0 8px 24px #000a";
+  const item = (text, hint, run) => {
+    const it = document.createElement("button");
+    it.style.cssText = "display:block;width:100%;padding:8px 12px;border:0;border-radius:6px;background:transparent;color:#f4f4f2;" +
+      "font:500 14px Inter,'Segoe UI',system-ui,sans-serif;text-align:left;cursor:pointer";
+    it.innerHTML = text + (hint ? `<div style="color:#a0a6b0;font-size:12px;font-weight:400">${hint}</div>` : "");
+    it.onmouseenter = () => it.style.background = "#2a2d34";
+    it.onmouseleave = () => it.style.background = "transparent";
+    it.onclick = () => { list.style.display = "none"; run(); };
+    return it;
+  };
+  const line = () => { const l = document.createElement("div"); l.style.cssText = "height:1px;margin:4px 6px;background:#33363e"; return l; };
+  list.append(
+    item("Import file…", "an FM27 Exporter file (F8 in FM)", () => window.pywebview && pywebview.api.pick_file()),
+    item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()),
+    line(),
+    item("Saves…", "switch to another save, or start one", () => window.fmSaves()),
+    item("About", "version, your settings, project page", () => window.fmAbout()));
+  m.onclick = e => { e.stopPropagation(); list.style.display = list.style.display === "none" ? "block" : "none"; };
+  document.addEventListener("click", e => { if (!list.contains(e.target)) list.style.display = "none"; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") list.style.display = "none"; });
+  bar.style.position = "fixed";
+  bar.append(m, list);
 
   // Elsewhere and Staff pages: Clear old lists. First click says how many, a second click within 5 s clears.
   const page = location.href.split(/[\\\\/]/).pop().split(/[?#]/)[0];
@@ -605,6 +634,31 @@ TOOLBAR_JS = """(() => {
     box.append(error, buttons);
     shade.append(box);
     document.body.append(shade);
+  };
+  window.fmAbout = async () => {
+    document.getElementById("fm-about")?.remove();
+    const r = await pywebview.api.about();
+    if (!r || r.error) { window.fmNotice((r && r.error) || "Couldn't show About.", true); return; }
+    const shade = css(make("div"), "position:fixed;inset:0;z-index:10000;background:#000a;display:flex;align-items:center;justify-content:center;font:14px Inter,'Segoe UI',system-ui,sans-serif");
+    shade.id = "fm-about";
+    shade.onclick = e => { if (e.target === shade) shade.remove(); };
+    shade.tabIndex = -1;
+    shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
+    const box = css(make("div"), "background:#16181c;color:#f4f4f2;border:1px solid #33363e;border-radius:10px;padding:20px 22px;width:620px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000;line-height:1.55");
+    box.append(css(make("h3", r.result.title), "margin:0 0 10px;font-size:16px"));
+    const body = make("div");
+    body.innerHTML = r.result.html;
+    body.querySelectorAll("table").forEach(t => t.style.cssText = "width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:10px");
+    body.querySelectorAll("td").forEach((td, i) => td.style.cssText = "padding:5px 8px;border-bottom:1px solid #2a2d34;vertical-align:top;white-space:normal;overflow-wrap:anywhere;text-align:left" +
+      (i % 2 ? "" : ";width:150px"));  // long folder paths wrap instead of scrolling
+    body.querySelectorAll("td.text").forEach(td => td.style.color = "#a0a6b0");
+    body.querySelectorAll("a").forEach(a => a.style.color = "#8fe3cf");
+    const close = css(make("button", "Close"), "display:block;margin:14px 0 0 auto;padding:7px 16px;border:0;border-radius:6px;background:#33363e;color:#f4f4f2;font:inherit;cursor:pointer");
+    close.onclick = () => shade.remove();
+    box.append(body, close);
+    shade.append(box);
+    document.body.append(shade);
+    shade.focus();
   };
   window.fmNotice = (text, error) => {
     let n = document.getElementById("fm-notice");

@@ -38,7 +38,7 @@ APP = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 ROOT = Path(os.environ["FMANALYST_HOME"]) if os.environ.get("FMANALYST_HOME") else \
     documents() / "FMAnalyst" if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.5.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.5.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/FMAnalyst"
 PAGES = ["squad", "analysis", "development", "charts", "elsewhere", "last", "filters", "staff", "last_staff", "staff_filters",
          "attributes", "guide"]  # keys 1-9, then 0, then a and g, in this order
@@ -448,11 +448,11 @@ def player_cols(w, with_club):
 
 
 def filters(squad, w):
-    """The player search page: per position, the squad's best there (three, one for GK) and a suggested FM search
+    """The player search page: per position, the squad's best there (three; every keeper for GK) and a suggested FM search
     minimum for the attributes that carry most of the position's weight (search_attrs): their average, rounded."""
     pages = []
     for pos, weights in {"GK": w["gk"], **w["outfield"]}.items():
-        top = sorted((r for r in squad if r.get(pos) is not None), key=lambda r: r[pos], reverse=True)[:1 if pos == "GK" else 3]
+        top = sorted((r for r in squad if r.get(pos) is not None), key=lambda r: r[pos], reverse=True)[:None if pos == "GK" else 3]
         if not top:
             continue
         searched = search_attrs(weights)
@@ -882,7 +882,7 @@ def development(rows, players, obs_files, managed, squad):
 
 
 def settings_tile(config, cfg, save):
-    """The guide's last tile: this save's main settings, and where to change them."""
+    """Menu → About: the version, this save's main settings, where to change them, and the project page."""
     rows = [("App version", f"FMAnalyst {VERSION}"), ("Save", save), ("Club", cfg.get("managed_club", "–")), ("Attribute weights", "your own (Attributes page; every save)" if ATTRIBUTES_FILE.is_file() else "default"),
             ("Currency", config.get("currency", "–")), ("Exports folder", config.get("exports_dir") or "found under Documents"),
             ("Data folder", str(ROOT))]
@@ -890,7 +890,7 @@ def settings_tile(config, cfg, save):
     table += (f'<tr><td class="text">Project page</td><td><a href="{PROJECT_URL}" target="_blank" rel="noopener">'
               f'{PROJECT_URL.removeprefix("https://")}</a> (updates, README, report a problem)</td></tr>')
     return {"key": "", "title": "About and your settings",
-            "text": f"<table>{table}</table>Switch or start saves with <b>Saves</b> at the bottom right. Everything else is in "
+            "text": f"<table>{table}</table>Switch or start saves with <b>Menu → Saves</b> (bottom right). Everything else is in "
                     f"<b>config.toml</b> (this computer) and <b>saves\\{html.escape(save)}\\save.toml</b> (this save) in the data "
                     f"folder: edit them with Notepad, then restart the app."}
 
@@ -967,7 +967,7 @@ def build(save, config):
         "last_staff": (staff_cols(roles), last_staff),
         "staff_filters": ([], staff_filters(staff_rows, roles, words, w.get("staff_names", {}))),
         "attributes": ([], attributes_page(cfg, w, rows, save_dir)),
-        "guide": ([], GUIDE + [settings_tile(config, cfg, save)]),
+        "guide": ([], GUIDE),
     }
 
 
@@ -1028,12 +1028,12 @@ def write_pages(save, config, cfg, pages):
 
 
 # The guide page (key g): how to use the app and each page. Simple HTML; shown as tiles by template.html's renderGuide.
-# A tile with a key links to that page. The last tile, "Your settings", is added by settings_tile().
+# A tile with a key links to that page. The version and settings are in Menu → About (settings_tile()).
 GUIDE = [
     {"key": "", "title": "Getting started",
      "text": "<ol><li>In FM, open your <b>squad</b> screen with the <b>Squad - Outfield Players View</b> (see the README for the views).</li>"
              "<li>Point the mouse at the list and press <b>F8</b>: FM27 Exporter saves the list as a file.</li>"
-             "<li>Here, click <b>Import file…</b> (bottom right, or <b>File → Import a file…</b>) and pick that file.</li></ol>"
+             "<li>Here, open <b>Menu</b> (bottom right) → <b>Import file…</b> and pick that file.</li></ol>"
              "The app works out what it is (your squad, a search, staff), scores everyone and opens the right page. "
              "Import your squad first; after that, import searches and shortlists whenever you're looking for players."},
     {"key": "", "title": "Importing: what goes where",
@@ -1077,7 +1077,7 @@ GUIDE = [
              "position; an empty slot (often DM, MC or AMC) is filled from Third by whoever plays it best (marked <b>↑</b>).<br>"
              "<b>Formations</b> (top right): 20 common systems ranked by how well your squad fits them. <b>XI</b> = the average "
              "score of your best eleven for that shape, <b>Depth</b> = a second eleven's, <b>Weakest spot</b> = where that "
-             "eleven is thinnest. Click a formation to see its eleven. <b>Hide</b> folds both boxes away.<br>"
+             "eleven is thinnest. Click a formation to see its eleven.<br>"
              "<b>Table</b> (below): every player at your club with all his scores. Sort by clicking a heading, filter with the "
              "Search box (see <b>Searching and filtering</b>).<br>"
              "<b>Use it to:</b> spot thin positions (no backup), surplus (a long Third), who's next in line, and the shape that suits you."},
@@ -1125,10 +1125,10 @@ GUIDE = [
              "position is worth scouting."},
     {"key": "7", "title": "Player search",
      "text": "<b>Shows:</b> for each position, your best players there (3, or 1 for GK) and the attributes that matter most, "
-             "most important first, with a suggested minimum (<b>Search ≥</b>) = the average of your best players.<br>"
+             "most important first, with a suggested minimum (<b>Filter</b>) = the average of your best players.<br>"
              "<b>Use it to:</b> set up FM's player search to find players better than yours.<br>"
              "<b>How:</b> in FM's search add <b>Position Is Accomplished At</b> that position, then each highlighted attribute "
-             "<b>Is At Least</b> its Search ≥ value. Dimmed attributes don't need a minimum. Too few results? Lower the "
+             "<b>Is At Least</b> its Filter value. Dimmed attributes don't need a minimum. Too few results? Lower the "
              "smaller minimums first. The minimums rise as your squad improves."},
     {"key": "8", "title": "All staff",
      "text": "<b>Shows:</b> every staff member you've imported, scored for each job (FM's words like Good = 13, Very Good = 16): "
@@ -1144,7 +1144,7 @@ GUIDE = [
      "text": "<b>Shows:</b> per job, the best staff you've imported (from any club) and the attributes that matter most for "
              "that job, with a suggested minimum as FM's word (e.g. Good).<br>"
              "<b>Use it to:</b> set up FM's staff search when hiring: set each highlighted attribute to at least its "
-             "<b>Search ≥</b> word. The more staff searches you import, the better the minimums get."},
+             "<b>Filter</b> word. The more staff searches you import, the better the minimums get."},
     {"key": "a", "title": "Attributes",
      "text": "<b>Shows:</b> one weight per attribute, 1–20 like FM's attributes, for every position at once (keepers too), and "
              "what it comes to at each position: weight × FM's CA cost there, as the attribute's share of that position's "
@@ -1165,7 +1165,9 @@ GUIDE = [
              "<li>several at once, with spaces: <b>age&lt;=23 best=ST vs&gt;=90</b></li></ul>"
              "The count next to the box shows how many match. Click a column heading to sort (again to reverse)."},
     {"key": "", "title": "Saves, folders and mistakes",
-     "text": "<ul><li><b>Saves</b> (bottom right): switch between FM saves, or start one for a new game or club.</li>"
+     "text": "<ul><li><b>Menu</b> (bottom right): <b>Import file…</b>, <b>Open the exports folder</b>, <b>Saves</b> (switch "
+             "between FM saves, or start one for a new game or club) and <b>About</b> (the version, your settings and the "
+             "project page).</li>"
              "<li>Your data is in <b>Documents\\FMAnalyst</b>: settings (config.toml), each save's data and pages. Updating the "
              "app keeps it all.</li>"
              "<li><b>Imported the wrong file?</b> Close the app, delete its files from <b>saves\\&lt;your save&gt;\\obs</b> (their "

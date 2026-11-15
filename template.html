@@ -87,9 +87,6 @@ __THEME__
   /* ---- Squad: the Lineup and Formations boxes, side by side and one height ---- */
   #squadtop { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-bottom: 10px; }
   #squadtop[hidden] { display: none; }
-  #squadtop.closed { align-items: flex-start; }
-  #squadtop.closed #lineup table, #squadtop.closed #lineup .notes, #squadtop.closed #formations { display: none; }
-  #squadtop.closed .ttitle { margin-bottom: 0; }
   #lineup { display: flex; flex: 0 1 auto; flex-direction: column; }
   #lineup table { flex: 1 1 auto; width: auto; height: 100%; }
   #lineup th { color: var(--purple); cursor: default; }
@@ -103,9 +100,6 @@ __THEME__
   #lineup [data-name] { cursor: pointer; }
   #lineup .notes { margin-top: 8px; line-height: 1.7; white-space: normal; }
   .lhead { display: flex; align-items: center; gap: 10px; }
-  .lhead button { padding: 2px 10px; color: var(--fg); font: 600 12px var(--body); background: var(--row); border: 1px solid var(--line);
-                  border-radius: 6px; cursor: pointer; }
-  .lhead button:hover { color: #141414; background: #8fe3cf; }
   #formations { flex: 1 1 380px; min-width: 0; }
   #formations td, #formations th { padding: 3px 8px; }
   #formations tr.f { cursor: pointer; }
@@ -433,31 +427,27 @@ function renderFilters() {
   main.className = "tiles";
   if (!DATA.length) {
     const how = PAGE === "staff_filters"
-      ? "Import staff first: in FM, use the <b>Search - Staff View</b> on a staff search or your club's Staff screen, press <b>F8</b>, then <b>Import file…</b>."
-      : "Import your squad first: press <b>F8</b> on your squad screen in FM, then <b>Import file…</b>.";
+      ? "Import staff first: in FM, use the <b>Search - Staff View</b> on a staff search or your club's Staff screen, press <b>F8</b>, then <b>Menu → Import file…</b>."
+      : "Import your squad first: press <b>F8</b> on your squad screen in FM, then <b>Menu → Import file…</b>.";
     main.innerHTML = `<div class="tile"><div class="ttitle">Nothing to show yet</div><p>${how}</p></div>`;
     return;
   }
   const who = p => `<th class="num">${esc(p.name)}<br><span class="sub">${[p.club, p.age != null && `${p.age}y`, p.score.toFixed(1)].filter(Boolean).join(" · ")}</span></th>`;
-  const line = row => `<tr class="${row.min == null ? "minor" : ""}"><td>${row.attr}</td><td class="num wt">×${row.weight}</td>` +
+  const line = row => `<tr class="${row.min == null ? "minor" : ""}"><td>${row.attr}</td>` +
     row.values.map((v, i) => `<td class="num ${v == null ? "" : attrTier(v)}">${row.labels ? row.labels[i] : v ?? "–"}</td>`).join("") +
     `<td class="num search">${row.min ?? "–"}</td></tr>`;
   main.innerHTML = DATA.map(entry => `<div class="tile">
     <div class="ttitle">${entry.pos}${entry.title ? ` <span class="sub">· ${entry.title}</span>` : ""}</div>
-    <table><thead><tr><th>Attribute</th><th class="num wt">Wt</th>${entry.players.map(who).join("")}<th class="num search">Search ≥</th></tr></thead>
+    <table><thead><tr><th>Attribute</th>${entry.players.map(who).join("")}<th class="num search" title="the minimum to set in FM's search filter (Is At Least)">Filter</th></tr></thead>
     <tbody>${entry.rows.map(line).join("")}</tbody></table></div>`).join("");
 }
 // Squad page: the lineup panel above the table. LINEUP = { slots: [{ label, pos, left, senior: [[players] ×3],
 // extra: { youth, intake } }], extraCols, spare, spareYouth, loanOut } (grid() in score.py)
-const LINEUP_STORE = "fm:__SAVE__:lineup";
 function renderLineup() {
   const box = document.getElementById("lineup"), d = LINEUP, n = 3;
   if (!d) return;
-  let closed = false;
-  try { closed = localStorage.getItem(LINEUP_STORE) === "closed"; } catch (e) {}
   const top = document.getElementById("squadtop");
   top.hidden = false;
-  top.className = closed ? "closed" : "";
   const surname = name => name.split(" ").pop();
   const extra = d.extraCols;
   const entry = (p, youth) => `<div data-name="${esc(p.name)}">` +
@@ -469,17 +459,13 @@ function renderLineup() {
   const heads = ["Starter", "Backup", "Third"];
   const list = (title, ps) => ps.length ? `<div><span class="sub">${title}:</span> ${ps.map(p =>
     `<span title="${esc(p.name)}" data-name="${esc(p.name)}">${esc(surname(p.name))}</span> <span class="sub">${p.age}y ${p.pos} ${FMT.f1(p.v)}</span>`).join(" · ")}</div>` : "";
-  box.innerHTML = `<div class="ttitle lhead">Lineup <button id="ltoggle">${closed ? "Show" : "Hide"}</button></div><table>
+  box.innerHTML = `<div class="ttitle lhead">Lineup</div><table>
     <thead><tr><th></th>${heads.map(h => `<th>${h}</th>`).join("")}${extra.map((c, i) =>
       `<th class="${i ? "" : "split"}" title="${esc(c.title)}">${esc(c.label)}</th>`).join("")}</tr></thead>
     <tbody>${d.slots.map(s => `<tr><td class="slot" title="scored as ${esc(s.pos)}${s.left ? ", left-footed only" : ""}">${esc(s.label)}</td>` +
       s.senior.map((ps, i) => cell(ps, false, i)).join("") + extra.map((c, i) => cell(s.extra[c.key], true, n + i)).join("") + "</tr>").join("")}</tbody>
   </table>
   <div class="notes">${list("Not placed", d.spare)}${list("Youngsters not placed", d.spareYouth)}${list("Out on loan", d.loanOut)}</div>`;
-  document.getElementById("ltoggle").onclick = () => {
-    try { localStorage.setItem(LINEUP_STORE, closed ? "open" : "closed"); } catch (e) {}
-    renderLineup();
-  };
   renderFormations();
 }
 // Beside the lineup: how the squad fits common formations (formations() in score.py), best first; a row opens its XI
@@ -693,7 +679,7 @@ function renderAttributes() {
       " <b>Open this page in the app to save, import or export.</b>"}</div>
   </div>
   <div class="tile wide"><div class="ttitle">Attributes <span class="sub">${counted.length} attributes count${empty.length ? ` · <b class="warn">nothing counts at ${esc(empty.join(", "))}</b>` : ""}</span></div>
-    <div class="wscroll"><table class="weights"><thead><tr><th>Attribute</th><th class="num">Weight</th>${cols.map(p => `<th class="num">${esc(p)}</th>`).join("")}</tr></thead>
+    <div class="wscroll"><table class="weights"><thead><tr><th>Attribute</th><th class="num">Value</th>${cols.map(p => `<th class="num">${esc(p)}</th>`).join("")}</tr></thead>
     <tbody>${counted.map(row).join("")}${unused.length ? `<tr class="divider"><td colspan="${cols.length + 2}">Not counted: give one a weight to count it</td></tr>` + unused.map(row).join("") : ""}</tbody></table></div>
     <div class="sub">Player searches exported with the Search - Outfield Players View have 18 attributes. A position needs 85% of its
       weight known to score a player, so weight the others (not in searches) lightly or searched players may not be scored.</div></div>`;

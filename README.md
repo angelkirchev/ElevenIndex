@@ -48,7 +48,7 @@ those), then one chart at a time: role score, Technical, Mental, Physical and Go
 
 ![Market page](docs/screenshots/market.png)
 
-**Player search**: your best players per position, and the minimums (**Search ≥**) to type into FM's player search to find
+**Player search**: your best players per position, and the minimums (**Filter**) to type into FM's player search to find
 better ones.
 
 ![Player search page](docs/screenshots/filters.png)
