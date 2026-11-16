@@ -293,6 +293,23 @@ class App:
             self.commit(f"{target.name}: restored")
         return target.name
 
+    # --- theme (Menu → Theme…) -------------------------------------------------------------------------------------
+
+    def themes(self):
+        return {"current": score.theme_of(self.config),
+                "themes": [{"name": n, "label": l, "bar": b, "accent": a} for n, l, b, a in score.THEMES]}
+
+    def set_theme(self, name):
+        """Use a colour theme from now on: config.toml remembers it (for every save), this save's pages change now,
+        another save's when you switch to it (its pages are rebuilt then)."""
+        if name not in {t[0] for t in score.THEMES}:
+            raise ValueError(f"There's no theme called {name}.")
+        with self.lock:
+            score.set_setting("theme", name)
+            self.config["theme"] = name
+            if self.save:
+                score.stamp_theme(self.save, name)
+
     def new_save(self, club, division, name):
         club, division = club.strip(), division.strip()
         if not club:
@@ -525,6 +542,12 @@ class MainApi:
     def delete_save(self, name):
         return self._call(self._app.delete_save, name)
 
+    def themes(self):
+        return self._app.themes()
+
+    def set_theme(self, name):
+        return self._call(self._app.set_theme, name)
+
     def deleted_saves(self):
         try:
             return self._app.deleted_saves()
@@ -637,27 +660,32 @@ TOOLBAR_JS = """(() => {
   m.id = "fm-import"; m.title = "Import a file, the exports folder, your saves, about";
   m.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:8px" aria-hidden="true">' +
     '<path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="#0f1412" stroke-width="2" stroke-linecap="round"/></svg>Menu';
-  m.style.cssText = BUTTON + "background:#a9d93b;color:#0f1412";
+  m.style.cssText = BUTTON + "background:var(--accent-strong,#a9d93b);color:#0f1412";
   const list = document.createElement("div");
   list.id = "fm-menu";
   list.style.cssText = "position:absolute;right:6px;bottom:52px;display:none;min-width:240px;padding:6px;border:1px solid #2a332f;" +
     "border-radius:10px;background:#121815;box-shadow:0 8px 24px #000a";
-  const item = (text, hint, run) => {
+  // main: the one used most (Import file…), in the accent, lighter than the rest
+  const item = (text, hint, run, main) => {
     const it = document.createElement("button");
-    it.style.cssText = "display:block;width:100%;padding:8px 12px;border:0;border-radius:6px;background:transparent;color:#f2efe7;" +
-      "font:500 14px Inter,'Segoe UI',system-ui,sans-serif;text-align:left;cursor:pointer";
-    it.innerHTML = text + (hint ? `<div style="color:#9aa49f;font-size:12px;font-weight:400">${hint}</div>` : "");
-    it.onmouseenter = () => it.style.background = "#232c29";
-    it.onmouseleave = () => it.style.background = "transparent";
+    const rest = main ? "color-mix(in srgb, var(--blue,#c5f04f) 16%, transparent)" : "transparent";
+    const over = main ? "color-mix(in srgb, var(--blue,#c5f04f) 28%, transparent)" : "var(--hover,#232c29)";
+    it.style.cssText = "display:block;width:100%;padding:8px 12px;border:0;border-radius:6px;background:" + rest + ";" +
+      "color:" + (main ? "var(--blue,#c5f04f)" : "#f2efe7") + ";font:" + (main ? 600 : 500) + " 14px Inter,'Segoe UI',system-ui,sans-serif;text-align:left;cursor:pointer";
+    it.innerHTML = text + (hint ? `<div style="color:${main ? "#cfd6d1" : "#9aa49f"};font-size:12px;font-weight:400">${hint}</div>` : "");
+    it.onmouseenter = () => it.style.background = over;
+    it.onmouseleave = () => it.style.background = rest;
     it.onclick = () => { list.style.display = "none"; run(); };
     return it;
   };
-  const line = () => { const l = document.createElement("div"); l.style.cssText = "height:1px;margin:4px 6px;background:#2a332f"; return l; };
+  const line = () => { const l = document.createElement("div"); l.style.cssText = "height:1px;margin:5px 6px;background:var(--line,#2a332f)"; return l; };
   list.append(
-    item("Import file…", "an FM27 Exporter file (F8 in FM)", () => window.pywebview && pywebview.api.pick_file()),
+    item("Import file…", "an FM27 Exporter file (F8 in FM)", () => window.pywebview && pywebview.api.pick_file(), true),
     item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()),
     line(),
     item("Saves…", "switch to another save, start one or delete one", () => window.fmSaves()),
+    line(),
+    item("Theme…", "the app's colours", () => window.fmTheme()),
     item("About", "version, your settings, project page", () => window.fmAbout()));
   m.onclick = e => { e.stopPropagation(); list.style.display = list.style.display === "none" ? "block" : "none"; };
   document.addEventListener("click", e => { if (!list.contains(e.target)) list.style.display = "none"; });
@@ -771,6 +799,41 @@ TOOLBAR_JS = """(() => {
     box.append(error, buttons);
     shade.append(box);
     document.body.append(shade);
+  };
+  // Theme: five colour variations; a click changes the page at once and every page from then on
+  window.fmTheme = async () => {
+    document.getElementById("fm-theme")?.remove();
+    const r = await pywebview.api.themes();
+    const shade = css(make("div"), "position:fixed;inset:0;z-index:10000;background:#000a;display:flex;align-items:center;justify-content:center;font:14px Inter,'Segoe UI',system-ui,sans-serif");
+    shade.id = "fm-theme";
+    shade.tabIndex = -1;
+    shade.onclick = e => { if (e.target === shade) shade.remove(); };
+    shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
+    const box = css(make("div"), "background:var(--pop,#121815);color:#f2efe7;border:1px solid var(--line,#2a332f);border-radius:10px;padding:20px 22px;width:360px;max-width:90vw;box-shadow:0 8px 30px #000");
+    box.append(css(make("h3", "Theme"), "margin:0 0 12px;font-size:16px"));
+    const error = css(make("div"), "color:#f87171;min-height:1.2em;margin-top:6px");
+    let current = r.current;
+    const rows = r.themes.map(t => {
+      const b = css(make("button"), "display:flex;align-items:center;gap:12px;width:100%;margin:5px 0;padding:8px 10px;border-radius:8px;cursor:pointer;font:500 14px Inter,'Segoe UI',system-ui,sans-serif;text-align:left;color:#f2efe7;background:transparent");
+      const sw = css(make("span"), `flex:none;width:44px;height:26px;border-radius:5px;background:linear-gradient(90deg, ${t.bar} 0 68%, ${t.accent} 68%);box-shadow:inset 0 0 0 1px #ffffff22`);
+      const tick = css(make("span"), "margin-left:auto;font-size:12px;color:#9aa49f");
+      b.append(sw, make("span", t.label), tick);
+      b.mark = () => { const on = t.name === current; b.style.border = "1px solid " + (on ? t.accent : "var(--line,#2a332f)"); tick.textContent = on ? "in use" : ""; };
+      b.onclick = async () => {
+        document.documentElement.dataset.theme = t.name;
+        current = t.name; rows.forEach(x => x.mark());
+        const res = await pywebview.api.set_theme(t.name);
+        error.textContent = res && res.error ? res.error : "";
+      };
+      return b;
+    });
+    rows.forEach(b => { b.mark(); box.append(b); });
+    const close = css(make("button", "Close"), "display:block;margin:10px 0 0 auto;padding:7px 16px;border:0;border-radius:6px;background:var(--line,#2a332f);color:#f2efe7;font:inherit;cursor:pointer");
+    close.onclick = () => shade.remove();
+    box.append(error, close);
+    shade.append(box);
+    document.body.append(shade);
+    shade.focus();
   };
   window.fmAbout = async () => {
     document.getElementById("fm-about")?.remove();

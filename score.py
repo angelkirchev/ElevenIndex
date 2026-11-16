@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.8.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.8.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -1175,6 +1175,12 @@ def as_script(value):
     return json.dumps(value, ensure_ascii=False).replace("</", "<\\/")
 
 
+# Menu > Theme: the colour themes, (name, label, top bar, accent); theme.css has their colours, the first is :root's.
+THEMES = [("green", "Pitch green", "#1b6b3a", "#c5f04f"), ("blue", "Night blue", "#1c4a80", "#6cc4ff"),
+          ("claret", "Claret & gold", "#7a1f35", "#f5c542"), ("graphite", "Graphite & orange", "#343b40", "#ff9a3c"),
+          ("purple", "Royal purple", "#4b2a7a", "#c4a5ff")]
+
+
 def write_pages(save, config, cfg, pages):
     """Write out/<save>/<page>.html for every page, and remove pages an older version wrote."""
     out = ROOT / "out" / save
@@ -1195,6 +1201,7 @@ def write_pages(save, config, cfg, pages):
                               "__LINEUP__": as_script(extra.get("lineup")), "__INFO__": as_script(extra.get("info")),
                               "__DATA__": as_script(data)}.items():
             text = text.replace(marker, value)
+        text = text.replace('<html lang="en">', f'<html lang="en" data-theme="{theme_of(config)}">', 1)
         (out / f"{page}.html").write_text(text, encoding="utf-8")
     for stale in out.glob("*.html"):
         if stale.stem not in pages:
@@ -1371,7 +1378,7 @@ GUIDE = [
     {"key": "", "title": "Saves, folders and mistakes",
      "text": "<ul><li><b>Menu</b> (bottom right): <b>Import file…</b>, <b>Open the exports folder</b>, <b>Saves</b> (switch "
              "between FM saves, start one for a new game or club, or delete one: a deleted save can be restored there "
-             "for 14 days) and <b>About</b> (the version, your settings and the "
+             "for 14 days), <b>Theme</b> (five colour themes, for every save) and <b>About</b> (the version, your settings and the "
              "project page).</li>"
              "<li>Your data is in <b>Documents\\ElevenIndex</b>: settings (config.toml), each save's data and pages. Updating the "
              "app keeps it all.</li>"
@@ -1436,13 +1443,34 @@ def main():
         webbrowser.open((out / f"{args.open}.html").resolve().as_uri())
 
 
-def set_active_save(save):
-    """Point config.toml's active_save at a save, keeping the rest of the file as it is."""
+def set_setting(key, value):
+    """Set one of config.toml's settings, keeping the rest of the file as it is."""
     text = CONFIG.read_text(encoding="utf-8")
-    line = f"active_save = {toml_str(save)}"
-    text = re.sub(r"^active_save\s*=.*$", line, text, flags=re.M) if re.search(r"^active_save\s*=", text, re.M) \
-        else line + "\n" + text
+    line = f"{key} = {toml_str(value)}"
+    pattern = rf"^{re.escape(key)}\s*=.*$"
+    text = re.sub(pattern, lambda m: line, text, flags=re.M) if re.search(pattern, text, re.M) \
+        else text.rstrip("\n") + "\n" + line + "\n"
     CONFIG.write_text(text, encoding="utf-8")
+
+
+def set_active_save(save):
+    """Point config.toml's active_save at a save."""
+    set_setting("active_save", save)
+
+
+def theme_of(config):
+    """The colour theme config.toml names (Menu > Theme), else the first."""
+    name = config.get("theme", "")
+    return name if name in {t[0] for t in THEMES} else THEMES[0][0]
+
+
+def stamp_theme(save, theme):
+    """Change the theme of a save's written pages in place (no rebuild): their <html data-theme>."""
+    for page in (ROOT / "out" / save).glob("*.html"):
+        text = page.read_text(encoding="utf-8")
+        new = re.sub(r'<html lang="en"( data-theme="[a-z]*")?>', f'<html lang="en" data-theme="{theme}">', text, count=1)
+        if new != text:
+            page.write_text(new, encoding="utf-8")
 
 
 def write_config(save, currency, exports_dir=None):

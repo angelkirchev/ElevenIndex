@@ -49,7 +49,7 @@ __THEME__
   table.market tbody tr { cursor: pointer; }
   table.market tbody tr:nth-child(even) { background: var(--row); }
   table.market tbody tr:hover { background: var(--hover); }
-  table.market tbody tr.on { box-shadow: inset 3px 0 0 var(--blue); background: #c5f04f14; }
+  table.market tbody tr.on { box-shadow: inset 3px 0 0 var(--blue); background: color-mix(in srgb, var(--blue) 8%, transparent); }
   table.market .pos-cell { color: var(--purple); font-weight: 700; }
   table.market tr.on .pos-cell { color: var(--cyan); }
   table.market .faint { color: var(--dim); font-size: 12px; }
@@ -67,7 +67,7 @@ __THEME__
   .lead { font-size: 12px; font-weight: 700; } .lead.up { fill: var(--green); } .lead.down { fill: var(--red); }
   .stripe { fill: #ffffff05; }
   .spread { stroke: #dff79a66; stroke-width: 2; }
-  .middle-half { fill: #c5f04f40; stroke: #c5f04f; stroke-width: 1; }
+  .middle-half { fill: color-mix(in srgb, var(--blue) 25%, transparent); stroke: var(--blue); stroke-width: 1; }
   .middle { fill: #fff; }
   .middle-value { fill: var(--fg); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; pointer-events: none; }
   /* markers: the compared players as rings (ticks under a range), yours as orange diamonds; ringed white on hover */
@@ -79,7 +79,7 @@ __THEME__
   .agekey i { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; }
   .agekey.young i { background: var(--cyan); } .agekey.prime i { background: #cfd6d1; } .agekey.old i { background: var(--orange); }
   .agetag { padding: 0 5px; color: var(--fg); font-size: 11px; border: 1px solid var(--line); border-radius: 4px; }
-  .agetag.young { color: var(--cyan); border-color: #c5f04f66; } .agetag.old { color: var(--orange); border-color: #fb923c66; }
+  .agetag.young { color: var(--cyan); border-color: color-mix(in srgb, var(--blue) 40%, transparent); } .agetag.old { color: var(--orange); border-color: #fb923c66; }
   .advice { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 8px; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; }
   .advice.bad { color: var(--red); border-color: #f8717166; } .advice.warn { color: var(--yellow); border-color: #fbd13d55; }
   .advice.good { color: var(--green); border-color: #4ade8066; } .advice.ok { color: var(--dim); }
@@ -91,7 +91,7 @@ __THEME__
   .zone-name { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
   .zone-name.good { fill: #4ade80aa; } .zone-name.bad { fill: #f87171aa; }
   #tip { position: fixed; z-index: 5; display: none; padding: 10px 12px; font-size: 12px; line-height: 1.6; white-space: nowrap;
-         background: #131916; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px #000a; pointer-events: none; }
+         background: var(--pop); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px #000a; pointer-events: none; }
   #tip .who { color: var(--fg); font-size: 14px; font-weight: 700; }
   #tip .faint { color: var(--dim); }
   #tip .best { color: var(--cyan); font-weight: 600; }

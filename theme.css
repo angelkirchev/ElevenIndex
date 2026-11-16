@@ -6,24 +6,43 @@
           --blue: #c5f04f; --purple: #cfd6d1; --cyan: #8bd3f7;
           --green: #4ade80; --yellow: #fbd13d; --orange: #fb923c; --red: #f87171;
           --row: #1b2220; --accent-strong: #a9d93b;
-          --club: #1b6b3a; --club-dark: #124a28; --club-ink: #f2efe7;
+          --club: #1b6b3a; --club-dark: #124a28; --club-ink: #f2efe7; --club-top: #22804a; --club-num: #b9dcae;
+          --sub-ink: #cfe5c6; --desk-top: #141a17; --pop: #121815;
           --head: "Barlow Condensed", "Bahnschrift SemiCondensed", "Arial Narrow", sans-serif;
           --body: "Inter", "Segoe UI", system-ui, sans-serif; }
+  /* Menu > Theme: four more colour variations of the same look (score.THEMES; the page's <html data-theme>).
+     Pitch green is :root's. Each sets the top bar, the panels and the two accents. */
+  :root[data-theme="blue"] { --bg: #151a21; --desk: #0e1217; --desk-top: #131820; --row: #1a2029; --line: #29313d;
+          --hover: #222a35; --dim: #9aa3b0; --purple: #cdd5e0; --pop: #10151c;
+          --blue: #6cc4ff; --accent-strong: #4fb0f2; --cyan: #ffd166;
+          --club: #1c4a80; --club-top: #245c9e; --club-dark: #13355d; --club-num: #b5cdea; --sub-ink: #c9daf0; }
+  :root[data-theme="claret"] { --bg: #1c1618; --desk: #130f10; --desk-top: #1a1416; --row: #221b1d; --line: #352a2d;
+          --hover: #2c2326; --dim: #ab9da1; --purple: #e0d3d6; --pop: #171213;
+          --blue: #f5c542; --accent-strong: #e0ae2a; --cyan: #8bd3f7;
+          --club: #7a1f35; --club-top: #932843; --club-dark: #561526; --club-num: #e6b9c3; --sub-ink: #efcfd6; }
+  :root[data-theme="graphite"] { --bg: #18191a; --desk: #101112; --desk-top: #161718; --row: #1e2021; --line: #2f3234;
+          --hover: #27292b; --dim: #a0a4a7; --purple: #d5d8da; --pop: #141516;
+          --blue: #ff9a3c; --accent-strong: #f08424; --cyan: #8bd3f7;
+          --club: #343b40; --club-top: #424a50; --club-dark: #24292d; --club-num: #c3c9cd; --sub-ink: #d5dadd; }
+  :root[data-theme="purple"] { --bg: #19161f; --desk: #110f16; --desk-top: #17141d; --row: #1f1b27; --line: #322b3d;
+          --hover: #29233a; --dim: #a59fb0; --purple: #d9d1e6; --pop: #15121b;
+          --blue: #c4a5ff; --accent-strong: #ae87fb; --cyan: #5eead4;
+          --club: #4b2a7a; --club-top: #5c3592; --club-dark: #351d57; --club-num: #cdbcea; --sub-ink: #ddd0f0; }
   * { box-sizing: border-box; }
   body { min-height: 100vh; margin: 0; padding: 0 14px 14px; color: var(--fg); font: 13px/1.5 var(--body);
-         background: linear-gradient(180deg, #141a17 0, var(--desk) 420px) fixed, var(--desk); }
+         background: linear-gradient(180deg, var(--desk-top) 0, var(--desk) 420px) fixed, var(--desk); }
 
   /* ---- the top bar, like FM's: the club colour, bold dark menu, the current page underlined ---- */
   .bar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 0 -14px 14px; padding: 0 14px;
-         color: var(--club-ink); background: linear-gradient(180deg, #22804a, var(--club)); border-bottom: 1px solid var(--club-dark);
+         color: var(--club-ink); background: linear-gradient(180deg, var(--club-top), var(--club)); border-bottom: 1px solid var(--club-dark);
          box-shadow: 0 2px 10px #0008; }
   .pages { display: flex; flex-wrap: nowrap; gap: 2px; align-items: stretch; align-self: stretch; }
   .pages a { display: flex; align-items: center; padding: 14px 7px 11px; color: var(--club-ink); font: 700 15px/1 var(--head);
              letter-spacing: .02em; text-transform: uppercase; text-decoration: none; white-space: nowrap;
              border-bottom: 3px solid transparent; transition: background .12s; }
-  .pages a b { margin-right: 5px; color: #b9dcae; font-weight: 700; }
+  .pages a b { margin-right: 5px; color: var(--club-num); font-weight: 700; }
   .pages a:hover:not(.on) { background: #ffffff14; }
-  .pages a.on { background: #0000001f; border-bottom-color: #c5f04f; }
+  .pages a.on { background: #0000001f; border-bottom-color: var(--blue); }
   .pages a.on b { color: var(--club-ink); }
   .pages .sep { width: 1px; margin: 12px 4px; background: #ffffff33; }
   /* the app's name and icon, at the left */
@@ -32,20 +51,20 @@
   .pages .brand svg { flex: none; width: 40px; height: 40px; filter: drop-shadow(0 2px 4px #0006); }
   .pages .brand .bname { display: flex; flex-direction: column; justify-content: center; line-height: 1; }
   .pages .brand .bword { color: var(--club-ink); font: 600 24px/0.95 var(--head); letter-spacing: .32em; margin-right: -.32em; }
-  .pages .brand small { margin-top: 3px; color: #c5f04f; font: 600 8.5px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; }  /* the slogan */
+  .pages .brand small { margin-top: 3px; color: var(--blue); font: 600 8.5px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; }  /* the slogan */
   /* a group's sub-tabs (Squad, Players, Staff), in a darker strip right under the bar */
   .subnav { display: flex; gap: 2px; margin: -14px -14px 14px; padding: 0 14px 0 64px; background: var(--club-dark);
             border-bottom: 1px solid #0004; box-shadow: 0 2px 8px #0006; }
-  .subnav a { padding: 8px 14px 7px; color: #cfe5c6; font: 600 13px var(--body); text-decoration: none;
+  .subnav a { padding: 8px 14px 7px; color: var(--sub-ink); font: 600 13px var(--body); text-decoration: none;
               border-bottom: 2px solid transparent; }
   .subnav a:hover:not(.on) { color: #f2efe7; background: #ffffff12; }
-  .subnav a.on { color: #f2efe7; border-bottom-color: #c5f04f; }
+  .subnav a.on { color: #f2efe7; border-bottom-color: var(--blue); }
   .subnav { min-height: 35px; align-items: stretch; }
-  .subnav .info { margin-left: auto; align-self: center; padding: 0 2px; color: #cfe5c6; font-size: 12px; white-space: nowrap;
+  .subnav .info { margin-left: auto; align-self: center; padding: 0 2px; color: var(--sub-ink); font-size: 12px; white-space: nowrap;
                   overflow: hidden; text-overflow: ellipsis; }
   /* the search box and count, on the bar: light, like FM's search */
   .bar #filter { color: #fff; background: #ffffff1f; border-color: #ffffff3d; }
-  .bar #filter::placeholder { color: #cfe5c6; }
+  .bar #filter::placeholder { color: var(--sub-ink); }
   .bar #filter:focus { background: #ffffff2e; border-color: #fff; }
 
   /* the logo, large and faint, in the bottom-right corner (clicks pass through) */
