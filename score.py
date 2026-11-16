@@ -1,4 +1,4 @@
-"""FMAnalyst's scoring: reads a save's imports (saves/<save>/obs and staff, written by import_export.py), scores every
+"""ElevenIndex's scoring: reads a save's imports (saves/<save>/obs and staff, written by import_export.py), scores every
 player at each position and every staff member for each job, and writes the pages (out/<save>/*.html).
 
     python score.py [--save NAME] [--open PAGE]     rebuild a save's pages (the app does this itself)
@@ -33,13 +33,28 @@ def documents():
 
 # APP: the program's own files (weights, templates, theme). ROOT: the user's data (config.toml, saves/, out/).
 # Run from the source folder they're the same folder. In the packaged .exe the program files are unpacked to a
-# temporary folder, so the data lives in Documents\FMAnalyst. FMANALYST_HOME overrides where the data goes.
+# temporary folder, so the data lives in Documents\ElevenIndex. ELEVENINDEX_HOME (or the older FMANALYST_HOME)
+# overrides where the data goes.
 APP = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
-ROOT = Path(os.environ["FMANALYST_HOME"]) if os.environ.get("FMANALYST_HOME") else \
-    documents() / "FMAnalyst" if getattr(sys, "frozen", False) else Path(__file__).parent
+
+
+def data_root():
+    """Documents\\ElevenIndex, moved there once from the FMAnalyst folder an earlier version used (renamed whole: saves,
+    settings, weights); if the move can't happen (a file in use), the old folder is used as it is. Nothing is deleted."""
+    new, old = documents() / "ElevenIndex", documents() / "FMAnalyst"
+    if not new.exists() and old.is_dir():
+        try:
+            old.rename(new)
+        except OSError:
+            return old
+    return new
+
+
+_HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
+ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.6.2"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
-PROJECT_URL = "https://github.com/angelkirchev/FMAnalyst"
+VERSION = "1.7.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
 # Each page's full name (the window title, the Guide)
@@ -969,7 +984,7 @@ def development(rows, players, obs_files, managed, squad):
 
 def settings_tile(config, cfg, save):
     """Menu → About: the version, this save's main settings, where to change them, and the project page."""
-    rows = [("App version", f"FMAnalyst {VERSION}"), ("Save", save), ("Club", cfg.get("managed_club", "–")), ("Attribute weights", "your own (Attributes page; every save)" if ATTRIBUTES_FILE.is_file() else "default"),
+    rows = [("App version", f"ElevenIndex {VERSION}"), ("Save", save), ("Club", cfg.get("managed_club", "–")), ("Attribute weights", "your own (Attributes page; every save)" if ATTRIBUTES_FILE.is_file() else "default"),
             ("Currency", config.get("currency", "–")), ("Exports folder", config.get("exports_dir") or "found under Documents"),
             ("Data folder", str(ROOT))]
     table = "".join(f"<tr><td class=\"text\">{html.escape(k)}</td><td>{html.escape(str(v))}</td></tr>" for k, v in rows)
@@ -1096,7 +1111,7 @@ def with_info(pages, info):
 
 # The menu's left end: the icon and the name; and the icon again, large and faint, in the page's corner
 _LOGO = (APP / "logo.svg").read_text(encoding="utf-8")
-BRAND = ('<span class="brand">' + re.sub(r"<!--.*?-->\s*", "", _LOGO, flags=re.S) + '<span class="bname"><span><b>FM</b>Analyst</span><small>Scout smarter. Build better.</small></span></span>'
+BRAND = ('<span class="brand">' + re.sub(r"<!--.*?-->\s*", "", _LOGO, flags=re.S) + '<span class="bname"><span class="bword">INDEX</span><small>Rate smarter. Build better.</small></span></span>'
          '<i class="watermark" style="background-image:url(data:image/svg+xml;base64,'
          + base64.b64encode(_LOGO.encode("utf-8")).decode() + ')"></i>')
 
@@ -1357,7 +1372,7 @@ GUIDE = [
      "text": "<ul><li><b>Menu</b> (bottom right): <b>Import file…</b>, <b>Open the exports folder</b>, <b>Saves</b> (switch "
              "between FM saves, or start one for a new game or club) and <b>About</b> (the version, your settings and the "
              "project page).</li>"
-             "<li>Your data is in <b>Documents\\FMAnalyst</b>: settings (config.toml), each save's data and pages. Updating the "
+             "<li>Your data is in <b>Documents\\ElevenIndex</b>: settings (config.toml), each save's data and pages. Updating the "
              "app keeps it all.</li>"
              "<li><b>Imported the wrong file?</b> Close the app, delete its files from <b>saves\\&lt;your save&gt;\\obs</b> (their "
              "names start with the date), and start the app again.</li>"
@@ -1399,7 +1414,7 @@ def new_save(save, club, division="", weight=None):
     for sub in ("obs", "staff"):
         (folder / sub).mkdir(parents=True, exist_ok=True)
     settings = {"managed_club": club, "short_name": save, "division": division}
-    lines = [f"# FMAnalyst save for {club}. The Guide's last tile shows these settings."]
+    lines = [f"# ElevenIndex save for {club}. The Guide's last tile shows these settings."]
     lines += [f"{key} = {toml_str(value)}" for key, value in settings.items()]
     lines += ["last_batch = []", "last_staff_batch = []"]
     (folder / "save.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -1409,7 +1424,7 @@ def new_save(save, club, division="", weight=None):
 def main():
     """python score.py [--save NAME] [--open PAGE]: rebuild a save's pages from its imports (the app does this itself
     on every start and import)."""
-    parser = argparse.ArgumentParser(description="Rebuild FMAnalyst's pages for a save.")
+    parser = argparse.ArgumentParser(description="Rebuild ElevenIndex's pages for a save.")
     parser.add_argument("--save", help="the save to rebuild (default: config.toml's active_save)")
     parser.add_argument("--open", nargs="?", const="squad", choices=PAGES, metavar="PAGE", help="then open a page in the browser")
     args = parser.parse_args()
@@ -1433,7 +1448,7 @@ def write_config(save, currency, exports_dir=None):
     """config.toml: this computer's settings (the save in use, the currency FM shows, where the exports are)."""
     ROOT.mkdir(parents=True, exist_ok=True)
     settings = {"active_save": save, "currency": currency, **({"exports_dir": str(exports_dir)} if exports_dir else {})}
-    text = "# FMAnalyst's settings for this computer.\n" + "".join(f"{k} = {toml_str(v)}\n" for k, v in settings.items())
+    text = "# ElevenIndex's settings for this computer.\n" + "".join(f"{k} = {toml_str(v)}\n" for k, v in settings.items())
     CONFIG.write_text(text, encoding="utf-8")
 
 

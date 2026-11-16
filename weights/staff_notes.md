@@ -1,6 +1,6 @@
 # Staff weights: how they're set
 
-FMAnalyst scores a staff member for every job the same way it scores a player for every position:
+ElevenIndex scores a staff member for every job the same way it scores a player for every position:
 
 **job score = Σ(attribute value × weight) ÷ Σ(weights)**, on FM's 1–20 scale, and only when every weighted attribute is known.
 

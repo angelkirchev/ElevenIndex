@@ -1,53 +1,51 @@
-  /* FMAnalyst's theme, after FM27: a teal club bar on top, charcoal panels, magenta for what's selected. Shared by
-     template.html and charts.html (score.py inlines it). The names: --bg panels, --desk the page, --row every other row,
-     --blue the accent (magenta), --purple the text columns, --cyan the highlights (mint), --club the top bar. */
-  :root { --bg: #1c1e23; --desk: #121316; --fg: #f4f4f2; --line: #33363e; --hover: #2a2d34; --dim: #a0a6b0;
-          --blue: #ff3d96; --purple: #c9cfd8; --cyan: #8fe3cf;
+  /* ElevenIndex's theme (XI INDEX): a green club bar on top, charcoal-green panels, cream text, lime for what's
+     selected. Shared by template.html and charts.html (score.py inlines it). The names: --bg panels, --desk the page,
+     --row every other row, --blue the accent (lime), --purple the text columns, --cyan the second accent (sky blue: the
+     highlights, Compare's first player), --club the top bar. */
+  :root { --bg: #161c19; --desk: #0f1412; --fg: #f2efe7; --line: #2a332f; --hover: #232c29; --dim: #9aa49f;
+          --blue: #c5f04f; --purple: #cfd6d1; --cyan: #8bd3f7;
           --green: #4ade80; --yellow: #fbd13d; --orange: #fb923c; --red: #f87171;
-          --row: #222429; --accent-strong: #e0187a;
-          --club: #2b7a73; --club-dark: #1d5953; --club-ink: #ffffff;
+          --row: #1b2220; --accent-strong: #a9d93b;
+          --club: #1b6b3a; --club-dark: #124a28; --club-ink: #f2efe7;
           --head: "Barlow Condensed", "Bahnschrift SemiCondensed", "Arial Narrow", sans-serif;
           --body: "Inter", "Segoe UI", system-ui, sans-serif; }
   * { box-sizing: border-box; }
   body { min-height: 100vh; margin: 0; padding: 0 14px 14px; color: var(--fg); font: 13px/1.5 var(--body);
-         background: linear-gradient(180deg, #1b1d22 0, var(--desk) 420px) fixed, var(--desk); }
+         background: linear-gradient(180deg, #141a17 0, var(--desk) 420px) fixed, var(--desk); }
 
   /* ---- the top bar, like FM's: the club colour, bold dark menu, the current page underlined ---- */
   .bar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 0 -14px 14px; padding: 0 14px;
-         color: var(--club-ink); background: linear-gradient(180deg, #33887f, var(--club)); border-bottom: 1px solid var(--club-dark);
+         color: var(--club-ink); background: linear-gradient(180deg, #22804a, var(--club)); border-bottom: 1px solid var(--club-dark);
          box-shadow: 0 2px 10px #0008; }
   .pages { display: flex; flex-wrap: nowrap; gap: 2px; align-items: stretch; align-self: stretch; }
   .pages a { display: flex; align-items: center; padding: 14px 7px 11px; color: var(--club-ink); font: 700 15px/1 var(--head);
              letter-spacing: .02em; text-transform: uppercase; text-decoration: none; white-space: nowrap;
              border-bottom: 3px solid transparent; transition: background .12s; }
-  .pages a b { margin-right: 5px; color: #a9ddd5; font-weight: 700; }
+  .pages a b { margin-right: 5px; color: #b9dcae; font-weight: 700; }
   .pages a:hover:not(.on) { background: #ffffff14; }
-  .pages a.on { background: #0000001f; border-bottom-color: var(--club-ink); }
+  .pages a.on { background: #0000001f; border-bottom-color: #c5f04f; }
   .pages a.on b { color: var(--club-ink); }
   .pages .sep { width: 1px; margin: 12px 4px; background: #ffffff33; }
   /* the app's name and icon, at the left */
   .pages .brand { display: flex; gap: 8px; align-items: center; padding: 6px 12px 6px 0; color: var(--club-ink);
                   font: 500 22px/1 var(--head); letter-spacing: .01em; white-space: nowrap; }
-  .pages .brand svg { flex: none; width: 38px; height: 38px; padding: 4px; background: #fff; border-radius: 50%;
-                      box-shadow: 0 0 0 2px var(--club-dark), 0 2px 6px #0004; }
-  .pages .brand > span { color: #bfe9e2; }  /* "Analyst"; "FM" in bold ink */
+  .pages .brand svg { flex: none; width: 40px; height: 40px; filter: drop-shadow(0 2px 4px #0006); }
   .pages .brand .bname { display: flex; flex-direction: column; justify-content: center; line-height: 1; }
-  .pages .brand .bname > span { font-size: 26px; line-height: .95; }
-  .pages .brand small { margin-top: 2px; color: #d8efeb; font: 600 8.5px/1 var(--body); letter-spacing: .045em; text-transform: uppercase; }  /* the slogan */
-  .pages .brand b { margin: 0; color: var(--club-ink); font-weight: 700; }
-  /* a group's sub-tabs (Players, Staff), in a darker strip right under the bar */
+  .pages .brand .bword { color: var(--club-ink); font: 600 24px/0.95 var(--head); letter-spacing: .32em; margin-right: -.32em; }
+  .pages .brand small { margin-top: 3px; color: #c5f04f; font: 600 8.5px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; }  /* the slogan */
+  /* a group's sub-tabs (Squad, Players, Staff), in a darker strip right under the bar */
   .subnav { display: flex; gap: 2px; margin: -14px -14px 14px; padding: 0 14px 0 64px; background: var(--club-dark);
             border-bottom: 1px solid #0004; box-shadow: 0 2px 8px #0006; }
-  .subnav a { padding: 8px 14px 7px; color: #cde9e4; font: 600 13px var(--body); text-decoration: none;
+  .subnav a { padding: 8px 14px 7px; color: #cfe5c6; font: 600 13px var(--body); text-decoration: none;
               border-bottom: 2px solid transparent; }
-  .subnav a:hover:not(.on) { color: #fff; background: #ffffff12; }
-  .subnav a.on { color: #fff; border-bottom-color: var(--cyan); }
+  .subnav a:hover:not(.on) { color: #f2efe7; background: #ffffff12; }
+  .subnav a.on { color: #f2efe7; border-bottom-color: #c5f04f; }
   .subnav { min-height: 35px; align-items: stretch; }
-  .subnav .info { margin-left: auto; align-self: center; padding: 0 2px; color: #cde9e4; font-size: 12px; white-space: nowrap;
+  .subnav .info { margin-left: auto; align-self: center; padding: 0 2px; color: #cfe5c6; font-size: 12px; white-space: nowrap;
                   overflow: hidden; text-overflow: ellipsis; }
   /* the search box and count, on the bar: light, like FM's search */
   .bar #filter { color: #fff; background: #ffffff1f; border-color: #ffffff3d; }
-  .bar #filter::placeholder { color: #cde9e4; }
+  .bar #filter::placeholder { color: #cfe5c6; }
   .bar #filter:focus { background: #ffffff2e; border-color: #fff; }
 
   /* the logo, large and faint, in the bottom-right corner (clicks pass through) */

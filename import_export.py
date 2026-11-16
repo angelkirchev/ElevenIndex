@@ -1,4 +1,4 @@
-"""Turn an FM27 Exporter file (F8: .csv or .html) into FMAnalyst observation CSVs. No screenshots, no AI.
+"""Turn an FM27 Exporter file (F8: .csv or .html) into ElevenIndex observation CSVs. No screenshots, no AI.
 
     python import_export.py EXPORT --date 2026-07-15                    a squad screen of your club
     python import_export.py EXPORT --date 2026-07-15 --source search-cb a player search
@@ -21,7 +21,7 @@ import score  # the data folder (ROOT), the weights and the scoring rules
 
 HERE = Path(__file__).parent
 
-# Export header -> FMAnalyst column. Anything not listed keeps its name.
+# Export header -> ElevenIndex column. Anything not listed keeps its name.
 RENAME = {
     "Player": "Name", "Salary": "Wage", "Team Work": "Teamwork",
     "Command Of Area": "Command of Area", "One On Ones": "One on Ones",
@@ -100,7 +100,7 @@ def attr_value(v):
 
 
 def convert(rows, headers, club):
-    """Split into {'outfield': rows, 'gk': rows} in FMAnalyst's format, plus the column list for each."""
+    """Split into {'outfield': rows, 'gk': rows} in ElevenIndex's format, plus the column list for each."""
     known_meta = set(META_ORDER) | {"Best Pos", "Nation", "Ability", "Potential", "Height", "Inf",
                                    "Picked", "Best Role", "Playing Time", "Club"}
     attrs = [h for h in headers if h not in known_meta and h]

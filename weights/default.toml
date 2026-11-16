@@ -1,4 +1,4 @@
-# FMAnalyst's default weights for FM27.
+# ElevenIndex's default weights for FM27.
 #
 # A player's score at a position = sum(attribute x weight) / sum(weights), on FM's 1-20 scale. Each attribute's
 # weight at a position = its CA cost there x its attribute weight below, so one number per attribute moves it at every

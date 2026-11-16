@@ -11,11 +11,11 @@ __THEME__
   /* ---- the controls in the top bar ---- */
   .bar { flex-wrap: wrap; }
   .ctl { display: flex; gap: 3px; align-items: center; margin: 6px 0; }
-  .ctl .name { margin-right: 4px; color: #d8efeb; font-weight: 600; }  /* on the teal bar */
+  .ctl .name { margin-right: 4px; color: #e4f0dc; font-weight: 600; }  /* on the green bar */
   .ctl button { padding: 3px 9px; color: var(--fg); font: 600 12px var(--body); background: var(--bg); border: 1px solid var(--line);
                 border-radius: 5px; cursor: pointer; }
   .ctl button:hover:not(.on) { background: var(--hover); }
-  .ctl button.on { color: #fff; background: var(--accent-strong); border-color: var(--blue); }
+  .ctl button.on { color: #0f1412; background: var(--accent-strong); border-color: var(--blue); }
   select { padding: 3px 6px; color: var(--fg); font: 500 12px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
   select:focus { outline: 1px solid var(--blue); }
   .key { display: flex; gap: 8px; margin-left: auto; color: var(--fg); }
@@ -35,7 +35,7 @@ __THEME__
   .howto::before { content: "i"; position: absolute; left: 10px; top: 9px; width: 18px; height: 18px; color: var(--bg);
                    font: 700 12px/18px var(--body); text-align: center; background: var(--blue); border-radius: 50%; }
   .howto b { color: var(--fg); font-weight: 600; }
-  .howto .us { color: var(--orange); font-weight: 600; } .howto .them { color: #ff7ab5; font-weight: 600; }
+  .howto .us { color: var(--orange); font-weight: 600; } .howto .them { color: #dff79a; font-weight: 600; }
   .howto .good { color: var(--green); font-weight: 600; } .howto .bad { color: var(--red); font-weight: 600; }
   .chead { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 2px; }
   .chead .pick { display: flex; gap: 6px; align-items: center; color: var(--dim); font-weight: 600; }
@@ -49,7 +49,7 @@ __THEME__
   table.market tbody tr { cursor: pointer; }
   table.market tbody tr:nth-child(even) { background: var(--row); }
   table.market tbody tr:hover { background: var(--hover); }
-  table.market tbody tr.on { box-shadow: inset 3px 0 0 var(--blue); background: #ff3d9614; }
+  table.market tbody tr.on { box-shadow: inset 3px 0 0 var(--blue); background: #c5f04f14; }
   table.market .pos-cell { color: var(--purple); font-weight: 700; }
   table.market tr.on .pos-cell { color: var(--cyan); }
   table.market .faint { color: var(--dim); font-size: 12px; }
@@ -66,8 +66,8 @@ __THEME__
   .count { fill: var(--dim); }
   .lead { font-size: 12px; font-weight: 700; } .lead.up { fill: var(--green); } .lead.down { fill: var(--red); }
   .stripe { fill: #ffffff05; }
-  .spread { stroke: #ff7ab566; stroke-width: 2; }
-  .middle-half { fill: #ff3d9640; stroke: #ff3d96; stroke-width: 1; }
+  .spread { stroke: #dff79a66; stroke-width: 2; }
+  .middle-half { fill: #c5f04f40; stroke: #c5f04f; stroke-width: 1; }
   .middle { fill: #fff; }
   .middle-value { fill: var(--fg); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; pointer-events: none; }
   /* markers: the compared players as rings (ticks under a range), yours as orange diamonds; ringed white on hover */
@@ -75,11 +75,11 @@ __THEME__
   .mark.them { fill: var(--bg); stroke: var(--blue); stroke-width: 1.6; }
   .mark.tick { fill: var(--blue); fill-opacity: .55; stroke: none; }
   .mark.us { fill: var(--orange); stroke: #141414; stroke-width: 1.5; }
-  .mark.age { stroke: #141414; stroke-width: 1.4; } .mark.age.young { fill: var(--cyan); } .mark.age.prime { fill: #c9cfd8; } .mark.age.old { fill: var(--orange); }
+  .mark.age { stroke: #141414; stroke-width: 1.4; } .mark.age.young { fill: var(--cyan); } .mark.age.prime { fill: #cfd6d1; } .mark.age.old { fill: var(--orange); }
   .agekey i { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; }
-  .agekey.young i { background: var(--cyan); } .agekey.prime i { background: #c9cfd8; } .agekey.old i { background: var(--orange); }
+  .agekey.young i { background: var(--cyan); } .agekey.prime i { background: #cfd6d1; } .agekey.old i { background: var(--orange); }
   .agetag { padding: 0 5px; color: var(--fg); font-size: 11px; border: 1px solid var(--line); border-radius: 4px; }
-  .agetag.young { color: var(--cyan); border-color: #8fe3cf66; } .agetag.old { color: var(--orange); border-color: #fb923c66; }
+  .agetag.young { color: var(--cyan); border-color: #c5f04f66; } .agetag.old { color: var(--orange); border-color: #fb923c66; }
   .advice { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 8px; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; }
   .advice.bad { color: var(--red); border-color: #f8717166; } .advice.warn { color: var(--yellow); border-color: #fbd13d55; }
   .advice.good { color: var(--green); border-color: #4ade8066; } .advice.ok { color: var(--dim); }
@@ -91,14 +91,14 @@ __THEME__
   .zone-name { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
   .zone-name.good { fill: #4ade80aa; } .zone-name.bad { fill: #f87171aa; }
   #tip { position: fixed; z-index: 5; display: none; padding: 10px 12px; font-size: 12px; line-height: 1.6; white-space: nowrap;
-         background: #17191d; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px #000a; pointer-events: none; }
+         background: #131916; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px #000a; pointer-events: none; }
   #tip .who { color: var(--fg); font-size: 14px; font-weight: 700; }
   #tip .faint { color: var(--dim); }
   #tip .best { color: var(--cyan); font-weight: 600; }
   #tip .scores span { display: inline-block; margin: 2px 6px 2px 0; color: var(--dim); }
   #tip .scores b { color: var(--fg); font-weight: 600; }
-  #tip .scores .top { padding: 0 6px; color: #fff; background: var(--accent-strong); border-radius: 5px; }
-  #tip .scores .top b { color: #fff; }
+  #tip .scores .top { padding: 0 6px; color: #0f1412; background: var(--accent-strong); border-radius: 5px; }
+  #tip .scores .top b { color: #0f1412; }
 </style>
 </head>
 <body>

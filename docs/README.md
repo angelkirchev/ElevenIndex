@@ -20,4 +20,4 @@ What the weights are built from, and other research worth keeping:
 - `训练excel Training excel.xlsx`: harvestgreen22's FM training spreadsheet from [FM-Arena](https://fm-arena.com/), kept for
   reference; all credit to its author.
 - `screenshots/`: the README's pictures, from a demo save.
-- `logo-icon.svg`, `logo.png`, `FMAnalyst.ico`: the logo (the icon, the README's wordmark, the app's icon).
+- `logo-icon.svg`, `logo.png`, `ElevenIndex.ico`: the logo (the icon, the README's wordmark, the app's icon).

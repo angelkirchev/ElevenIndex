@@ -1,6 +1,10 @@
-# FMAnalyst: notes for working on it
+# ElevenIndex: notes for working on it
 
-FMAnalyst is a Windows app for Football Manager 2027. The user exports lists from FM with the FM27 Exporter plugin (F8),
+Brand: the app is **ElevenIndex**; its mark is **XI INDEX** (a cream X and a lime I, `logo.svg`), slogan
+"Rate smarter. Build better.", description "Squad & staff scoring for Football Manager 27". Palette in `theme.css`:
+near-black #0f1412, cream #f2efe7, lime #c5f04f (accent), sky blue #8bd3f7 (second accent), green bar #1b6b3a.
+
+ElevenIndex is a Windows app for Football Manager 2027. The user exports lists from FM with the FM27 Exporter plugin (F8),
 imports them in the app, and gets pages that score every player at each position and every staff member for each job,
 and track them over time. Everything runs locally; the user's data never leaves their computer.
 
@@ -8,24 +12,24 @@ and track them over time. Everything runs locally; the user's data never leaves 
 
 - `app.py`: the window (pywebview). Import file… → `import_export.import_file` → `score.build` + `score.write_pages` →
   shows the page. Also the first-run setup screen, the Saves panel, Clear old lists, and the Attributes page's
-  save / switch / import / export. Its title is `FMAnalyst <VERSION> — Save: <save>`.
+  save / switch / import / export. Its title is `ElevenIndex <VERSION> — Save: <save>`.
 - `import_export.py`: an FM27 Exporter file (CSV or HTML) → observation CSVs in the save. Players go to
   `saves/<save>/obs/<date>_<source>_<gk|outfield>.csv`, staff to `saves/<save>/staff/<date>_<source>.csv`.
 - `score.py`: reads a save's observations, scores them, and writes `out/<save>/<page>.html` from `template.html`
   (every page but Research) and `charts.html` (Research), with `theme.css` and `logo.svg` inlined. Standard library only.
   `python score.py [--save NAME] [--open PAGE]` rebuilds a save's pages.
-- `build.py`: `dist/FMAnalyst.exe` with PyInstaller (one file, windowed, `docs/FMAnalyst.ico`), holding app.py, the two
-  templates, the theme, the logo and `weights/`, and `dist/FMAnalyst-FM27-views-and-filters.zip` (`fm_zip`: `views/`,
+- `build.py`: `dist/ElevenIndex.exe` with PyInstaller (one file, windowed, `docs/ElevenIndex.ico`), holding app.py, the two
+  templates, the theme, the logo and `weights/`, and `dist/ElevenIndex-FM27-views-and-filters.zip` (`fm_zip`: `views/`,
   `player search filters/` and `staff search filters/` in FM's own folder names, to unzip into
-  `Documents\Sports Interactive\Football Manager 27`). A release publishes both as assets (`FMAnalyst.exe`,
-  `FMAnalyst-FM27-views-and-filters.zip`), which README's download links point to.
+  `Documents\Sports Interactive\Football Manager 27`). A release publishes both as assets (`ElevenIndex.exe`,
+  `ElevenIndex-FM27-views-and-filters.zip`), which README's download links point to.
 - `views/`, `player search filters/`, `staff search filters/`: the user's FM27 views and search filters (`.fmf`); views give
   FM's lists the columns the imports need.
-- `FMAnalyst.bat`: runs the app from source (installs pywebview when it's missing). CRLF line endings.
+- `ElevenIndex.bat`: runs the app from source (installs pywebview when it's missing). CRLF line endings.
 
 Two folders: `score.APP` holds the program's files (PyInstaller's unpack folder in the .exe), `score.ROOT` the user's
-data: `Documents\FMAnalyst` in the .exe (`documents()` finds Documents, OneDrive included), the source folder otherwise,
-and `FMANALYST_HOME` when set (tests). Data: `config.toml`, `saves/`, `out/`, `app.log`.
+data: `Documents\ElevenIndex` in the .exe (`documents()` finds Documents, OneDrive included), the source folder otherwise,
+and `ELEVENINDEX_HOME` when set (tests). Data: `config.toml`, `saves/`, `out/`, `app.log`.
 
 ## Pages
 
@@ -108,4 +112,4 @@ score.py; bump `VERSION` with each release (tag `v<VERSION>`).
 - score.py and import_export.py use only Python's standard library; app.py needs pywebview, build.py PyInstaller.
 - In TOML, quote keys with `/` or spaces: `[outfield."DL/DR"]`, `"First Touch" = 1`.
 - Shown as: scores `12.3`, vs Age `95%`.
-- Test changes on a copy of a save (`FMANALYST_HOME` pointing at a copy of the data folder).
+- Test changes on a copy of a save (`ELEVENINDEX_HOME` pointing at a copy of the data folder).

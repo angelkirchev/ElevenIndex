@@ -1,5 +1,5 @@
 @echo off
-rem Starts FMAnalyst. Double-click this file (or a shortcut to it).
+rem Starts ElevenIndex. Double-click this file (or a shortcut to it).
 cd /d "%~dp0"
 where python >nul 2>nul || (
   echo Python was not found. Install it from python.org and tick "Add python.exe to PATH".

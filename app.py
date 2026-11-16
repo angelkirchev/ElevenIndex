@@ -1,4 +1,4 @@
-"""FMAnalyst: imports FM27 Exporter files and shows the pages.
+"""ElevenIndex: imports FM27 Exporter files and shows the pages.
 
     python app.py
 
@@ -26,8 +26,8 @@ VERSION = score.VERSION  # shown in the window title (set in score.py, which the
 
 
 def window_title(save=None):
-    """The window title: FMAnalyst 1.2.0 — Save: my-save (or "set up" on the setup page)."""
-    return f"FMAnalyst {VERSION} — " + (f"Save: {save}" if save else "set up")
+    """The window title: ElevenIndex 1.2.0 — Save: my-save (or "set up" on the setup page)."""
+    return f"ElevenIndex {VERSION} — " + (f"Save: {save}" if save else "set up")
 
 
 
@@ -261,7 +261,7 @@ class App:
                 score.ATTRIBUTES_FILE.unlink(missing_ok=True)
                 return
             score.ATTRIBUTES_FILE.write_text(score.weights_toml({"attributes": clean}, (
-                f"Your own attribute weights, saved on FMAnalyst's Attributes page ({time.strftime('%Y-%m-%d')}). Every save\n"
+                f"Your own attribute weights, saved on ElevenIndex's Attributes page ({time.strftime('%Y-%m-%d')}). Every save\n"
                 "scores with them. 1-20; not listed = doesn't count. An attribute's weight at a position = its CA cost there\n"
                 "x this value (see weights/default.toml).")), encoding="utf-8")
         self.rescore_with(change, "Back to the default attribute weights" if clean == default else "Saved your attribute weights")
@@ -272,14 +272,14 @@ class App:
         that don't count are named too."""
         values = score.attribute_values(self.current_weights())
         chosen = self.window.create_file_dialog(webview.FileDialog.SAVE, directory=str(Path.home() / "Documents"),
-                                                save_filename="FMAnalyst attributes.txt",
+                                                save_filename="ElevenIndex attributes.txt",
                                                 file_types=("Text file (*.txt)",))  # pywebview takes only letters and spaces in a name
         if not chosen:
             return None
         path = Path(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)
         path = path if path.suffix.lower() == ".txt" else path.with_suffix(".txt")
         which = "your own" if score.ATTRIBUTES_FILE.is_file() else "the default"
-        header = (f"FMAnalyst attribute weights ({which}), exported on {time.strftime('%Y-%m-%d')}. One list for every save.\n"
+        header = (f"ElevenIndex attribute weights ({which}), exported on {time.strftime('%Y-%m-%d')}. One list for every save.\n"
                   "Each attribute and its weight, from 1 to 20, separated by commas: Pace 20, Acceleration 16, ...\n"
                   "At each position it counts by this weight x its CA cost there. Change the numbers, add or remove attributes\n"
                   "(one left out doesn't count), then Import it on the Attributes page.\n"
@@ -309,7 +309,7 @@ class App:
     def about(self):
         """Menu → About: the version, this save's settings and the project page, as the page shows them."""
         tile = score.settings_tile(self.config, score.load_toml(self.save_dir / "save.toml") if self.save_dir else {}, self.save or "–")
-        return {"title": f"FMAnalyst {score.VERSION}", "html": tile["text"]}
+        return {"title": f"ElevenIndex {score.VERSION}", "html": tile["text"]}
 
     def open_exports(self):
         if self.exports.is_dir() and sys.platform == "win32":
@@ -382,15 +382,15 @@ class App:
         self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
         self.window.events.loaded += self.on_load
         self.window.events.closed += lambda: os._exit(0)  # closing the window ends the app
-        # The shield in the title bar and taskbar, from source too (not Python's icon). Its own app ID keeps
+        # The XI mark in the title bar and taskbar, from source too (not Python's icon). Its own app ID keeps
         # Windows from grouping the window with other Python programs on the taskbar.
         if sys.platform == "win32":
             try:
                 import ctypes
-                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("FMAnalyst")
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ElevenIndex")
             except (AttributeError, OSError):
                 pass
-        icon = score.APP / "docs" / "FMAnalyst.ico"
+        icon = score.APP / "docs" / "ElevenIndex.ico"
         webview.start(icon=str(icon) if icon.exists() else None)  # no menu bar: the page's Menu button has it all
 
 
@@ -409,7 +409,7 @@ def desktop_shortcut():
     """A desktop shortcut to the .exe (the packaged app only). Best effort: nothing happens if Windows refuses."""
     target = Path(sys.executable)
     script = ("$d = [Environment]::GetFolderPath('Desktop'); $s = (New-Object -ComObject WScript.Shell)"
-              f".CreateShortcut(\"$d\\FMAnalyst.lnk\"); $s.TargetPath = '{target}'; "
+              f".CreateShortcut(\"$d\\ElevenIndex.lnk\"); $s.TargetPath = '{target}'; "
               f"$s.WorkingDirectory = '{target.parent}'; $s.Save()")
     try:
         subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True,
@@ -484,20 +484,20 @@ class MainApi:
 
 
 SETUP_HTML = """<!doctype html><html><head><meta charset="utf-8"><style>
-body { font: 15px Inter, 'Segoe UI', system-ui, sans-serif; background: #16181c; color: #f4f4f2; margin: 0; display: flex; justify-content: center; }
+body { font: 15px Inter, 'Segoe UI', system-ui, sans-serif; background: #121815; color: #f2efe7; margin: 0; display: flex; justify-content: center; }
 .box { width: 560px; max-width: 92vw; margin: 48px 0; }
-h1 { font-size: 22px; margin: 0 0 6px; } .lead { color: #c9cfd8; margin: 0 0 22px; line-height: 1.5; }
-label { display: block; margin: 14px 0 5px; } .hint { color: #a0a6b0; font-size: 13px; margin-top: 4px; }
-input, select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #33363e; border-radius: 6px;
-  background: #1c1e23; color: #f4f4f2; font: inherit; }
+h1 { font-size: 22px; margin: 0 0 6px; } .lead { color: #cfd6d1; margin: 0 0 22px; line-height: 1.5; }
+label { display: block; margin: 14px 0 5px; } .hint { color: #9aa49f; font-size: 13px; margin-top: 4px; }
+input, select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #2a332f; border-radius: 6px;
+  background: #161c19; color: #f2efe7; font: inherit; }
 .row { display: flex; gap: 8px; } .row input { flex: 1; }
 button { padding: 8px 16px; border: 0; border-radius: 6px; font: 600 14px Inter, 'Segoe UI', system-ui, sans-serif; cursor: pointer;
-  background: #33363e; color: #f4f4f2; }
-button.go { background: #e0187a; color: #fff; padding: 10px 22px; font-size: 15px; margin-top: 22px; }
+  background: #2a332f; color: #f2efe7; }
+button.go { background: #a9d93b; color: #0f1412; padding: 10px 22px; font-size: 15px; margin-top: 22px; }
 .check { display: flex; gap: 8px; align-items: center; margin-top: 16px; } .check input { width: auto; }
-.error { color: #f87171; min-height: 1.3em; margin-top: 12px; } .home { color: #a0a6b0; font-size: 13px; margin-top: 26px; }
+.error { color: #f87171; min-height: 1.3em; margin-top: 12px; } .home { color: #9aa49f; font-size: 13px; margin-top: 26px; }
 </style></head><body><div class="box">
-<h1>Welcome to FMAnalyst</h1>
+<h1>Welcome to ElevenIndex</h1>
 <p class="lead">A few details about your Football Manager save, and you're ready. You can add more saves later with
 <b>Menu → Saves</b> (bottom right).</p>
 <label for="club">Club you manage</label>
@@ -528,7 +528,7 @@ $("go").onclick = go;
 document.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
 </script></body></html>"""
 
-START_HTML = """<!doctype html><html><body style="font: 15px Inter, 'Segoe UI', system-ui; background: #16181c; color: #f4f4f2; padding: 40px">
+START_HTML = """<!doctype html><html><body style="font: 15px Inter, 'Segoe UI', system-ui; background: #121815; color: #f2efe7; padding: 40px">
 <h2>No players yet</h2><p>In FM, point at a player list and press F8 (Ctrl+F8 first, to add every attribute).</p>
 <p>Then open <b>Menu</b> at the bottom right, click <b>Import file…</b> and choose the export.</p></body></html>"""
 
@@ -536,29 +536,29 @@ TOOLBAR_JS = """(() => {
   if (document.getElementById("fm-import")) return;
   const bar = document.createElement("div");
   bar.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;gap:6px;align-items:center;" +
-    "padding:6px;border-radius:8px;background:#16181c;box-shadow:0 2px 8px #0008;font:14px Inter,'Segoe UI',system-ui,sans-serif";
+    "padding:6px;border-radius:8px;background:#121815;box-shadow:0 2px 8px #0008;font:14px Inter,'Segoe UI',system-ui,sans-serif";
   const BUTTON = "padding:7px 16px;border:0;border-radius:6px;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer;";
   // Menu: Import file…, Open the exports folder, Saves…, About (it opens upwards, above the button)
   const m = document.createElement("button");
   m.id = "fm-import"; m.title = "Import a file, the exports folder, your saves, about";
   m.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:8px" aria-hidden="true">' +
-    '<path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Menu';
-  m.style.cssText = BUTTON + "background:#e0187a;color:#fff";
+    '<path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="#0f1412" stroke-width="2" stroke-linecap="round"/></svg>Menu';
+  m.style.cssText = BUTTON + "background:#a9d93b;color:#0f1412";
   const list = document.createElement("div");
   list.id = "fm-menu";
-  list.style.cssText = "position:absolute;right:6px;bottom:52px;display:none;min-width:240px;padding:6px;border:1px solid #33363e;" +
-    "border-radius:10px;background:#16181c;box-shadow:0 8px 24px #000a";
+  list.style.cssText = "position:absolute;right:6px;bottom:52px;display:none;min-width:240px;padding:6px;border:1px solid #2a332f;" +
+    "border-radius:10px;background:#121815;box-shadow:0 8px 24px #000a";
   const item = (text, hint, run) => {
     const it = document.createElement("button");
-    it.style.cssText = "display:block;width:100%;padding:8px 12px;border:0;border-radius:6px;background:transparent;color:#f4f4f2;" +
+    it.style.cssText = "display:block;width:100%;padding:8px 12px;border:0;border-radius:6px;background:transparent;color:#f2efe7;" +
       "font:500 14px Inter,'Segoe UI',system-ui,sans-serif;text-align:left;cursor:pointer";
-    it.innerHTML = text + (hint ? `<div style="color:#a0a6b0;font-size:12px;font-weight:400">${hint}</div>` : "");
-    it.onmouseenter = () => it.style.background = "#2a2d34";
+    it.innerHTML = text + (hint ? `<div style="color:#9aa49f;font-size:12px;font-weight:400">${hint}</div>` : "");
+    it.onmouseenter = () => it.style.background = "#232c29";
     it.onmouseleave = () => it.style.background = "transparent";
     it.onclick = () => { list.style.display = "none"; run(); };
     return it;
   };
-  const line = () => { const l = document.createElement("div"); l.style.cssText = "height:1px;margin:4px 6px;background:#33363e"; return l; };
+  const line = () => { const l = document.createElement("div"); l.style.cssText = "height:1px;margin:4px 6px;background:#2a332f"; return l; };
   list.append(
     item("Import file…", "an FM27 Exporter file (F8 in FM)", () => window.pywebview && pywebview.api.pick_file()),
     item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()),
@@ -595,7 +595,7 @@ TOOLBAR_JS = """(() => {
   // The Saves panel: switch to a save, or create one. Typing in it isn't a page shortcut.
   const css = (el, s) => (el.style.cssText = s, el);
   const make = (tag, text) => { const e = document.createElement(tag); if (text) e.textContent = text; return e; };
-  const field = "padding:7px;border:1px solid #33363e;border-radius:6px;background:#1c1e23;color:#f4f4f2;font:inherit;width:100%;box-sizing:border-box";
+  const field = "padding:7px;border:1px solid #2a332f;border-radius:6px;background:#161c19;color:#f2efe7;font:inherit;width:100%;box-sizing:border-box";
   window.fmSaves = async () => {
     document.getElementById("fm-saves")?.remove();
     const saves = await pywebview.api.saves();
@@ -603,21 +603,21 @@ TOOLBAR_JS = """(() => {
     shade.id = "fm-saves";
     shade.onclick = e => { if (e.target === shade) shade.remove(); };
     shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
-    const box = css(make("div"), "background:#16181c;color:#f4f4f2;border:1px solid #33363e;border-radius:10px;padding:20px 22px;width:440px;max-width:90vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000");
+    const box = css(make("div"), "background:#121815;color:#f2efe7;border:1px solid #2a332f;border-radius:10px;padding:20px 22px;width:440px;max-width:90vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000");
     const error = css(make("div"), "color:#f87171;min-height:1.2em;margin-top:8px");
     const run = async (call) => { error.textContent = "Working…"; const r = await call(); if (r && r.error) error.textContent = r.error; else shade.remove(); };
 
     box.append(css(make("h3", "Your saves"), "margin:0 0 10px;font-size:16px"));
     for (const s of saves) {
       const row = css(make("button"), "display:flex;justify-content:space-between;gap:12px;width:100%;margin:4px 0;padding:9px 12px;border-radius:6px;cursor:pointer;font:inherit;text-align:left;" +
-        "border:1px solid " + (s.current ? "#ff3d96" : "#33363e") + ";background:" + (s.current ? "#1c1e23" : "transparent") + ";color:#f4f4f2");
-      row.append(make("span", s.club + "  (" + s.name + ")"), css(make("span", s.current ? "open now" : (s.date ? "up to " + s.date : "no players yet")), "color:#a0a6b0;white-space:nowrap"));
+        "border:1px solid " + (s.current ? "#c5f04f" : "#2a332f") + ";background:" + (s.current ? "#161c19" : "transparent") + ";color:#f2efe7");
+      row.append(make("span", s.club + "  (" + s.name + ")"), css(make("span", s.current ? "open now" : (s.date ? "up to " + s.date : "no players yet")), "color:#9aa49f;white-space:nowrap"));
       if (!s.current) row.onclick = () => run(() => pywebview.api.switch_save(s.name));
       box.append(row);
     }
 
     box.append(css(make("h3", "New save"), "margin:20px 0 4px;font-size:16px"),
-      css(make("div", "Your old saves stay as they are: switch back to them here any time."), "color:#a0a6b0;margin-bottom:8px"));
+      css(make("div", "Your old saves stay as they are: switch back to them here any time."), "color:#9aa49f;margin-bottom:8px"));
     const input = (labelText, placeholder) => {
       const l = css(make("label", labelText), "display:block;margin:8px 0 4px");
       const i = css(make("input"), field); i.placeholder = placeholder; box.append(l, i); return i;
@@ -626,8 +626,8 @@ TOOLBAR_JS = """(() => {
     const name = input("Name for this save (optional)", "made from the club's name");
     club.oninput = () => { name.placeholder = club.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "made from the club's name"; };
     const buttons = css(make("div"), "display:flex;gap:8px;justify-content:flex-end;margin-top:14px");
-    const cancel = css(make("button", "Close"), "padding:7px 16px;border:0;border-radius:6px;background:#33363e;color:#f4f4f2;font:inherit;cursor:pointer");
-    const create = css(make("button", "Create and switch to it"), "padding:7px 16px;border:0;border-radius:6px;background:#e0187a;color:#fff;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
+    const cancel = css(make("button", "Close"), "padding:7px 16px;border:0;border-radius:6px;background:#2a332f;color:#f2efe7;font:inherit;cursor:pointer");
+    const create = css(make("button", "Create and switch to it"), "padding:7px 16px;border:0;border-radius:6px;background:#a9d93b;color:#0f1412;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
     cancel.onclick = () => shade.remove();
     create.onclick = () => run(() => pywebview.api.new_save(club.value, "", name.value));
     buttons.append(cancel, create);
@@ -644,16 +644,16 @@ TOOLBAR_JS = """(() => {
     shade.onclick = e => { if (e.target === shade) shade.remove(); };
     shade.tabIndex = -1;
     shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
-    const box = css(make("div"), "background:#16181c;color:#f4f4f2;border:1px solid #33363e;border-radius:10px;padding:20px 22px;width:620px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000;line-height:1.55");
+    const box = css(make("div"), "background:#121815;color:#f2efe7;border:1px solid #2a332f;border-radius:10px;padding:20px 22px;width:620px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000;line-height:1.55");
     box.append(css(make("h3", r.result.title), "margin:0 0 10px;font-size:16px"));
     const body = make("div");
     body.innerHTML = r.result.html;
     body.querySelectorAll("table").forEach(t => t.style.cssText = "width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:10px");
-    body.querySelectorAll("td").forEach((td, i) => td.style.cssText = "padding:5px 8px;border-bottom:1px solid #2a2d34;vertical-align:top;white-space:normal;overflow-wrap:anywhere;text-align:left" +
+    body.querySelectorAll("td").forEach((td, i) => td.style.cssText = "padding:5px 8px;border-bottom:1px solid #232c29;vertical-align:top;white-space:normal;overflow-wrap:anywhere;text-align:left" +
       (i % 2 ? "" : ";width:150px"));  // long folder paths wrap instead of scrolling
-    body.querySelectorAll("td.text").forEach(td => td.style.color = "#a0a6b0");
-    body.querySelectorAll("a").forEach(a => a.style.color = "#8fe3cf");
-    const close = css(make("button", "Close"), "display:block;margin:14px 0 0 auto;padding:7px 16px;border:0;border-radius:6px;background:#33363e;color:#f4f4f2;font:inherit;cursor:pointer");
+    body.querySelectorAll("td.text").forEach(td => td.style.color = "#9aa49f");
+    body.querySelectorAll("a").forEach(a => a.style.color = "#c5f04f");
+    const close = css(make("button", "Close"), "display:block;margin:14px 0 0 auto;padding:7px 16px;border:0;border-radius:6px;background:#2a332f;color:#f2efe7;font:inherit;cursor:pointer");
     close.onclick = () => shade.remove();
     box.append(body, close);
     shade.append(box);
@@ -665,7 +665,7 @@ TOOLBAR_JS = """(() => {
     if (!n) { n = document.createElement("div"); n.id = "fm-notice"; document.body.append(n); }
     n.textContent = text;
     n.style.cssText = "position:fixed;right:16px;bottom:68px;z-index:9999;max-width:440px;padding:10px 14px;" +
-      "border-radius:6px;font:14px Inter,'Segoe UI',system-ui,sans-serif;box-shadow:0 2px 8px #0008;color:#16181c;" +
+      "border-radius:6px;font:14px Inter,'Segoe UI',system-ui,sans-serif;box-shadow:0 2px 8px #0008;color:#121815;" +
       "background:" + (error ? "#f87171" : "#4ade80");
     clearTimeout(window.fmNoticeTimer);
     window.fmNoticeTimer = setTimeout(() => n.remove(), error ? 15000 : 6000);

@@ -14,9 +14,9 @@ __THEME__
   #filter:focus { border-color: var(--blue); }
   #filter.bad { border-bottom-color: var(--red); }
   #filter::placeholder { color: var(--dim); }
-  #count:not(:empty)::before { content: " · "; color: #cde9e4; }
+  #count:not(:empty)::before { content: " · "; color: #cfe5c6; }
   #count { color: #fff; font-weight: 600; }
-  #count.copied { color: #8fe3cf; }
+  #count.copied { color: #c5f04f; }
 
   /* ---- panels and tables ---- */
   .tile { padding: 12px 14px; overflow-x: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
@@ -39,11 +39,11 @@ __THEME__
   tbody tr:nth-child(even) td { background-color: var(--row); }
   tr:hover td { background-color: var(--hover); }
   /* the column sorted by: heading filled, a line under it, the cells tinted; ↑ or ↓ for the direction */
-  th.sorted { color: #fff; background: #ff3d9633; box-shadow: inset 0 -2px var(--blue); border-radius: 4px 4px 0 0; }
+  th.sorted { color: var(--fg); background: #c5f04f33; box-shadow: inset 0 -2px var(--blue); border-radius: 4px 4px 0 0; }
   th.asc::after { content: " ↑"; }
   th.desc::after { content: " ↓"; }
   th.curcol { text-decoration: underline; text-underline-offset: 4px; }
-  td.sortcol { background-image: linear-gradient(#ff3d9624, #ff3d9624); }
+  td.sortcol { background-image: linear-gradient(#c5f04f24, #c5f04f24); }
   /* the marked row (arrow keys or a click): lighter than hover, an accent bar on its left; the marked cell outlined */
   tr.currow td, tbody tr.currow:nth-child(even) td { background-color: #3a3d46; }
   tr.currow td:first-child { box-shadow: inset 3px 0 var(--blue); }
@@ -85,7 +85,7 @@ __THEME__
   .chip.also { opacity: .6; border-style: dashed; }
   .chip.t4, .chip.t3 { border-color: #4ade8066; } .chip.t2 { border-color: #fbd13d55; } .chip.t1, .chip.t0 { border-color: #f8717166; }
   table.dtable { width: auto; min-width: 280px; } table.dtable.wide { min-width: 460px; }
-  table.dtable td, table.dtable th { padding: 4px 10px; } table.dtable tr.on td { background: #ff3d9614; } table.dtable tr.minor td { color: var(--dim); }
+  table.dtable td, table.dtable th { padding: 4px 10px; } table.dtable tr.on td { background: #c5f04f14; } table.dtable tr.minor td { color: var(--dim); }
   .dbar { display: inline-block; width: 140px; height: 8px; vertical-align: 1px; background: #ffffff10; border-radius: 4px; overflow: hidden; }
   .dbar i { display: block; height: 100%; border-radius: 4px; }
   .dbar i.t4, .dbar i.t3 { background: var(--green); } .dbar i.t2 { background: var(--yellow); } .dbar i.t1, .dbar i.t0 { background: var(--red); }
@@ -148,7 +148,7 @@ __THEME__
   .pslot .offside { color: var(--orange); }
   /* Formations page */
   table.flist tr.f { cursor: pointer; } table.flist tr.f:hover td { background: var(--hover); }
-  table.flist tr.on td { background: #ff3d9614; } table.flist tr.on td:first-child { box-shadow: inset 3px 0 var(--blue); }
+  table.flist tr.on td { background: #c5f04f14; } table.flist tr.on td:first-child { box-shadow: inset 3px 0 var(--blue); }
   table.flist td { padding: 5px 8px; vertical-align: top; } table.flist .sub { white-space: normal; }
   .fview { display: grid; grid-template-columns: minmax(280px, 380px) minmax(240px, 1fr); gap: 16px; align-items: start; }
   @media (max-width: 1100px) { .fview { grid-template-columns: minmax(0, 1fr); } }
@@ -174,7 +174,7 @@ __THEME__
   .devsum b.t4 { color: var(--green); } .devsum b.t0 { color: var(--red); }
   .devsum span { color: var(--dim); font-size: 12px; }
 
-  /* ---- Players › Compare: the two cards (A mint, B magenta), the radar, the tables; the picks' tray ---- */
+  /* ---- Players › Compare: the two cards (A sky blue, B lime), the radar, the tables; the picks' tray ---- */
   .cmpgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: stretch; margin-top: 8px; }
   .ccard { padding: 12px 14px; background: var(--row); border: 1px solid var(--line); border-radius: 8px; }
   .ccard.c0 { border-top: 3px solid var(--cyan); } .ccard.c1 { border-top: 3px solid var(--blue); }
@@ -185,7 +185,7 @@ __THEME__
   .ccard .cbig { margin: 8px 0 4px; font-size: 15px; } .ccard .cbig b { font-size: 18px; }
   .cx, #cswap, .cbest, .cadd { padding: 3px 10px; color: var(--fg); font: 600 12px var(--body); background: var(--bg); border: 1px solid var(--line);
                                border-radius: 6px; cursor: pointer; }
-  .cx:hover, #cswap:hover:not(:disabled), .cbest:hover, .cadd:hover { color: #141414; background: #8fe3cf; border-color: #8fe3cf; }
+  .cx:hover, #cswap:hover:not(:disabled), .cbest:hover, .cadd:hover { color: #141414; background: #c5f04f; border-color: #c5f04f; }
   #cat { padding: 3px 6px; color: var(--fg); font: 600 13px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
   #cswap { align-self: center; font-size: 18px; padding: 6px 10px; } #cswap:disabled { opacity: .3; cursor: default; }
   .cbest { margin-top: 6px; }
@@ -197,22 +197,22 @@ __THEME__
   svg.radar { width: 100%; overflow: visible; font: 11px var(--body); }
   svg.radar .ring { fill: none; stroke: var(--line); } svg.radar .spoke { stroke: var(--line); stroke-opacity: .6; }
   svg.radar text { fill: var(--dim); }
-  svg.radar .pa { fill: #8fe3cf33; stroke: var(--cyan); stroke-width: 2; } svg.radar .pb { fill: #ff3d9633; stroke: var(--blue); stroke-width: 2; }
+  svg.radar .pa { fill: #8bd3f733; stroke: var(--cyan); stroke-width: 2; } svg.radar .pb { fill: #c5f04f33; stroke: var(--blue); stroke-width: 2; }
   .ka { color: var(--cyan); } .kb { color: var(--blue); }
   table.ctable th.ca { color: var(--cyan); } table.ctable th.cb { color: var(--blue); }
   table.ctable td.win { font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
-  table.ctable tr[data-pos] { cursor: pointer; } table.ctable tr.on td { background: #ff3d9614; }
+  table.ctable tr[data-pos] { cursor: pointer; } table.ctable tr.on td { background: #c5f04f14; }
   table.ctable tr.minor td { color: var(--dim); }
   .chist div { margin: 4px 0; }
   .cmpic { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 6px;
            padding: 0; vertical-align: -4px; background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; opacity: .35; }
   .cmpic svg { width: 14px; height: 14px; fill: none; stroke: var(--fg); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   tr:hover .cmpic, tr.currow .cmpic { opacity: .8; } .cmpic:hover { opacity: 1; border-color: var(--line); background: var(--hover); }
-  .cmpic.on { opacity: 1; background: var(--accent-strong); border-color: var(--blue); } .cmpic.on svg { stroke: #fff; }
+  .cmpic.on { opacity: 1; background: var(--accent-strong); border-color: var(--blue); } .cmpic.on svg { stroke: #0f1412; }
   .cmpic.full { opacity: .12 !important; cursor: not-allowed; } .cmpic.full:hover { background: none; border-color: transparent; }
   .cadd:disabled { opacity: .5; cursor: default; }
   #ctray { position: fixed; left: 16px; bottom: 16px; z-index: 50; display: flex; gap: 6px; align-items: center; padding: 8px 12px;
-           background: #16181c; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 2px 8px #0008; font-size: 13px; }
+           background: #121815; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 2px 8px #0008; font-size: 13px; }
   #ctray a { margin-left: 4px; color: var(--cyan); font-weight: 600; text-decoration: none; }
   #ctray button { padding: 0 6px; color: var(--dim); font-size: 15px; background: none; border: 0; cursor: pointer; }
   #ctray button:hover { color: var(--red); }
@@ -222,8 +222,8 @@ __THEME__
   .wbtns { display: inline-flex; gap: 6px; align-items: center; }
   .seg button, .wbtns button { padding: 4px 10px; color: var(--fg); font: 600 13px var(--body); background: var(--row);
                                          border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
-  .seg button:hover, .wbtns button:hover:not(:disabled) { color: #141414; background: #8fe3cf; border-color: #8fe3cf; }
-  .seg button.on, .wbtns button.primary { color: #fff; background: var(--accent-strong); border-color: var(--blue); }
+  .seg button:hover, .wbtns button:hover:not(:disabled) { color: #141414; background: #c5f04f; border-color: #c5f04f; }
+  .seg button.on, .wbtns button.primary { color: #0f1412; background: var(--accent-strong); border-color: var(--blue); }
   .wbtns button:disabled { opacity: .4; cursor: default; }
   .unsaved { margin-right: 4px; color: var(--yellow); font-weight: 600; }
   .wnow { color: var(--fg); font-weight: 600; }

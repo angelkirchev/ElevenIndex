@@ -1,22 +1,22 @@
 <p align="center">
-  <img src="docs/fmanalyst-banner.png" width="400" alt="FMAnalyst">
+  <img src="docs/elevenindex-banner.png" width="380" alt="XI INDEX: ElevenIndex">
 </p>
 
 <p align="center">
-  <b>Squad, player and staff analysis for Football Manager 2027.</b><br>
+  <b>ElevenIndex</b> · Squad &amp; staff scoring for Football Manager 27<br>
   Every player you look at, scored at every position: plan your lineup, find better signings,<br>
   hire better staff and follow how your players develop.
 </p>
 
 <p align="center">
-  <a href="https://github.com/angelkirchev/FMAnalyst/releases/latest/download/FMAnalyst.exe"><img alt="Download FMAnalyst.exe" src="https://img.shields.io/badge/Download-FMAnalyst.exe-e0187a?style=for-the-badge&logo=windows&logoColor=white"></a>
+  <a href="https://github.com/angelkirchev/ElevenIndex/releases/latest/download/ElevenIndex.exe"><img alt="Download ElevenIndex.exe" src="https://img.shields.io/badge/Download-ElevenIndex.exe-c5f04f?style=for-the-badge&logo=windows&logoColor=0f1412&labelColor=0f1412"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/angelkirchev/FMAnalyst/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/angelkirchev/FMAnalyst?color=2b7a73&label=version"></a>
-  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-2b7a73">
-  <img alt="Free" src="https://img.shields.io/badge/price-free-2b7a73">
-  <img alt="Local" src="https://img.shields.io/badge/your%20data-stays%20on%20your%20PC-2b7a73">
+  <a href="https://github.com/angelkirchev/ElevenIndex/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/angelkirchev/ElevenIndex?color=1b6b3a&label=version"></a>
+  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-1b6b3a">
+  <img alt="Free" src="https://img.shields.io/badge/price-free-1b6b3a">
+  <img alt="Local" src="https://img.shields.io/badge/your%20data-stays%20on%20your%20PC-1b6b3a">
 </p>
 
 <p align="center">
@@ -110,7 +110,7 @@ everything in its **`payload`** folder into FM's game folder. Then start FM and 
 
 ### 3 · Add the views and search filters
 
-1. Download **[`FMAnalyst-FM27-views-and-filters.zip`](https://github.com/angelkirchev/FMAnalyst/releases/latest/download/FMAnalyst-FM27-views-and-filters.zip)**.
+1. Download **[`ElevenIndex-FM27-views-and-filters.zip`](https://github.com/angelkirchev/ElevenIndex/releases/latest/download/ElevenIndex-FM27-views-and-filters.zip)**.
 2. Right-click it → **Extract All…** and extract it into **`Documents\Sports Interactive\Football Manager 27`**
    (inside OneDrive if your Documents are there). It already has FM's folders, so everything lands in place:
 
@@ -131,9 +131,9 @@ everything in its **`payload`** folder into FM's game folder. Then start FM and 
    | Player search, goalkeepers | **`Search - Goalkeepers View`** | |
    | Staff search | **`Search - Staff View`** | the job: Assistant Manager, Coach, Director of Football… |
 
-### 4 · Start FMAnalyst
+### 4 · Start ElevenIndex
 
-1. Download **[`FMAnalyst.exe`](https://github.com/angelkirchev/FMAnalyst/releases/latest/download/FMAnalyst.exe)**,
+1. Download **[`ElevenIndex.exe`](https://github.com/angelkirchev/ElevenIndex/releases/latest/download/ElevenIndex.exe)**,
    put it somewhere permanent (e.g. **Documents**) and double-click it. If Windows says *Windows protected your PC*,
    click **More info → Run anyway** (it asks once).
 2. The first time it asks for the **club you manage** (exactly as FM writes it, e.g. "Man Utd"), the **currency** FM
@@ -144,7 +144,7 @@ everything in its **`payload`** folder into FM's game folder. Then start FM and 
 <summary>Or run it from source, with Python</summary>
 
 Install [Python](https://www.python.org/downloads/) 3.11+ (tick **Add python.exe to PATH**), download this project
-(green **Code** button → **Download ZIP**), extract it, and double-click **`FMAnalyst.bat`**. The first time it installs
+(green **Code** button → **Download ZIP**), extract it, and double-click **`ElevenIndex.bat`**. The first time it installs
 pywebview, which the app needs.
 
 </details>
@@ -163,7 +163,7 @@ is explained in the app's **Guide** (key **G**).
 <details>
 <summary><b>Good to know</b></summary>
 
-- **Your data** is in `Documents\FMAnalyst`. To update the app, replace `FMAnalyst.exe` with the newest one: your
+- **Your data** is in `Documents\ElevenIndex`. To update the app, replace `ElevenIndex.exe` with the newest one: your
   data stays.
 - **Several saves:** **Menu → Saves** switches between them or starts a new one.
 - **Players left out of an import** have too many unscouted attributes to score: scout them more and export again.
