@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.7.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.8.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -991,7 +991,7 @@ def settings_tile(config, cfg, save):
     table += (f'<tr><td class="text">Project page</td><td><a href="{PROJECT_URL}" target="_blank" rel="noopener">'
               f'{PROJECT_URL.removeprefix("https://")}</a> (updates, README, report a problem)</td></tr>')
     return {"key": "", "title": "About and your settings",
-            "text": f"<table>{table}</table>Switch or start saves with <b>Menu → Saves</b> (bottom right). Everything else is in "
+            "text": f"<table>{table}</table>Switch, start or delete saves with <b>Menu → Saves</b> (bottom right). Everything else is in "
                     f"<b>config.toml</b> (this computer) and <b>saves\\{html.escape(save)}\\save.toml</b> (this save) in the data "
                     f"folder: edit them with Notepad, then restart the app."}
 
@@ -1370,7 +1370,8 @@ GUIDE = [
              "The count next to the box shows how many match. Click a column heading to sort (again to reverse)."},
     {"key": "", "title": "Saves, folders and mistakes",
      "text": "<ul><li><b>Menu</b> (bottom right): <b>Import file…</b>, <b>Open the exports folder</b>, <b>Saves</b> (switch "
-             "between FM saves, or start one for a new game or club) and <b>About</b> (the version, your settings and the "
+             "between FM saves, start one for a new game or club, or delete one: a deleted save can be restored there "
+             "for 14 days) and <b>About</b> (the version, your settings and the "
              "project page).</li>"
              "<li>Your data is in <b>Documents\\ElevenIndex</b>: settings (config.toml), each save's data and pages. Updating the "
              "app keeps it all.</li>"

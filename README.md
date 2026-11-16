@@ -165,7 +165,7 @@ is explained in the app's **Guide** (key **G**).
 
 - **Your data** is in `Documents\ElevenIndex`. To update the app, replace `ElevenIndex.exe` with the newest one: your
   data stays.
-- **Several saves:** **Menu → Saves** switches between them or starts a new one.
+- **Several saves:** **Menu → Saves** switches between them, starts a new one or deletes one (restorable there for 14 days).
 - **Players left out of an import** have too many unscouted attributes to score: scout them more and export again.
 - **"The export has no attributes":** press **Ctrl + F8** on the list in FM, then **F8** again.
 - **F8 does nothing:** check that FM's game folder has `BepInEx`, `winhttp.dll` and `BepInEx\plugins\FM27Exporter`;

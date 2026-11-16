@@ -11,6 +11,7 @@ import csv
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -79,6 +80,10 @@ class App:
         self.exports = exports_dir(self.config)
         self.notice = None  # (text, is_error) to show once the page has reloaded
         self.lock = threading.Lock()  # one import at a time
+        try:
+            self.purge_deleted()  # saves deleted more than 14 days ago
+        except OSError:
+            pass
 
     # --- importing ------------------------------------------------------------------------------------------------
 
@@ -213,6 +218,80 @@ class App:
             else:
                 self.notice = (notice or f"Switched to {name}: no players yet.", False)
                 self.show_soon(html=START_HTML)
+
+    # A deleted save waits in saves/_deleted, where Saves… can restore it, for KEEP_DELETED_DAYS; then it's gone.
+    KEEP_DELETED_DAYS = 14
+    DELETED_MARK = "deleted.txt"  # in a deleted save's folder: when it was deleted (seconds since 1970)
+
+    @staticmethod
+    def _plain_name(name):
+        return bool(name) and not any(c in name for c in "/\\:") and name not in (".", "..")
+
+    def delete_save(self, name):
+        """Take a save off the list: its folder moves to saves/_deleted (Saves… can restore it for 14 days), its
+        pages go (they're rebuilt from the data). Not the save that's open."""
+        folder = score.ROOT / "saves" / name
+        if not self._plain_name(name) or not (folder / "save.toml").is_file():
+            raise ValueError(f"There's no save called {name}.")
+        if name == self.save:
+            raise ValueError("That save is open: switch to another one first.")
+        with self.lock:
+            bin_ = score.ROOT / "saves" / "_deleted"
+            bin_.mkdir(exist_ok=True)
+            target, n = bin_ / name, 2
+            while target.exists():
+                target, n = bin_ / f"{name}-{n}", n + 1
+            folder.rename(target)
+            (target / self.DELETED_MARK).write_text(str(int(time.time())), encoding="utf-8")
+            shutil.rmtree(score.ROOT / "out" / name, ignore_errors=True)
+            self.commit(f"{name}: deleted (moved to _deleted)")
+
+    def deleted_saves(self):
+        """Saves… 's Deleted list: [{folder, name, club, deleted, gone}], newest first. Clears out the old ones first."""
+        self.purge_deleted()
+        found = []
+        for toml in (score.ROOT / "saves" / "_deleted").glob("*/save.toml"):
+            when = self._deleted_at(toml.parent)
+            try:
+                club = score.load_toml(toml).get("managed_club", "")
+            except Exception:
+                club = ""
+            found.append({"folder": toml.parent.name, "name": toml.parent.name, "club": club, "when": when,
+                          "deleted": time.strftime("%Y-%m-%d", time.localtime(when)),
+                          "gone": time.strftime("%Y-%m-%d", time.localtime(when + self.KEEP_DELETED_DAYS * 86400))})
+        return sorted(found, key=lambda s: -s["when"])
+
+    def _deleted_at(self, folder):
+        try:
+            return int((folder / self.DELETED_MARK).read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):  # no mark (moved there by hand): from when the folder was last changed
+            return int(folder.stat().st_mtime)
+
+    def purge_deleted(self):
+        """Delete for good the saves deleted more than KEEP_DELETED_DAYS ago. Runs at start and when Saves… opens."""
+        bin_ = score.ROOT / "saves" / "_deleted"
+        if not bin_.is_dir():
+            return
+        cutoff = time.time() - self.KEEP_DELETED_DAYS * 86400
+        gone = [f for f in bin_.iterdir() if f.is_dir() and self._deleted_at(f) < cutoff]
+        for f in gone:
+            shutil.rmtree(f, ignore_errors=True)
+        if gone:
+            self.commit(f"deleted for good after {self.KEEP_DELETED_DAYS} days: {', '.join(f.name for f in gone)}")
+
+    def restore_save(self, folder):
+        """Put a deleted save back in the list, under its own name (name-2… when that's taken meanwhile)."""
+        src = score.ROOT / "saves" / "_deleted" / folder
+        if not self._plain_name(folder) or not (src / "save.toml").is_file():
+            raise ValueError(f"There's no deleted save called {folder}.")
+        with self.lock:
+            target, n = score.ROOT / "saves" / folder, 2
+            while target.exists():
+                target, n = score.ROOT / "saves" / f"{folder}-{n}", n + 1
+            (src / self.DELETED_MARK).unlink(missing_ok=True)
+            src.rename(target)
+            self.commit(f"{target.name}: restored")
+        return target.name
 
     def new_save(self, club, division, name):
         club, division = club.strip(), division.strip()
@@ -443,6 +522,21 @@ class MainApi:
     def new_save(self, club, division, name):
         return self._call(self._app.new_save, club, division, name)
 
+    def delete_save(self, name):
+        return self._call(self._app.delete_save, name)
+
+    def deleted_saves(self):
+        try:
+            return self._app.deleted_saves()
+        except OSError:
+            return []
+
+    def restore_save(self, folder):
+        try:
+            return {"result": self._app.restore_save(folder)}
+        except (Exception, SystemExit) as e:
+            return {"error": str(e)}
+
     def setup(self, club, division, currency, exports, name, shortcut):
         return self._call(self._app.setup, club, division, currency, exports, name, shortcut)
 
@@ -563,7 +657,7 @@ TOOLBAR_JS = """(() => {
     item("Import file…", "an FM27 Exporter file (F8 in FM)", () => window.pywebview && pywebview.api.pick_file()),
     item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()),
     line(),
-    item("Saves…", "switch to another save, or start one", () => window.fmSaves()),
+    item("Saves…", "switch to another save, start one or delete one", () => window.fmSaves()),
     item("About", "version, your settings, project page", () => window.fmAbout()));
   m.onclick = e => { e.stopPropagation(); list.style.display = list.style.display === "none" ? "block" : "none"; };
   document.addEventListener("click", e => { if (!list.contains(e.target)) list.style.display = "none"; });
@@ -609,11 +703,54 @@ TOOLBAR_JS = """(() => {
 
     box.append(css(make("h3", "Your saves"), "margin:0 0 10px;font-size:16px"));
     for (const s of saves) {
-      const row = css(make("button"), "display:flex;justify-content:space-between;gap:12px;width:100%;margin:4px 0;padding:9px 12px;border-radius:6px;cursor:pointer;font:inherit;text-align:left;" +
+      const line = css(make("div"), "display:flex;gap:6px;align-items:stretch;margin:4px 0");
+      const row = css(make("button"), "flex:1;display:flex;justify-content:space-between;gap:12px;min-width:0;padding:9px 12px;border-radius:6px;cursor:pointer;font:inherit;text-align:left;" +
         "border:1px solid " + (s.current ? "#c5f04f" : "#2a332f") + ";background:" + (s.current ? "#161c19" : "transparent") + ";color:#f2efe7");
       row.append(make("span", s.club + "  (" + s.name + ")"), css(make("span", s.current ? "open now" : (s.date ? "up to " + s.date : "no players yet")), "color:#9aa49f;white-space:nowrap"));
-      if (!s.current) row.onclick = () => run(() => pywebview.api.switch_save(s.name));
-      box.append(row);
+      line.append(row);
+      if (!s.current) {
+        row.onclick = () => run(() => pywebview.api.switch_save(s.name));
+        // Delete: the first click asks, a second within 5 s deletes (the folder goes to saves\\_deleted)
+        const del = css(make("button", "Delete"), "flex:none;padding:0 12px;border:0;border-radius:6px;background:#33292e;color:#f87171;font:600 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
+        del.title = "Remove this save from the list. Its folder moves to saves\\\\_deleted, so it can be brought back.";
+        let armed = null;
+        del.onclick = async () => {
+          if (!armed) {
+            del.textContent = "Sure? Click again";
+            armed = setTimeout(() => { armed = null; del.textContent = "Delete"; }, 5000);
+            return;
+          }
+          clearTimeout(armed); armed = null;
+          const r = await pywebview.api.delete_save(s.name);
+          if (r && r.error) { error.textContent = r.error; del.textContent = "Delete"; return; }
+          await window.fmSaves();
+          window.fmNotice(`Deleted ${s.name}. You can restore it from Saves… for 14 days.`, false);
+        };
+        line.append(del);
+      }
+      box.append(line);
+    }
+
+    // Deleted saves: restore one, for 14 days after it was deleted
+    const deleted = await pywebview.api.deleted_saves();
+    if (deleted.length) {
+      box.append(css(make("h3", "Deleted saves"), "margin:20px 0 4px;font-size:16px"),
+        css(make("div", "Kept for 14 days after they're deleted, then removed for good."), "color:#9aa49f;margin-bottom:6px"));
+      for (const s of deleted) {
+        const line = css(make("div"), "display:flex;gap:6px;align-items:center;margin:4px 0;padding:6px 6px 6px 12px;border:1px dashed #2a332f;border-radius:6px");
+        line.append(css(make("span", (s.club || s.name) + "  (" + s.name + ")"), "flex:1;min-width:0;color:#cfd6d1"),
+          css(make("span", "deleted " + s.deleted + " · gone " + s.gone), "color:#9aa49f;white-space:nowrap;font-size:12px"));
+        const restore = css(make("button", "Restore"), "flex:none;padding:6px 12px;border:0;border-radius:6px;background:#2a332f;color:#c5f04f;font:600 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
+        restore.onclick = async () => {
+          restore.disabled = true;
+          const r = await pywebview.api.restore_save(s.folder);
+          if (r && r.error) { error.textContent = r.error; restore.disabled = false; return; }
+          await window.fmSaves();
+          window.fmNotice(`Restored ${r.result}: it's back in your saves.`, false);
+        };
+        line.append(restore);
+        box.append(line);
+      }
     }
 
     box.append(css(make("h3", "New save"), "margin:20px 0 4px;font-size:16px"),
