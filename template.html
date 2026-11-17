@@ -169,6 +169,13 @@ __THEME__
   .gpos .gp { display: inline-flex; flex-direction: column; align-items: center; min-width: 58px; padding: 3px 6px; background: var(--bg);
               border: 1px solid var(--line); border-radius: 6px; }
   .gpos .gp i { color: var(--dim); font: 600 10px var(--body); font-style: normal; }
+  /* Analysis' age advice; the Lineup pitch's age tag on a starter 31+ */
+  .rec { color: #c3c9c5; font-size: 12px; } .rec b { color: inherit; } .rec.act { color: #e9a066; } .rec.warn { color: #d8c38f; }
+  .rec.plan { color: #c3c9c5; } .rec.young { color: var(--cyan); } .rec.ok { color: var(--dim); }
+  .agebox { margin: -2px 0 8px; line-height: 1.6; }
+  /* the age on a pitch box: a light, see-through tag in its colour */
+  .pslot .agetag { margin-left: 3px; padding: 0 3px; color: #e6e9e7cc; background: #e6e9e71a; border: 1px solid #e6e9e733; border-radius: 3px; font-size: 9px; font-weight: 600; }
+  .pslot .agetag.young { color: #8bd3f7; background: #8bd3f71f; border-color: #8bd3f74d; } .pslot .agetag.old { color: #f0b07e; background: #e9a0661f; border-color: #e9a0664d; }
   /* the weakest spot: the words light grey, the number in its tone, the gap a lighter shade of that tone */
   .weakspot { color: #c3c9c5; } .weakspot b { font-weight: 700; } .weakspot small { margin-left: 3px; font-size: 11px; font-weight: 600; }
   .weakspot.wk0 b { color: var(--fg); } .weakspot.wk0 small { color: #dde2df; }
@@ -245,7 +252,6 @@ __THEME__
   table.weights td.sh { min-width: 58px; color: var(--fg);
                         background: color-mix(in srgb, var(--blue) calc(var(--s, 0) * 55%), transparent); }
   table.weights tr.unused td.sh { color: var(--dim); }
-  .nosearch { margin-left: 6px; padding: 0 6px; color: var(--dim); font-size: 11px; border: 1px solid var(--line); border-radius: 9px; }
   .warn { color: var(--red); }
   table.weights tr.unused td { color: var(--dim); }
   table.weights tr.divider td { padding-top: 12px; color: var(--dim); font-size: 12px; border-bottom: 1px solid var(--line); }
@@ -744,6 +750,9 @@ function weakSpot(weak, team) {
     (weak.missing ? ` <span class="t0">no backup</span>` : "");
 }
 
+// a player's age on a pitch box: sky blue 21 or under, white 22-29, amber 30+ (see Analysis for ageing starters)
+const ageTag = p => p && p.age != null ? ` <span class="agetag ${p.age <= 21 ? "young" : p.age >= 30 ? "old" : ""}" title="age ${p.age}${
+  p.age >= 30 ? ": 30+, see Analysis" : p.age <= 21 ? ": a youngster" : ""}">${p.age}</span>` : "";
 // Squad › Lineup: the pitch for a formation, and everyone of yours who plays the position you click
 const SHAPE_STORE = "fm:__SAVE__:lineup-shape", SLOT_STORE = "fm:__SAVE__:lineup-slot", MODE_STORE = "fm:__SAVE__:lineup-mode";
 const stored = (k, d) => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
@@ -771,7 +780,7 @@ function renderLineup() {
                html: `<div class="plab">${s.label}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${b ? `${b} backup${b === 1 ? "" : "s"}` : "no backup"}</div>` };
     }
     const off = s.side && s.xi.off;  // the starter on a side he doesn't play (no one who does was close enough)
-    return { cls: stier(s.xi.v), html: `<div class="plab">${s.label}${off ? ` <span class="offside" title="${esc(sideWhy(s.xi, s.pos))}: not his side">⚠</span>` : ""}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${s.xi.v.toFixed(1)}</div>` };
+    return { cls: stier(s.xi.v), html: `<div class="plab">${s.label}${off ? ` <span class="offside" title="${esc(sideWhy(s.xi, s.pos))}: not his side">⚠</span>` : ""}${ageTag(s.xi)}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${s.xi.v.toFixed(1)}</div>` };
   };
   const weak = f.weak;  // the position whose starters + backups average lowest (one without a backup first)
   document.getElementById("lineup").innerHTML = `<div class="ttitle lhead">Lineup
@@ -834,7 +843,7 @@ function renderFormationsPage() {
       <td title="${x.weak ? `${esc(x.weak.pos)}: its ${x.weak.starters} starter(s) and ${x.weak.backups} backup(s) averaged` : ""}">${x.weak ?
         weakSpot(x.weak, x.xi) : "–"}${x.short ? ` <span class="t0">${x.short} empty</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   // the chosen shape: its eleven, the backup under each, and the numbers
-  const box = s => s.xi ? { cls: stier(s.xi.v), html: `<div class="plab">${s.label}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div>
+  const box = s => s.xi ? { cls: stier(s.xi.v), html: `<div class="plab">${s.label}${ageTag(s.xi)}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div>
       <div class="pval">${s.xi.v.toFixed(1)}</div><div class="psec">${s.sec ? `${esc(surnameOf(s.sec.name))} ${s.sec.v.toFixed(1)}` : "no backup"}</div>` }
     : { cls: "empty", html: `<div class="plab">${s.label}</div><div class="pname dim">nobody</div>` };
   const slots = pitchSlots(f), xi = f.players, out = xi.filter(p => p.pos !== "GK");
@@ -872,6 +881,48 @@ function renderFormationsPage() {
 const ANALYSIS_STORE = "fm:__SAVE__:analysis-by";  // a new name: everyone starts from Score once
 let rankBy = "Score";
 try { rankBy = localStorage.getItem(ANALYSIS_STORE) || rankBy; } catch (e) {}
+// ---- Analysis' Recommendations: what to do at each position, most urgent first (advice only, no score changes):
+// an ageing starter (30+: his ~next-season score, score.py's next_season) and who takes over, a missing or weak backup,
+// a youngster (21 or under) ready for minutes or worth developing (what to train first, by the position's weights).
+const AGE_OLD = 30, AGE_YOUNG = 21;
+function recommendations(g) {
+  const sc = p => p.score ?? -1, last = n => esc(n.split(" ").pop()), f1 = v => v.toFixed(1);
+  const who = m => `${esc(m.name)} ${m.age} (${esc(m.club)}) ${f1(m.score)}${m.wage != null ? `, ${FMT.money(m.wage)}` : ""}`;
+  const starters = g.players.filter(p => p.role === "Starter" && p.score != null), rest = g.players.filter(p => p.role !== "Starter" && p.score != null);
+  if (!starters.length) return [];
+  const out = [], weakest = Math.min(...starters.map(sc));
+  // 1. ageing starters
+  for (const s of starters.filter(p => p.age >= AGE_OLD)) {
+    const next = s.next ?? sc(s);
+    const own = rest.filter(p => p.age < 28).sort((a, b) => sc(b) - sc(a))[0];
+    const head = `${last(s.name)} (${s.age}) drops to <b>~${f1(next)}</b> next season`;
+    if (own && sc(own) >= next - 1) out.push({ cls: "plan", text: `Plan ahead: ${head}; ${last(own.name)} (${own.age}, ${f1(sc(own))}) can take over` });
+    else {
+      const better = (g.market || []).filter(m => m.score >= next);
+      const cheap = better.filter(m => m.wage != null).sort((a, b) => a.wage - b.wage)[0];
+      out.push({ cls: "act", text: `Replace soon: ${head}` + (better.length
+        ? `; on your lists: ${who(better[0])}${cheap && cheap !== better[0] ? `, cheapest ${who(cheap)}` : ""}`
+        : `; scout a ${esc(g.pos)} under 28 above ${f1(next)}`) });
+    }
+  }
+  // 2. backups
+  const backup = rest.slice().sort((a, b) => sc(b) - sc(a))[0];
+  if (!backup) out.push({ cls: "act", text: `Get a backup: no one else of yours plays ${esc(g.pos)}` +
+    ((g.market || [])[0] ? `; on your lists: ${who(g.market[0])}` : "") });
+  else if (sc(backup) < weakest - 1.5) out.push({ cls: "warn", text: `Better backup needed: ${last(backup.name)} (${f1(sc(backup))}) is ${f1(weakest - sc(backup))} below the starter` });
+  // 3. youngsters
+  const young = rest.filter(p => p.age <= AGE_YOUNG).sort((a, b) => sc(b) - sc(a))[0];
+  if (young && sc(young) >= weakest - 0.5) out.push({ cls: "young", text: `Give ${last(young.name)} (${young.age}) minutes: ${f1(sc(young))}, level with the starter's ${f1(weakest)}` });
+  else if (young && sc(young) >= weakest - 2) {
+    const w = WEIGHTS[g.pos] || {}, a = young.attrs || {};
+    const train = Object.keys(w).filter(k => a[k] != null && a[k] < 20).sort((x, y) => w[y] * (20 - a[y]) - w[x] * (20 - a[x])).slice(0, 2);
+    out.push({ cls: "young", text: `Develop ${last(young.name)} (${young.age}, ${f1(sc(young))}, ${f1(weakest - sc(young))} behind)` +
+      (train.length ? `: train ${train.join(" and ")} first` : "") });
+  }
+  return out;
+}
+const recHtml = list => list.map(x => `<span class="rec ${x.cls}">${x.text}</span>`).join("<br>");
+
 function renderAnalysis() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA;
@@ -899,15 +950,20 @@ function renderAnalysis() {
     esc(o === "Speed" ? "Speed (Pace + Acceleration)" : o === "Score" ? "Position score" : o)}</option>`).join("")}</select>`;
   const summary = `<div class="tile wide"><div class="ttitle">Positions ranked <span class="rankby">by ${select}</span></div>
     <table><thead><tr><th class="num">#</th><th>Position</th><th class="num">Players</th><th class="num">Your average</th><th>Your best</th>
-    <th class="num">Imported</th><th class="num">±</th></tr></thead><tbody>${ranked.map((g, i) => `<tr><td class="num dim">${i + 1}</td>
+    <th class="num">Imported</th><th class="num">±</th><th>Recommendations</th></tr></thead><tbody>${ranked.map((g, i) => `<tr><td class="num dim">${i + 1}</td>
       <td>${esc(g.pos)}</td><td class="num">${g.players.length}</td><td class="num ${cls(g.avg)}">${avg1(g.avg)}</td>
       <td>${g.top ? `<span class="pl" data-name="${esc(g.top.name)}">${esc(g.top.name)}</span> <span class="${cls(g.top.v)}">${fmt(g.top.v)}</span>` : "–"}</td>
       <td class="num ${cls(g.imp)}" title="average of ${g.imported} imported player(s) whose best position is ${esc(g.pos)}">${avg1(g.imp)}${
-        g.imported ? ` <span class="sub">(${g.imported})</span>` : ""}</td>${diff(g.avg, g.imp)}</tr>`).join("")}</tbody></table>
+        g.imported ? ` <span class="sub">(${g.imported})</span>` : ""}</td>${diff(g.avg, g.imp)}<td class="wrap">${recHtml(recommendations(g)) || `<span class="rec ok">Nothing to do</span>`}</td></tr>`).join("")}</tbody></table>
     <div class="sub">Players per position as on the <b>Lineup</b>. <b>Imported</b>: the average of the imported players whose best position it is,
-    and <b>±</b> how your players compare with them.</div></div>`;
+    and <b>±</b> how your players compare with them. <b>Recommendations</b> (advice only, no scores change):
+    <span class="rec act">act</span> (an ageing starter with no one ready, no backup), <span class="rec warn">a weak backup</span>,
+    <span class="rec plan">plan ahead</span> (someone of yours can take over), <span class="rec young">youngsters</span> (minutes, or
+    what to train first). Ageing = ${AGE_OLD}+, his ~next-season score an estimate (Pace, Acceleration, Stamina and Jumping Reach
+    a point lower, two from 33); youngsters = ${AGE_YOUNG} or under.</div></div>`;
   const tiles = ps.map(g => `<div class="tile"><div class="ttitle">${esc(g.pos)} <span class="sub">${esc(label)} · your average
     <span class="${cls(g.avg)}">${avg1(g.avg)}</span>${g.imp != null ? ` · imported <span class="${cls(g.imp)}">${avg1(g.imp)}</span>` : ""}</span></div>
+    ${recommendations(g).length ? `<div class="agebox">${recHtml(recommendations(g))}</div>` : ""}
     ${g.players.length ? `<table><thead><tr><th class="num">#</th><th>Player</th><th>Role</th><th class="num">Age</th><th class="num">${esc(rankBy === "Score" ? `${g.pos} score` : label)}</th>
       ${rankBy === "Score" ? "" : `<th class="num">${esc(g.pos)} score</th>`}</tr></thead><tbody>${g.players.map((p, i) => `<tr><td class="num dim">${i + 1}</td>
       <td><span class="pl" data-name="${esc(p.name)}">${esc(p.name)}</span></td><td class="text">${esc(p.role)}${p.from ? ` <span class="sub">↑${esc(p.from)}</span>` : ""}</td>
@@ -1029,9 +1085,7 @@ function renderAttributes() {
     if (x) return `<td class="num sh" style="--s:${(x / topShare).toFixed(2)}">${x >= 0.095 ? Math.round(x * 100) : (x * 100).toFixed(1)}%</td>`;
     return `<td class="num sh" title="${d.costs[p][a] ? "" : "no CA cost at " + esc(p) + ": can't count there"}">${d.costs[p][a] ? "" : "·"}</td>`;
   };
-  const tag = a => Object.keys(d.costs).some(p => p !== "GK" && d.costs[p][a]) && !d.search.includes(a)
-    ? ` <span class="nosearch" title="Player searches exported with the Search - Outfield Players View don't have it">not in searches</span>` : "";
-  const row = a => `<tr class="${vals[a] > 0 ? "" : "unused"}"><td>${esc(a)}${tag(a)}</td>
+  const row = a => `<tr class="${vals[a] > 0 ? "" : "unused"}"><td>${esc(a)}</td>
       <td class="num"><input class="wt" type="number" min="1" max="20" step="any" data-attr="${esc(a)}" value="${vals[a] || ""}" placeholder="–"></td>
       ${cols.map(p => cell(p, a)).join("")}</tr>`;
   main.innerHTML = `<div class="tile wide">
@@ -1054,9 +1108,7 @@ function renderAttributes() {
   </div>
   <div class="tile wide"><div class="ttitle">Attributes <span class="sub">${counted.length} attributes count${empty.length ? ` · <b class="warn">nothing counts at ${esc(empty.join(", "))}</b>` : ""}</span></div>
     <div class="wscroll"><table class="weights"><thead><tr><th>Attribute</th><th class="num">Value</th>${cols.map(p => `<th class="num">${esc(p)}</th>`).join("")}</tr></thead>
-    <tbody>${counted.map(row).join("")}${unused.length ? `<tr class="divider"><td colspan="${cols.length + 2}">Not counted: give one a weight to count it</td></tr>` + unused.map(row).join("") : ""}</tbody></table></div>
-    <div class="sub">Player searches exported with the Search - Outfield Players View have 18 attributes. A position needs 85% of its
-      weight known to score a player, so weight the others (not in searches) lightly or searched players may not be scored.</div></div>`;
+    <tbody>${counted.map(row).join("")}${unused.length ? `<tr class="divider"><td colspan="${cols.length + 2}">Not counted: give one a weight to count it</td></tr>` + unused.map(row).join("") : ""}</tbody></table></div></div>`;
   main.querySelectorAll("input.wt").forEach(i => i.onchange = () => {
     const v = Math.round(parseFloat(String(i.value).replace(",", ".")) * 100) / 100;
     if (v > 0) vals[i.dataset.attr] = Math.min(20, v); else delete vals[i.dataset.attr];

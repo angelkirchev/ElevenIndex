@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.9.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.10.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -920,6 +920,19 @@ def require_known(cfg, key, known, what):
 # --- pages ---
 
 
+# Analysis' age advice: a rough guess at next season for a player 30+: FM takes the physical side first, so these
+# drop a point (two from 33), and he's rescored with the same weights. An estimate, shown with "~".
+AGE_DECLINE = ("Pace", "Acceleration", "Stamina", "Jumping Reach")
+
+
+def next_season(attrs, age, weights):
+    if age is None or age < 30:
+        return None
+    drop = 2 if age >= 33 else 1
+    older = {a: max(1, v - drop) if a in AGE_DECLINE else v for a, v in attrs.items()}
+    return weighted(older, {"x": weights}, MIN_KNOWN_WEIGHT).get("x")
+
+
 def analysis(squad, others, lineup, w):
     """The analysis page: your squad position by position, as the Lineup places them (so DM, MC… have players too),
     with each player's current attributes, ranked in the page by an attribute you pick. Each position also gets the
@@ -930,6 +943,7 @@ def analysis(squad, others, lineup, w):
     attrs_of = lambda r: r["history"][-1]["attrs"]  # the latest known value of each attribute
     out = []
     for pos in positions:
+        pos_w = w["gk"] if pos == "GK" else w["outfield"][pos]
         seen, players = set(), []
         for s in lineup["slots"]:
             if s["pos"] != pos:
@@ -944,14 +958,20 @@ def analysis(squad, others, lineup, w):
                     seen.add(p["name"])
                     r = rows[p["name"]]
                     players.append({"name": r["name"], "age": r["age"], "role": label, "from": p.get("from"),
-                                    "score": r.get(pos), "attrs": attrs_of(r)})
+                                    "score": r.get(pos), "attrs": attrs_of(r),
+                                    "next": next_season(attrs_of(r), r["age"], pos_w)})
         pool = [r for r in others if r["best"] == pos]
         sums = {}
         for r in pool:
             for a, v in attrs_of(r).items():
                 n, t = sums.get(a, (0, 0))
                 sums[a] = (n + 1, t + v)
+        # who on your lists could take over from an ageing starter: under 28, playing the position, best first
+        market = sorted((r for r in others if r.get(pos) is not None and (r["age"] or 99) < 28
+                         and (pos in (r.get("plays") or []) or r["best"] == pos)), key=lambda r: -r[pos])[:25]
         out.append({"pos": pos, "players": players, "imported": len(pool),
+                    "market": [{"name": r["name"], "age": r["age"], "club": r["club"], "score": r[pos], "wage": r["wage"]}
+                               for r in market],
                     "importedAvg": {a: t / n for a, (n, t) in sums.items()},
                     "importedScore": sum(r[pos] for r in pool) / len(pool) if pool else None})
     # The attributes to rank by: the most weighted (summed over the positions) first
@@ -1266,6 +1286,8 @@ GUIDE = [
              "<ul><li><b>Attributes</b>: like FM: grey 1–5, white 6–9, yellow 10–14, green 15+.</li>"
              "<li><b>vs Age</b>: red (well behind for his age), orange, white, yellow, green (well ahead).</li>"
              "<li><b>Lineup › Depth</b>: green = two or more backups there, yellow = one, red = none.</li>"
+             "<li><b>Ages on the pitch</b> (Lineup, Formations): sky blue = 21 or under, white = 22–29, amber = 30+ "
+             "(see <b>Analysis</b> for who could replace an ageing starter).</li>"
              "<li><b>Weakest spot</b> (Lineup, Formations): in a quiet tone by how far it is below the eleven's average, "
              "shown after it (e.g. −1.1): grey = about level, sand = a little below, amber = 1 or more below; "
              "<b>no backup</b> in red. On the Formations pitch's Positions the weakest is outlined red, the strongest green.</li>"
@@ -1311,7 +1333,14 @@ GUIDE = [
              "single attribute.<br>"
              "<b>Positions ranked:</b> your positions from strongest to weakest: your average, your best player there, the "
              "average of the imported players whose best position it is (<b>Imported</b>) and the difference (<b>±</b>; "
-             "green = you're ahead).<br>"
+             "green = you're ahead), and <b>Recommendations</b>: what to do there, most urgent first (advice only, "
+             "no score changes): <b>Replace soon</b> (amber) = a starter 30+ whose ~next-season score (an estimate: "
+             "Pace, Acceleration, Stamina and Jumping Reach a point lower, two from 33) no one of yours under 28 can match, "
+             "with the best and the cheapest on your lists who beat it; <b>Get a backup</b> / <b>Better backup needed</b> "
+             "(none, or 1.5+ below the starter); <b>Plan ahead</b> (grey) = someone of yours can take over from an "
+             "ageing starter; <b>Give … minutes</b> / <b>Develop …</b> (sky blue) = a youngster (21 or under) level with "
+             "the starter, or within 2.0 with what to train first. Each position's tile repeats it; on the pitches "
+             "every starter's age shows by his position (amber 30+, sky blue 21 or under).<br>"
              "<b>Below:</b> each position's players, best first, with their role (Starter, Backup, Third, Youth).<br>"
              "<b>Use it to:</b> see where your team is quick or slow, strong or weak, and where to strengthen."},
     {"key": "development", "title": "Development",
@@ -1326,9 +1355,6 @@ GUIDE = [
              "<b>Listed players by position</b> (how many there are, their middle and best score, your best there, how many "
              "beat him and the cheapest of those; click a row to pick the position), then one graph at a time, picked in "
              "<b>Graph</b>, with how to read it underneath.<br>"
-             "<b>My squad (by age)</b> in <b>compare with</b>: your team on its own, per position: who plays it, the best "
-             "and his age, average age, how many are 30+ or 21 or under, and advice (an ageing starter with no successor, "
-             "no backup, a young player ready to step up); the graphs colour your players by age.<br>"
              "<b>Controls:</b> <b>compare with</b> = whom to compare with: your <b>Last player import</b>, <b>All imported "
              "players</b>. <b>position</b> picks the position for the "
              "score vs wage and rating charts. Hover a dot to see who it is.<br>"
@@ -1393,8 +1419,7 @@ GUIDE = [
              "drops what you haven't saved; <b>Reset to default</b> puts the default weights back in the page (then Save).<br>"
              "<b>Share them:</b> <b>Export attributes…</b> writes the attribute weights as one list for "
              "Notepad: Pace 20, Acceleration 16, … (1–20; decimals with a dot, 12.25). Change it and <b>Import attributes…</b> "
-             "reads it back, then Save. Search exports only have 18 attributes: weight others and searched players may "
-             "not get a score."},
+             "reads it back, then Save."},
     {"key": "", "title": "Searching and filtering",
      "text": "Type in the <b>Search</b> box at the top of a table (<b>/</b> or <b>f</b> jumps there, <b>Esc</b> clears it):"
              "<ul><li>a name or club: <b>kalu</b>, <b>levski</b></li>"
