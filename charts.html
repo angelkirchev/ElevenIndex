@@ -11,7 +11,8 @@ __THEME__
   /* ---- the controls in the top bar ---- */
   .bar { flex-wrap: wrap; }
   .ctl { display: flex; gap: 3px; align-items: center; margin: 6px 0; }
-  .ctl .name { margin-right: 4px; color: #e4f0dc; font-weight: 600; }  /* on the green bar */
+  .ctl .name { margin-right: 4px; color: var(--sub-ink); font-weight: 600; }  /* in the strip under the bar */
+  .subnav.rctl { flex-wrap: wrap; align-items: center; gap: 4px 18px; padding: 3px 14px 3px 64px; }
   .ctl button { padding: 3px 9px; color: var(--fg); font: 600 12px var(--body); background: var(--bg); border: 1px solid var(--line);
                 border-radius: 5px; cursor: pointer; }
   .ctl button:hover:not(.on) { background: var(--hover); }
@@ -104,6 +105,9 @@ __THEME__
 <body>
 <div class="bar">
   <span class="pages">__NAV__</span>
+</div>
+<!-- Research's choices, in the strip under the bar (where Squad, Players and Staff have their sub-tabs) -->
+<div class="subnav rctl">
   <span class="ctl"><span class="name">compare with</span><select id="against"></select></span>
   <span class="ctl" id="positions"><span class="name">position</span></span>
   <span class="key"><span class="them"><i></i><span id="themName"></span> <span id="themCount"></span></span><span class="us"><i></i><span id="usName"></span> <span id="usCount"></span></span></span>
@@ -371,7 +375,7 @@ function draw() {
     bar.appendChild(b);
   }
   const people = shown();
-  const key = document.querySelector(".bar .key");
+  const key = document.querySelector(".rctl .key");
   key.innerHTML = ageMode()
     ? `<span class="agekey young"><i></i>21 or under</span><span class="agekey prime"><i></i>22–29</span><span class="agekey old"><i></i>30+</span>`
     : `<span class="them"><i></i>${shortName(choice.against)} ${people.filter(p => !p.squad).length}</span><span class="us"><i></i>${CLUB} ${people.filter(p => p.squad).length}</span>`;
