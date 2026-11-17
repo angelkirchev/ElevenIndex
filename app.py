@@ -123,7 +123,9 @@ class App:
             text += (f" {len(skipped)} skipped, not enough attributes to score: "
                      + ", ".join(skipped[:5]) + (f" and {len(skipped) - 5} more" if len(skipped) > 5 else "") + ".")
         self.notice = (text, False)  # shown by on_load after the reload
-        page = "last_staff.html" if kind == "staff" else "last.html"
+        # where the import shows: your squad on Squad › Lineup, a player search on Players › Last import, staff on
+        # Staff › Last import
+        page = "last_staff.html" if kind == "staff" else "squad.html" if source is None else "last.html"
         url = (out / page).resolve().as_uri()
         try:
             here = (self.window.get_current_url() or "").split("?")[0].split("#")[0]
