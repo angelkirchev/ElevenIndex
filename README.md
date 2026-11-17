@@ -151,7 +151,7 @@ pywebview, which the app needs.
 ### 5 · Import your squad
 
 In FM, open your squad screen with **`Squad - All Players View`**, point at the list and press **F8**. In the app,
-open **Menu → Import file…** (bottom right) and choose the export. Done: your Lineup and Formations are ready.
+open **Menu** (under the logo) → **Import file…** and choose the export, or just drop the file on the window. Done: your Lineup and Formations are ready.
 
 From then on, press **F8** on any player search, shortlist or staff search and import it the same way. Everything else
 is explained in the app's **Guide** (key **G**).

@@ -2,12 +2,13 @@
 
     python app.py
 
-Open Menu → "Import file…" (bottom right of every page), choose an export, and it's imported straight away: dated with
+Open Menu → "Import file…" (under the logo on every page), choose an export, and it's imported straight away: dated with
 the date in the exporter's file name (export_date), as your squad if the file name
 starts with "First Team"/"Squad", else as a search named after the file. Then score.py runs and the 'last' page shows.
 Needs pywebview (pip install pywebview).
 """
 import csv
+import glob
 import html
 import json
 import os
@@ -17,6 +18,8 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
+import zipfile
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -123,6 +126,7 @@ class App:
             text += (f" {len(skipped)} skipped, not enough attributes to score: "
                      + ", ".join(skipped[:5]) + (f" and {len(skipped) - 5} more" if len(skipped) > 5 else "") + ".")
         self.notice = (text, False)  # shown by on_load after the reload
+        self.mark_imported(path)
         # where the import shows: your squad on Squad › Lineup, a player search on Players › Last import, staff on
         # Staff › Last import
         page = "last_staff.html" if kind == "staff" else "squad.html" if source is None else "last.html"
@@ -214,7 +218,7 @@ class App:
                           "current": toml.parent.name == self.save})
         return sorted(found, key=lambda s: (not s["current"], s["name"]))
 
-    def switch_save(self, name, notice=None):
+    def switch_save(self, name, notice=None, title="Save loaded"):
         if not (score.ROOT / "saves" / name / "save.toml").is_file():
             raise ValueError(f"There's no save called {name}.")
         with self.lock:
@@ -225,10 +229,10 @@ class App:
             if any((self.save_dir / "obs").glob("*.csv")):
                 cfg, pages = score.build(name, self.config)
                 out = score.write_pages(name, self.config, cfg, pages)
-                self.notice = (notice or f"Switched to {name}.", False)
+                self.notice = (notice or f"Now on {self.club_name() or name} ({name}).", False, title)
                 self.show_soon(url=(out / "squad.html").resolve().as_uri())
             else:
-                self.notice = (notice or f"Switched to {name}: no players yet.", False)
+                self.notice = (notice or f"Now on {self.club_name() or name} ({name}): no players yet.", False, title)
                 self.show_soon(html=screen('start', self.club_name()))
 
     # A deleted save waits in saves/_deleted, where Saves… can restore it, for KEEP_DELETED_DAYS; then it's gone.
@@ -317,6 +321,160 @@ class App:
             shutil.rmtree(src, onerror=writable)
             self.commit(f"{folder}: deleted for good (Delete now)")
 
+    # --- the menu's quick actions: recent exports, a watcher for new ones, drag and drop, backups, the update check --
+
+    IMPORTABLE = (".csv", ".html", ".htm")
+
+    def imported_list(self):
+        f = self.save_dir / "imported.txt" if self.save_dir else None
+        return f, (set(f.read_text(encoding="utf-8").split("\n")) - {""} if f and f.exists() else set())
+
+    def mark_imported(self, path):
+        """Note an export as imported into this save (by its name without extension: the exporter writes .csv and .html)."""
+        f, done = self.imported_list()
+        if f:
+            f.write_text("\n".join(sorted(done | {Path(path).stem})) + "\n", encoding="utf-8")
+
+    def export_files(self):
+        """The exports folder's exports, one per name (its .csv, else its .html), newest first."""
+        if not self.exports.is_dir():
+            return []
+        best = {}
+        for f in self.exports.iterdir():
+            if f.is_file() and f.suffix.lower() in self.IMPORTABLE:
+                cur = best.get(f.stem)
+                if cur is None or (f.suffix.lower() == ".csv" and cur.suffix.lower() != ".csv"):
+                    best[f.stem] = f
+        return sorted(best.values(), key=lambda f: f.stat().st_mtime, reverse=True)
+
+    def menu_data(self):
+        """What the menu shows: this save, the others, the newest exports, a newer version."""
+        _, done = self.imported_list()
+        recent = [{"name": f.stem, "path": str(f), "imported": f.stem in done,
+                   "when": time.strftime("%d %b %H:%M", time.localtime(f.stat().st_mtime))} for f in self.export_files()[:5]]
+        return {"current": self.club_name() or self.save, "save": self.save, "saves": self.saves(), "recent": recent,
+                "update": getattr(self, "update", None)}
+
+    def import_path(self, path):
+        """Import an export picked in the menu, offered by the watcher or dropped on the window."""
+        f = Path(path)
+        if f.suffix.lower() not in self.IMPORTABLE or not f.is_file():
+            raise ValueError(f"Not an FM27 Exporter file: {f.name}")
+        threading.Thread(target=self.import_now, args=(f,), daemon=True).start()
+
+    def watch_exports(self):
+        """Every few seconds: a new export in the folder (F8 in FM) gets a notice with an Import button."""
+        seen = {f.stem for f in self.export_files()}
+        while True:
+            time.sleep(3)
+            try:
+                if self.save is None or self.window is None:
+                    continue
+                new = [f for f in self.export_files() if f.stem not in seen]
+                if not new:
+                    continue
+                time.sleep(1.5)  # the exporter writes a .csv, an .rtf and an .html: let it finish
+                for f in self.export_files():
+                    if f.stem not in seen:
+                        seen.add(f.stem)
+                        self.window.evaluate_js(f"window.fmNewExport && fmNewExport({json.dumps(f.stem)}, {json.dumps(str(f))})")
+            except Exception:
+                log_error("watching the exports folder")
+
+    def on_drop(self, e):
+        """A file dropped on the window: import it (the page shows "Drop to import" while dragging)."""
+        try:
+            files = (e.get("dataTransfer") or {}).get("files") or []
+            path = next((f.get("pywebviewFullPath") for f in files if f.get("pywebviewFullPath")), None)
+        except Exception:
+            path = None
+        if not path or Path(path).suffix.lower() not in self.IMPORTABLE:
+            return self.show_notice("Drop an FM27 Exporter file (.csv or .html) to import it.", True)
+        last, when = getattr(self, "last_drop", (None, 0))
+        if last == path and time.time() - when < 3:  # the same drop, reported twice
+            return
+        self.last_drop = (path, time.time())
+        threading.Thread(target=self.import_now, args=(Path(path),), daemon=True).start()
+
+    def latest_release(self):
+        """GitHub's latest release: (version, page). Only its version number and link are fetched; nothing is sent."""
+        req = urllib.request.Request("https://api.github.com/repos/angelkirchev/ElevenIndex/releases/latest",
+                                     headers={"User-Agent": "ElevenIndex", "Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.load(r)
+        return str(data.get("tag_name", "")).lstrip("v"), data.get("html_url") or score.PROJECT_URL + "/releases/latest"
+
+    @staticmethod
+    def newer(tag):
+        ver = lambda v: tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+        return bool(tag) and ver(tag) > ver(VERSION)
+
+    def check_update(self):
+        """Once at start: a newer release gets a notice (offline or no answer: nothing)."""
+        time.sleep(4)
+        try:
+            tag, url = self.latest_release()
+        except Exception:
+            return
+        if self.newer(tag):
+            self.update = {"version": tag, "url": url}
+            if self.window is not None and self.save is not None:
+                self.update_shown = True
+                self.window.evaluate_js(f"window.fmUpdate && fmUpdate({json.dumps(self.update)}, true)")
+
+    def check_now(self):
+        """Menu → Check for updates: {current, latest, newer, url}."""
+        try:
+            tag, url = self.latest_release()
+        except Exception:
+            raise ValueError("Couldn't reach GitHub to check. Are you online? Try again later.")
+        if self.newer(tag):
+            self.update = {"version": tag, "url": url}
+        return {"current": VERSION, "latest": tag, "newer": self.newer(tag), "url": url}
+
+    def backup_save(self):
+        """Menu → Back up this save…: the save's folder as one zip (to keep, or to move to another computer)."""
+        if not self.save_dir:
+            raise ValueError("No save open.")
+        name = f"ElevenIndex {self.save} {time.strftime('%Y-%m-%d')}.zip"
+        chosen = self.window.create_file_dialog(webview.FileDialog.SAVE, directory=str(score.documents()),
+                                                save_filename=name, file_types=("Zip files (*.zip)",))
+        if not chosen:
+            return None
+        dest = Path(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)
+        if dest.suffix.lower() != ".zip":
+            dest = dest.with_suffix(".zip")
+        with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as z:
+            for f in self.save_dir.rglob("*"):
+                if f.is_file() and ".git" not in f.parts:
+                    z.write(f, (Path(self.save) / f.relative_to(self.save_dir)).as_posix())
+        return str(dest)
+
+    def restore_backup(self):
+        """Saves… → Restore a backup…: a zip from Back up this save… becomes a save again (name-2… when taken)."""
+        chosen = self.window.create_file_dialog(webview.FileDialog.OPEN, directory=str(score.documents()),
+                                                file_types=("Zip files (*.zip)",))
+        if not chosen:
+            return None
+        src = Path(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)
+        with zipfile.ZipFile(src) as z:
+            names = [n for n in z.namelist() if not n.endswith("/")]
+            tops = {n.split("/")[0] for n in names}
+            top = next(iter(tops)) if len(tops) == 1 else ""
+            if not top or f"{top}/save.toml" not in names or any(".." in n.split("/") or ":" in n or n.startswith("/") for n in names):
+                raise ValueError(f"{src.name} isn't an ElevenIndex save backup.")
+            base = slug(top) or "restored"
+            target, k = score.ROOT / "saves" / base, 2
+            while target.exists():
+                target, k = score.ROOT / "saves" / f"{base}-{k}", k + 1
+            with self.lock:
+                for n in names:
+                    out = target / Path(*n.split("/")[1:])
+                    out.parent.mkdir(parents=True, exist_ok=True)
+                    out.write_bytes(z.read(n))
+                self.commit(f"{target.name}: restored from {src.name}")
+        return target.name
+
     # --- theme (Menu → Theme…) -------------------------------------------------------------------------------------
 
     def themes(self):
@@ -343,7 +501,8 @@ class App:
             raise ValueError(f"There's already a save called {name}: give this one another name, e.g. {name}-2.")
         score.new_save(name, club, division)
         self.commit(f"{name}: new save")
-        self.switch_save(name, f"New save {name} for {club}. Now import your squad: press F8 on it in FM, then Menu → Import file…")
+        self.switch_save(name, f"{club} ({name}) is ready. Now import your squad: press F8 on it in FM, then Menu → Import file…",
+                         title="Save created")
 
     # --- weights (the Attributes page) ----------------------------------------------------------------------------
 
@@ -466,10 +625,21 @@ class App:
         if self.save is None:  # the setup page
             return
         self.window.evaluate_js(TOOLBAR_JS)
+        try:  # drag and drop: the dropped file's full path comes with the event
+            from webview.dom import DOMEventHandler
+            self.window.dom.document.events.dragover += DOMEventHandler(lambda e: None, True, True)
+            self.window.dom.document.events.drop += DOMEventHandler(self.on_drop, True, True)
+        except Exception:
+            log_error("drag and drop")
+        if getattr(self, "update", None):  # a newer release: in the menu, and as a notice once
+            show = not getattr(self, "update_shown", False)
+            self.update_shown = True
+            self.window.evaluate_js(f"window.fmUpdate && fmUpdate({json.dumps(self.update)}, {json.dumps(show and not self.notice)})")
         if self.notice:
-            text, error = self.notice
+            text, error, *title = self.notice  # an optional title: "Save loaded", "Save created"…
             self.notice = None
-            self.window.evaluate_js(f"fmNotice({json.dumps(text)}, {json.dumps(error)})")
+            extra = f", {json.dumps({'title': title[0]})}" if title else ""
+            self.window.evaluate_js(f"fmNotice({json.dumps(text)}, {json.dumps(error)}{extra})")
 
     # --- first run: the setup page ------------------------------------------------------------------------------
 
@@ -493,7 +663,7 @@ class App:
         self.save, self.save_dir = name, score.ROOT / "saves" / name
         self.commit(f"{name}: new save")
         self.window.set_title(window_title(name))
-        self.notice = (f"All set up for {club}. Now import your squad: press F8 on it in FM, then Menu → Import file…", False)
+        self.notice = (f"All set up for {club}. Now import your squad: press F8 on it in FM, then Menu → Import file…", False, "Save created")
         self.show_soon(html=screen('start', self.club_name()))
 
     def browse_folder(self, current):
@@ -516,6 +686,8 @@ class App:
             title = window_title(self.save)
         self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
         self.window.events.loaded += self.on_load
+        threading.Thread(target=self.watch_exports, daemon=True).start()
+        threading.Thread(target=self.check_update, daemon=True).start()
         self.window.events.closed += lambda: os._exit(0)  # closing the window ends the app
         # The XI mark in the title bar and taskbar, from source too (not Python's icon). Its own app ID keeps
         # Windows from grouping the window with other Python programs on the taskbar.
@@ -602,6 +774,36 @@ class MainApi:
     def remove_deleted(self, folder):
         return self._call(self._app.remove_deleted, folder)
 
+    def menu_data(self):
+        try:
+            return self._app.menu_data()
+        except Exception:
+            log_error("menu")
+            return {"current": "", "save": "", "saves": [], "recent": [], "update": None}
+
+    def import_path(self, path):
+        return self._call(self._app.import_path, path)
+
+    def check_now(self):
+        try:
+            return {"result": self._app.check_now()}
+        except (Exception, SystemExit) as e:
+            return {"error": str(e)}
+
+    def backup_save(self):
+        try:
+            return {"result": self._app.backup_save()}
+        except (Exception, SystemExit) as e:
+            log_error("backup")
+            return {"error": str(e)}
+
+    def restore_backup(self):
+        try:
+            return {"result": self._app.restore_backup()}
+        except (Exception, SystemExit) as e:
+            log_error("restore")
+            return {"error": str(e)}
+
     def setup(self, club, division, currency, exports, name, shortcut):
         return self._call(self._app.setup, club, division, currency, exports, name, shortcut)
 
@@ -658,7 +860,7 @@ button.go { background: #a9d93b; color: #0f1412; padding: 10px 22px; font-size: 
 </style></head><body><div class="box">
 <h1>Welcome to ElevenIndex</h1>
 <p class="lead">A few details about your Football Manager save, and you're ready. You can add more saves later with
-<b>Menu → Saves</b> (bottom right).</p>
+<b>Menu → Saves</b> (under the logo).</p>
 <label for="club">Club you manage</label>
 <input id="club" placeholder="e.g. Man Utd" autofocus>
 <div class="hint">Exactly as FM writes it in its player lists: "Man Utd", not "Manchester United".</div>
@@ -688,7 +890,7 @@ document.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
 </script></body></html>"""
 
 # The new-save and error screens (screen()): a dark pitch, the XI INDEX logo, a title, instructions in the bottom-left
-# corner (the Menu button is bottom right).
+# corner (notices show bottom right).
 SCREEN_HTML = """<!doctype html><html><head><meta charset="utf-8"><style>
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
@@ -700,6 +902,7 @@ svg.pitch .d { fill: #c5f04f; fill-opacity: .16; } svg.pitch .gk { fill: #f2efe7
 :root { --body: Inter, 'Segoe UI', system-ui, sans-serif; }
 .bar.corner { position: absolute; top: 26px; right: 40px; display: flex; }
 .bar.corner .promo { transform: scale(1.25); transform-origin: top right; }
+.screen-strip { position: absolute; top: 96px; left: 40px; display: flex; padding: 0 !important; }  /* the Menu button, under the logo */
 __PROMO_CSS__
 .brand { position: absolute; top: 34px; left: 40px; display: flex; gap: 12px; align-items: center; }
 .brand svg { width: 46px; height: 46px; }
@@ -737,6 +940,7 @@ __PROMO_CSS__
 </svg>
 <div class="brand">__LOGO__<span><b>INDEX</b><small>Rate smarter. Build better.</small></span></div>
 <div class="bar corner">__PROMO__</div>
+<div class="subnav screen-strip"></div>
 __BODY__
 </body></html>"""
 
@@ -777,22 +981,34 @@ TOOLBAR_JS = """(() => {
   bar.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;gap:6px;align-items:center;" +
     "padding:6px;border-radius:8px;background:#121815;box-shadow:0 2px 8px #0008;font:14px Inter,'Segoe UI',system-ui,sans-serif";
   const BUTTON = "padding:7px 16px;border:0;border-radius:6px;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer;";
-  // Menu: Import file…, Open the exports folder, Saves…, About (it opens upwards, above the button)
+  // Menu: a button at the left of the strip under the top bar (where the sub-tabs are; pages without sub-tabs get an
+  // empty strip), its list opening downwards: this save, the newest exports, Import file…, the exports folder, your
+  // saves, Theme…, Back up this save…, About, and a newer version when there is one. Keys: M opens it, I imports.
+  let strip = document.querySelector(".subnav");
+  if (!strip) {
+    strip = document.createElement("div"); strip.className = "subnav";
+    const top = document.querySelector(".bar");
+    if (top) top.after(strip); else document.body.prepend(strip);
+  }
+  strip.style.paddingLeft = "14px";
   const m = document.createElement("button");
-  m.id = "fm-import"; m.title = "Import a file, the exports folder, your saves, about";
-  m.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:8px" aria-hidden="true">' +
+  m.id = "fm-import"; m.title = "Menu (M): import, recent exports, saves, theme, backup, about";
+  m.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">' +
     '<path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="#0f1412" stroke-width="2" stroke-linecap="round"/></svg>Menu';
-  m.style.cssText = BUTTON + "background:var(--accent-strong,#a9d93b);color:#0f1412";
+  m.style.cssText = "flex:none;align-self:center;display:flex;gap:7px;align-items:center;margin:4px 16px 4px 0;padding:4px 12px;border:0;" +
+    "border-radius:6px;background:var(--accent-strong,#a9d93b);color:#0f1412;font:700 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer";
+  strip.prepend(m);
   const list = document.createElement("div");
   list.id = "fm-menu";
-  list.style.cssText = "position:absolute;right:6px;bottom:52px;display:none;min-width:240px;padding:6px;border:1px solid #2a332f;" +
-    "border-radius:10px;background:#121815;box-shadow:0 8px 24px #000a";
+  list.style.cssText = "position:fixed;display:none;z-index:10000;width:320px;max-height:calc(100vh - 110px);overflow:auto;padding:6px;" +
+    "border:1px solid var(--line,#2a332f);border-radius:10px;background:var(--pop,#121815);box-shadow:0 12px 30px #000c";
+  document.body.append(list);
   // main: the one used most (Import file…), in the accent, lighter than the rest
   const item = (text, hint, run, main) => {
     const it = document.createElement("button");
     const rest = main ? "color-mix(in srgb, var(--blue,#c5f04f) 16%, transparent)" : "transparent";
     const over = main ? "color-mix(in srgb, var(--blue,#c5f04f) 28%, transparent)" : "var(--hover,#232c29)";
-    it.style.cssText = "display:block;width:100%;padding:8px 12px;border:0;border-radius:6px;background:" + rest + ";" +
+    it.style.cssText = "display:block;width:100%;padding:7px 12px;border:0;border-radius:6px;background:" + rest + ";" +
       "color:" + (main ? "var(--blue,#c5f04f)" : "#f2efe7") + ";font:" + (main ? 600 : 500) + " 14px Inter,'Segoe UI',system-ui,sans-serif;text-align:left;cursor:pointer";
     it.innerHTML = text + (hint ? `<div style="color:${main ? "#cfd6d1" : "#9aa49f"};font-size:12px;font-weight:400">${hint}</div>` : "");
     it.onmouseenter = () => it.style.background = over;
@@ -801,19 +1017,96 @@ TOOLBAR_JS = """(() => {
     return it;
   };
   const line = () => { const l = document.createElement("div"); l.style.cssText = "height:1px;margin:5px 6px;background:var(--line,#2a332f)"; return l; };
-  list.append(
-    item("Import file…", "an FM27 Exporter file (F8 in FM)", () => window.pywebview && pywebview.api.pick_file(), true),
-    item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()),
-    line(),
-    item("Saves…", "switch to another save, start one or delete one", () => window.fmSaves()),
-    line(),
-    item("Theme…", "the app's colours", () => window.fmTheme()),
-    item("About", "version, your settings, project page", () => window.fmAbout()));
-  m.onclick = e => { e.stopPropagation(); list.style.display = list.style.display === "none" ? "block" : "none"; };
-  document.addEventListener("click", e => { if (!list.contains(e.target)) list.style.display = "none"; });
-  document.addEventListener("keydown", e => { if (e.key === "Escape") list.style.display = "none"; });
-  bar.style.position = "fixed";
-  bar.append(m, list);
+  const label = t => { const l = document.createElement("div"); l.textContent = t;
+    l.style.cssText = "padding:6px 12px 3px;color:#9aa49f;font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase"; return l; };
+  const escH = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const fill = async () => {
+    const d = window.pywebview ? await pywebview.api.menu_data() : { recent: [], saves: [] };
+    list.innerHTML = "";
+    if (d.current) {  // the save you're in, as a highlighted card
+      const cur = document.createElement("div");
+      cur.innerHTML = `<div style="color:var(--blue,#c5f04f);font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase">Current save</div>` +
+        `<div style="margin-top:4px;color:#f2efe7;font:600 22px/1 'Barlow Condensed','Bahnschrift SemiCondensed','Arial Narrow',sans-serif;letter-spacing:.02em">${escH(d.current)}</div>` +
+        `<div style="margin-top:3px;color:#9aa49f;font-size:12px">${escH(d.save || "")}</div>`;
+      cur.style.cssText = "margin:2px 2px 6px;padding:10px 12px;border-radius:8px;border-left:3px solid var(--blue,#c5f04f);" +
+        "background:color-mix(in srgb, var(--blue,#c5f04f) 10%, transparent)";
+      list.append(cur);
+    }
+    if (d.recent && d.recent.length) {
+      // the newest export; ▾ shows the last five, ▴ folds them up again
+      const head = document.createElement("div");
+      head.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding-right:6px";
+      head.append(label("Recent exports"));
+      list.append(head);
+      const exp = f => item(`<span style="display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;vertical-align:1px;background:${f.imported ? "#5a645f" : "var(--blue,#c5f04f)"}"></span>${escH(f.name)}`,
+        `${f.when} · ${f.imported ? "imported" : "<b style='color:var(--blue,#c5f04f)'>new</b>"} · click to import`, () => pywebview.api.import_path(f.path));
+      const first = document.createElement("div");
+      first.style.cssText = "display:flex;align-items:center;gap:4px";
+      const top = exp(d.recent[0]); top.style.flex = "1"; top.style.minWidth = "0";
+      first.append(top);
+      list.append(first);
+      if (d.recent.length > 1) {
+        const more = document.createElement("div");
+        more.style.display = window.fmRecentOpen ? "block" : "none";
+        d.recent.slice(1).forEach(f => more.append(exp(f)));
+        const tog = document.createElement("button");
+        const mark = () => { tog.textContent = window.fmRecentOpen ? "▴" : "▾"; tog.title = window.fmRecentOpen ? "Show only the newest" : `Show the last ${d.recent.length}`; };
+        tog.style.cssText = "flex:none;width:30px;height:30px;border:1px solid var(--line,#2a332f);border-radius:6px;background:transparent;color:#cfd6d1;font:14px/1 Inter,sans-serif;cursor:pointer";
+        tog.onclick = e => { e.stopPropagation(); window.fmRecentOpen = !window.fmRecentOpen; more.style.display = window.fmRecentOpen ? "block" : "none"; mark(); };
+        mark();
+        first.append(tog);
+        list.append(more);
+      }
+    }
+    list.append(item("Import file…", "an FM27 Exporter file (F8 in FM), or drop one on the window · key I", () => window.pywebview && pywebview.api.pick_file(), true),
+      item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()), line(),
+      item("Saves…", "switch, start, delete, back up or restore a save", () => window.fmSaves()), line(),
+      item("Theme…", "the app's colours", () => window.fmTheme()),
+      item("Check for updates", "is there a newer ElevenIndex?", async () => {
+        window.fmNotice("Checking for a new version…", false);
+        const r = await pywebview.api.check_now();
+        if (r.error) return window.fmNotice(r.error, true);
+        const u = r.result;
+        if (u.newer) window.fmNotice(`ElevenIndex ${u.latest} is out (you have ${u.current}).`, false, { title: "New version", label: "Download", run: () => window.fmOpen(u.url) });
+        else window.fmNotice(`You have the latest version (${u.current}).`, false, { title: "Up to date", label: "Release notes", run: () => window.fmOpen(u.url) });
+      }),
+      item("About", "version, your settings, project page", () => window.fmAbout()));
+  };
+  // a link out (the browser, not this window)
+  window.fmOpen = url => { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; document.body.append(a); a.click(); a.remove(); };
+  const openMenu = async () => {
+    await fill();
+    const r = m.getBoundingClientRect();
+    list.style.left = Math.max(8, r.left) + "px"; list.style.top = (r.bottom + 6) + "px"; list.style.display = "block";
+  };
+  m.onclick = e => { e.stopPropagation(); if (list.style.display === "block") list.style.display = "none"; else openMenu(); };
+  document.addEventListener("click", e => { if (!list.contains(e.target) && e.target !== m) list.style.display = "none"; });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") { list.style.display = "none"; return; }
+    if (e.ctrlKey || e.metaKey || e.altKey || document.activeElement?.matches?.("input, select, textarea")) return;
+    if (document.getElementById("fm-saves") || document.getElementById("fm-theme") || document.getElementById("fm-about")) return;
+    if (e.key === "m" || e.key === "M") { e.preventDefault(); e.stopImmediatePropagation(); m.click(); }
+    else if (e.key === "i" || e.key === "I") { e.preventDefault(); e.stopImmediatePropagation(); window.pywebview && pywebview.api.pick_file(); }
+  }, true);
+  window.addEventListener("scroll", () => list.style.display = "none");
+
+  // Drag and drop: "Drop to import" while a file is dragged over the window; the app imports it (on_drop)
+  const dropHint = document.createElement("div");
+  dropHint.style.cssText = "position:fixed;inset:12px;z-index:10001;display:none;align-items:center;justify-content:center;pointer-events:none;" +
+    "border:3px dashed var(--blue,#c5f04f);border-radius:16px;background:#0f1412cc;color:#f2efe7;font:600 26px 'Barlow Condensed','Bahnschrift SemiCondensed',sans-serif;letter-spacing:.04em";
+  dropHint.textContent = "Drop the file to import it";
+  document.body.append(dropHint);
+  let depth = 0;
+  const isFile = e => [...(e.dataTransfer?.types || [])].includes("Files");
+  document.addEventListener("dragenter", e => { if (isFile(e)) { depth++; dropHint.style.display = "flex"; } });
+  document.addEventListener("dragleave", e => { if (isFile(e) && --depth <= 0) { depth = 0; dropHint.style.display = "none"; } });
+  document.addEventListener("dragover", e => { if (isFile(e)) e.preventDefault(); });
+  document.addEventListener("drop", e => { depth = 0; dropHint.style.display = "none"; if (isFile(e)) e.preventDefault(); });
+
+  // a new export in the folder (the app's watcher), and a newer version on GitHub
+  window.fmNewExport = (name, path) => window.fmNotice(name, false, { title: "New export found", label: "Import", run: () => pywebview.api.import_path(path) });
+  window.fmUpdate = (u, show) => { if (show) window.fmNotice(`ElevenIndex ${u.version} is out (you have """ + VERSION + """).`, false,
+    { title: "New version", label: "Download", run: () => window.fmOpen(u.url) }); };
 
   // Elsewhere and Staff pages: Clear old lists. First click says how many, a second click within 5 s clears.
   const page = location.href.split(/[\\\\/]/).pop().split(/[?#]/)[0];
@@ -832,9 +1125,9 @@ TOOLBAR_JS = """(() => {
       c.textContent = `Clear ${n} old list${n > 1 ? "s" : ""}? Click again`;
       armed = setTimeout(() => { armed = null; c.textContent = idle; }, 5000);
     };
-    bar.prepend(c);
+    bar.append(c);
   }
-  document.body.append(bar);
+  if (bar.children.length) document.body.append(bar);
 
   // The Saves panel: switch to a save, or create one. Typing in it isn't a page shortcut.
   const css = (el, s) => (el.style.cssText = s, el);
@@ -874,7 +1167,7 @@ TOOLBAR_JS = """(() => {
           const r = await pywebview.api.delete_save(s.name);
           if (r && r.error) { error.textContent = r.error; del.textContent = "Delete"; return; }
           await window.fmSaves();
-          window.fmNotice(`Deleted ${s.name}. You can restore it from Saves… for 14 days.`, false);
+          window.fmNotice(`${s.club} (${s.name}) is deleted. You can restore it from Saves… for 14 days.`, false, { title: "Save deleted" });
         };
         line.append(del);
       }
@@ -898,7 +1191,7 @@ TOOLBAR_JS = """(() => {
           const r = await pywebview.api.restore_save(s.folder);
           if (r && r.error) { error.textContent = r.error; restore.disabled = false; return; }
           await window.fmSaves();
-          window.fmNotice(`Restored ${r.result}: it's back in your saves.`, false);
+          window.fmNotice(`${s.club || s.name} is back in your saves as ${r.result}.`, false, { title: "Save restored" });
         };
         // Delete now: for good, without waiting the 14 days. The first click asks, a second within 5 s deletes.
         const now = css(make("button", "Delete now"), "flex:none;padding:6px 12px;border:0;border-radius:6px;background:#33292e;color:#f87171;font:600 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
@@ -914,13 +1207,28 @@ TOOLBAR_JS = """(() => {
           const r = await pywebview.api.remove_deleted(s.folder);
           if (r && r.error) { error.textContent = r.error; now.disabled = false; now.textContent = "Delete now"; return; }
           await window.fmSaves();
-          window.fmNotice(`${s.name} is deleted for good.`, false);
+          window.fmNotice(`${s.club || s.name} (${s.name}) is deleted for good.`, false, { title: "Deleted for good" });
         };
         line.append(restore, now);
         box.append(line);
       }
     }
 
+    const restoreBk = css(make("button", "Restore a backup…"), "margin:14px 0 0;padding:7px 14px;border:1px solid #2a332f;border-radius:6px;background:transparent;color:#f2efe7;font:600 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
+    restoreBk.title = "Bring back a save from a zip made with Menu → Back up this save…";
+    restoreBk.onclick = async () => {
+      const r = await pywebview.api.restore_backup();
+      if (r && r.error) { error.textContent = r.error; return; }
+      if (r && r.result) { await window.fmSaves(); window.fmNotice(`It's in your saves as ${r.result}: click it to open it.`, false, { title: "Backup restored" }); }
+    };
+    const backupBk = css(make("button", "Back up this save…"), "margin:14px 8px 0 0;padding:7px 14px;border:1px solid #2a332f;border-radius:6px;background:transparent;color:#f2efe7;font:600 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
+    backupBk.title = "The save you're in as one zip, to keep or move to another computer";
+    backupBk.onclick = async () => {
+      const r = await pywebview.api.backup_save();
+      if (r && r.error) { error.textContent = r.error; return; }
+      if (r && r.result) window.fmNotice("Saved to " + r.result, false, { title: "Backup saved" });
+    };
+    box.append(css(make("h3", "Backup"), "margin:20px 0 0;font-size:16px"), backupBk, restoreBk);
     box.append(css(make("h3", "New save"), "margin:20px 0 4px;font-size:16px"),
       css(make("div", "Your old saves stay as they are: switch back to them here any time."), "color:#9aa49f;margin-bottom:8px"));
     const input = (labelText, placeholder) => {
@@ -964,6 +1272,7 @@ TOOLBAR_JS = """(() => {
         current = t.name; rows.forEach(x => x.mark());
         const res = await pywebview.api.set_theme(t.name);
         error.textContent = res && res.error ? res.error : "";
+        if (!(res && res.error)) window.fmNotice(`${t.label}, for every save.`, false, { title: "Theme changed" });
       };
       return b;
     });
@@ -1000,15 +1309,74 @@ TOOLBAR_JS = """(() => {
     document.body.append(shade);
     shade.focus();
   };
-  window.fmNotice = (text, error) => {
-    let n = document.getElementById("fm-notice");
-    if (!n) { n = document.createElement("div"); n.id = "fm-notice"; document.body.append(n); }
-    n.textContent = text;
-    n.style.cssText = "position:fixed;right:16px;bottom:68px;z-index:9999;max-width:440px;padding:10px 14px;" +
-      "border-radius:6px;font:14px Inter,'Segoe UI',system-ui,sans-serif;box-shadow:0 2px 8px #0008;color:#121815;" +
-      "background:" + (error ? "#f87171" : "#4ade80");
-    clearTimeout(window.fmNoticeTimer);
-    window.fmNoticeTimer = setTimeout(() => n.remove(), error ? 15000 : 6000);
+  // The corner notice (an import done, an error, "Importing…"): a dark card with a coloured edge, an icon, a title,
+  // the message, a close button and a bar for how long it stays (paused while the mouse is on it).
+  window.fmNotice = (text, error, action) => {
+    document.getElementById("fm-notice")?.remove();
+    clearInterval(window.fmNoticeTimer);
+    const busy = !error && /^Importing|…$/.test(text), done = !error && !busy;
+    // lighter tones than the pages' red and lime; drawn icons: a tick in a circle, a warning triangle
+    const ICON_OK = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity=".14"/><path d="M7.5 12.3l3 3 6-6.3"/></svg>';
+    const ICON_ERR = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 2.6 19.6h18.8Z" fill="currentColor" fill-opacity=".14"/><path d="M12 9.5v4.6M12 17.2v.1"/></svg>';
+    const ICON_INFO = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity=".14"/><path d="M12 11v5.5M12 7.6v.1"/></svg>';
+    const offer = action && action.label;  // a notice with a button (Import, Download): the info look
+    const kind = offer ? { c: "#a9dcf8", t: action.title || "", i: ICON_INFO } : error ? { c: "#ff9b9b", t: "Something went wrong", i: ICON_ERR }
+      : busy ? { c: "#a9dcf8", t: "Working on it", i: "" } : { c: "#d6f57e", t: (action && action.title) || (/^Imported/.test(text) ? "Import done" : "Done"), i: ICON_OK };
+    const n = document.createElement("div");
+    n.id = "fm-notice";
+    n.setAttribute("role", error ? "alert" : "status");
+    n.style.cssText = "position:fixed;right:16px;bottom:" + (document.getElementById("fm-clear") ? 68 : 16) + "px;z-index:9999;width:420px;max-width:calc(100vw - 32px);overflow:hidden;" +
+      "display:flex;gap:12px;align-items:flex-start;padding:12px 12px 14px 14px;color:#f2efe7;background:#1d2522f5;" +
+      "border:1px solid #2a332f;border-left:4px solid " + kind.c + ";border-radius:10px;box-shadow:0 10px 30px #000a;" +
+      "font:14px/1.45 Inter,'Segoe UI',system-ui,sans-serif;animation:fmIn .18s ease-out";
+    const icon = document.createElement("div");
+    icon.style.cssText = "flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:" + kind.c;
+    if (busy) icon.style.cssText += ";width:22px;height:22px;margin:2px;border-radius:50%;border:2.5px solid #a9dcf840;border-top-color:#a9dcf8;animation:fmSpin .8s linear infinite";
+    icon.innerHTML = kind.i;
+    const body = document.createElement("div");
+    body.style.cssText = "flex:1;min-width:0";
+    const title = document.createElement("div");
+    title.style.cssText = "margin:2px 0 3px;color:" + kind.c + ";font:600 17px/1 'Barlow Condensed','Bahnschrift SemiCondensed','Arial Narrow',sans-serif;" +
+      "letter-spacing:.04em;text-transform:uppercase";  // the app's heading font, as on the pages' titles
+    title.textContent = kind.t;
+    const msg = document.createElement("div");
+    msg.style.cssText = "color:#e6e9e7;overflow-wrap:anywhere";
+    msg.textContent = text;
+    body.append(title, msg);
+    if (offer) {
+      const go = document.createElement("button");
+      go.textContent = action.label;
+      go.style.cssText = "margin-top:8px;padding:5px 14px;border:0;border-radius:6px;background:" + kind.c + ";color:#0f1412;font:700 13px Inter,'Segoe UI',sans-serif;cursor:pointer";
+      go.onclick = () => { clearInterval(window.fmNoticeTimer); n.remove(); action.run(); };
+      body.append(go);
+    }
+    if (error) {
+      const hint = document.createElement("div");
+      hint.style.cssText = "margin-top:6px;color:#9aa49f;font-size:12px";
+      hint.textContent = "Your data is safe. If it keeps happening: Menu → About → project page, with app.log.";
+      body.append(hint);
+    }
+    const close = document.createElement("button");
+    close.textContent = "×"; close.title = "Close";
+    close.style.cssText = "flex:none;margin:-4px -2px 0 0;padding:0 6px;border:0;background:transparent;color:#9aa49f;font:20px/1 Inter,sans-serif;cursor:pointer";
+    close.onclick = () => { clearInterval(window.fmNoticeTimer); n.remove(); };
+    const bar = document.createElement("div");
+    bar.style.cssText = "position:absolute;left:0;bottom:0;height:3px;width:100%;background:" + kind.c + ";opacity:.7";
+    n.append(icon, body, close, bar);
+    if (!document.getElementById("fm-notice-css")) {
+      const st = document.createElement("style"); st.id = "fm-notice-css";
+      st.textContent = "@keyframes fmIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes fmSpin{to{transform:rotate(360deg)}}";
+      document.head.append(st);
+    }
+    document.body.append(n);
+    if (busy) { bar.remove(); return; }  // stays until the import's own notice replaces it
+    const total = offer ? 20000 : error ? 15000 : 6000; let left = total, paused = false;
+    n.onmouseenter = () => paused = true; n.onmouseleave = () => paused = false;
+    window.fmNoticeTimer = setInterval(() => {
+      if (paused) return;
+      left -= 100; bar.style.width = Math.max(0, left / total * 100) + "%";
+      if (left <= 0) { clearInterval(window.fmNoticeTimer); n.remove(); }
+    }, 100);
   };
 })()"""
 

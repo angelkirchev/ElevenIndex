@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.11.4"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.12.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -1033,7 +1033,7 @@ def settings_tile(config, cfg, save):
     table += (f'<tr><td class="text">Project page</td><td><a href="{PROJECT_URL}" target="_blank" rel="noopener">'
               f'{PROJECT_URL.removeprefix("https://")}</a> (updates, README, report a problem)</td></tr>')
     return {"key": "", "title": "About and your settings",
-            "text": f"<table>{table}</table>Switch, start or delete saves with <b>Menu → Saves</b> (bottom right). Everything else is in "
+            "text": f"<table>{table}</table>Switch, start or delete saves with <b>Menu → Saves</b> (under the logo). Everything else is in "
                     f"<b>config.toml</b> (this computer) and <b>saves\\{html.escape(save)}\\save.toml</b> (this save) in the data "
                     f"folder: edit them with Notepad, then restart the app."}
 
@@ -1285,7 +1285,7 @@ GUIDE = [
     {"key": "", "title": "Getting started",
      "text": "<ol><li>In FM, open your <b>squad</b> screen with the <b>Squad - All Players View</b> (see the README for the views).</li>"
              "<li>Point the mouse at the list and press <b>F8</b>: FM27 Exporter saves the list as a file.</li>"
-             "<li>Here, open <b>Menu</b> (bottom right) → <b>Import file…</b> and pick that file.</li></ol>"
+             "<li>Here, open <b>Menu</b> (under the logo, or key <b>M</b>) → click the export under <b>Recent exports</b>, or <b>Import file…</b> (key <b>I</b>), or drop the file on the window. While the app is open, a new export (F8 in FM) also pops up a notice with an <b>Import</b> button.</li></ol>"
              "The app works out what it is (your squad, a search, staff), scores everyone and opens the right page. "
              "Import your squad first; after that, import searches and shortlists whenever you're looking for players."},
     {"key": "", "title": "Importing: what goes where",
@@ -1465,10 +1465,14 @@ GUIDE = [
              "<li>several at once, with spaces: <b>age&lt;=23 best=ST vs&gt;=90</b></li></ul>"
              "The count next to the box shows how many match. Click a column heading to sort (again to reverse)."},
     {"key": "", "title": "Saves, folders and mistakes",
-     "text": "<ul><li><b>Menu</b> (bottom right): <b>Import file…</b>, <b>Open the exports folder</b>, <b>Saves</b> (switch "
-             "between FM saves, start one for a new game or club, or delete one: a deleted save can be restored there "
-             "for 14 days, or removed for good at once with Delete now, clicked twice), <b>Theme</b> (five colour themes, for every save) and <b>About</b> (the version, your settings and the "
-             "project page).</li>"
+     "text": "<ul><li><b>Menu</b> (under the logo, key <b>M</b>): this save; <b>Recent exports</b> (the newest in FM27 "
+             "Exporter's folder, new or imported, one click to import; ▾ shows the last five, ▴ folds them up); "
+             "<b>Import file…</b> (key <b>I</b>; or drop a file on the window); <b>Open the exports folder</b>; "
+             "<b>Saves…</b> (everything about saves: switch to one, start one for a new game or club, delete one, "
+             "<b>Back up this save…</b> as one zip, <b>Restore a backup…</b>; a deleted save can be restored there for "
+             "14 days, or removed for good at once with Delete now, clicked twice); <b>Theme…</b> (five colour themes); "
+             "<b>Check for updates</b> (asks GitHub for the latest version number, nothing of yours is sent, and says in "
+             "the corner whether you're up to date, with a link); <b>About</b>.</li>"
              "<li>Your data is in <b>Documents\\ElevenIndex</b>: settings (config.toml), each save's data and pages. Updating the "
              "app keeps it all.</li>"
              "<li><b>Imported the wrong file?</b> Close the app, delete its files from <b>saves\\&lt;your save&gt;\\obs</b> (their "
