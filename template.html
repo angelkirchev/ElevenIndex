@@ -39,6 +39,14 @@ __THEME__
   tbody tr:nth-child(even) td { background-color: var(--row); }
   tr:hover td { background-color: var(--hover); }
   /* the column sorted by: heading filled, a line under it, the cells tinted; ↑ or ↓ for the direction */
+  /* a short header's full name (Staff's jobs): above it on hover; the clicked one stays, in the accent */
+  .coltip { position: absolute; z-index: 30; display: none; padding: 5px 10px; color: var(--fg); background: var(--pop, #121815);
+            border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 16px #000a; font: 600 12px/1.3 var(--body);
+            white-space: nowrap; pointer-events: none; }
+  .coltip::before { content: ""; position: absolute; bottom: -5px; left: 50%; width: 8px; height: 8px; margin-left: -4px;
+                    background: inherit; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
+  .coltip.pinned { color: #0f1412; background: var(--accent-strong); border-color: var(--blue); }
+  .coltip.pinned::before { border-color: var(--blue); }
   th.sorted { color: var(--fg); background: color-mix(in srgb, var(--blue) 20%, transparent); box-shadow: inset 0 -2px var(--blue); border-radius: 4px 4px 0 0; }
   th.asc::after { content: " ↑"; }
   th.desc::after { content: " ↓"; }
@@ -422,13 +430,15 @@ function render() {
   document.getElementById("count").textContent = view.length < DATA.length ? `showing ${view.length}` : "";  // while searching
   document.getElementById("head").innerHTML = COLS.map((c, ci) => {
     const marks = [c.num && "num", c.key === sort.key && `sorted ${sort.dir > 0 ? "asc" : "desc"}`, ci === cur.c && "curcol"];
-    return `<th data-key="${c.key}" class="${marks.filter(Boolean).join(" ")}">${c.label}</th>`;
+    const full = c.title && c.title !== c.label ? ` data-full="${esc(c.title)}"` : "";  // a short label's full name (Staff: the jobs)
+    return `<th data-key="${c.key}" class="${marks.filter(Boolean).join(" ")}"${full}>${c.label}</th>`;
   }).join("");
   document.getElementById("body").innerHTML = view.map((r, ri) => `<tr class="${ri === cur.r ? "currow" : ""}">` +
     COLS.map((c, ci) => cellHtml(r, c, [ri === cur.r && ci === cur.c && "cur", c.key === sort.key && "sortcol"].filter(Boolean).join(" "))).join("") +
     "</tr>").join("");
   if (render.done) document.querySelector("td.cur")?.scrollIntoView({ block: "nearest", inline: "nearest" });  // not when the page opens
   render.done = true;
+  placeColTip();
   remember();
 }
 function sortOn(ci) {  // the same column again reverses it; a new one starts high-to-low for numbers, A-Z for text
@@ -1305,8 +1315,35 @@ document.getElementById("head").addEventListener("click", e => {
   const ci = COLS.findIndex(c => c.key === e.target.dataset.key);
   if (ci < 0) return;
   cur.c = ci;
+  colTipPinned = e.target.dataset.full ? e.target.dataset.key : null;  // a short header's full name stays shown
   sortOn(ci);
 });
+// A short column header's full name (Staff: Mgr → Manager…): a balloon under it while the mouse is on it, and one that
+// stays under the column you clicked until you click anywhere else
+let colTipPinned = null, colTipHover = null;
+const colTip = document.createElement("div");
+colTip.className = "coltip";
+document.body.append(colTip);
+function placeColTip() {
+  const key = colTipHover || colTipPinned;
+  const th = key && document.querySelector(`#head th[data-key="${CSS.escape(key)}"]`);
+  if (!th || !th.dataset.full) { colTip.style.display = "none"; return; }
+  colTip.textContent = th.dataset.full;
+  colTip.classList.toggle("pinned", key === colTipPinned && !colTipHover);
+  colTip.style.display = "block";
+  const r = th.getBoundingClientRect(), w = colTip.offsetWidth;
+  colTip.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + scrollX + "px";
+  colTip.style.top = r.top - colTip.offsetHeight - 7 + scrollY + "px";  // above the header, so the column stays readable
+}
+document.getElementById("head").addEventListener("mouseover", e => {
+  const th = e.target.closest("th[data-full]");
+  colTipHover = th ? th.dataset.key : null; placeColTip();
+});
+document.getElementById("head").addEventListener("mouseleave", () => { colTipHover = null; placeColTip(); });
+// (the clicked header is redrawn by the sort, so the old one is no longer inside #head: test the header itself)
+document.addEventListener("click", e => { if (!e.target.closest?.("th[data-full]") && colTipPinned) { colTipPinned = null; placeColTip(); } });
+window.addEventListener("resize", placeColTip);
+window.addEventListener("scroll", placeColTip, true);
 document.getElementById("body").addEventListener("click", e => {
   const icon = e.target.closest(".cmpic");
   if (icon) { if (!icon.classList.contains("full")) { fmCompareToggle(icon.dataset.name); render(); } return; }

@@ -62,11 +62,18 @@ __THEME__
   svg { display: block; width: 100%; overflow: visible; font: 11px var(--body); }
   .ticks text { fill: var(--dim); }
   .gridline { stroke: var(--line); stroke-opacity: .45; }
-  .pos { fill: var(--purple); font-size: 12px; cursor: pointer; }
+  .pos { fill: var(--purple); font-size: 13px; font-weight: 600; cursor: pointer; }
   .pos.on { fill: var(--cyan); font-weight: 700; }
   .count { fill: var(--dim); }
   .lead { font-size: 12px; font-weight: 700; } .lead.up { fill: var(--green); } .lead.down { fill: var(--red); }
   .stripe { fill: #ffffff05; }
+  /* by position: one band per position (two lanes), the label on its own strip, your best big and named */
+  .band { fill: #ffffff03; } .band.odd { fill: #ffffff0a; } .rowline { stroke: #ffffff1f; stroke-width: 1; }
+  .poscell { fill: #00000033; } .poscell.on { fill: color-mix(in srgb, var(--blue) 14%, transparent); }
+  .toptick { fill: var(--dim); font-size: 11px; }
+  .mark.us.faint { opacity: .45; }
+  .mark.us.best { stroke: #fff; stroke-width: 1.6; }
+  .bestname { fill: var(--orange); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: #0f1412; stroke-width: 3px; }
   .spread { stroke: #dff79a66; stroke-width: 2; }
   .middle-half { fill: color-mix(in srgb, var(--blue) 25%, transparent); stroke: var(--blue); stroke-width: 1; }
   .middle { fill: #fff; }
@@ -269,10 +276,12 @@ function marker(svg, p, x, y, asTick) {
 // ---- by position: per position a range of the compared players and your players on it ----
 // value(p, pos); counts(p, pos): whether p belongs in pos's row; floor: where the scale starts (lower values sit at it)
 function byPosition(boxId, value, title, counts, step, labelMiddle, floor, only) {
+  // each position is one band with two lanes: on top the players you compare with (their range, the middle half, the
+  // middle, a tick each), below your players (small faded diamonds, your best big with his name and score)
   const POSITIONS = only || MARKET.positions;  // only: just these rows (Goalkeeping: GK)
   const box = document.getElementById(boxId);
   box.innerHTML = "";
-  const width = box.clientWidth, row = 46, left = 64, right = 50, height = POSITIONS.length * row + 30;
+  const width = box.clientWidth, row = 64, top = 26, left = 78, right = 56, height = top + POSITIONS.length * row + 34;
   const everyone = shown();
   const lines = POSITIONS.map(pos => ({ pos, people: everyone.filter(p => counts(p, pos) && value(p, pos) != null) }));
   if (!lines.some(l => l.people.length)) return;
@@ -280,29 +289,49 @@ function byPosition(boxId, value, title, counts, step, labelMiddle, floor, only)
   const [lo, hi] = padded(values, 0.04), scale = straightScale([floor ?? lo, hi], [left, width - right], step);
   const x = v => scale(Math.max(v, scale.range[0]));
   const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height }, box);
-  ticks(svg, scale, true, height - 24, height - 24, title);
-  const endText = (y, text, cls) => { svgEl("text", { x: width, y: y + 4, "text-anchor": "end", class: cls }, svg).textContent = text; };
+  const bottom = top + POSITIONS.length * row;
+  // the bands first, so the grid and marks sit on them
+  lines.forEach(({ pos }, i) => {
+    const y0 = top + i * row;
+    svgEl("rect", { x: left - 8, y: y0, width: width - left - right + 16, height: row, class: i % 2 ? "band odd" : "band" }, svg);
+    svgEl("rect", { x: 0, y: y0, width: left - 12, height: row, rx: 0, class: `poscell${pos === choice.pos ? " on" : ""}` }, svg);
+    if (i) svgEl("line", { x1: 0, x2: width, y1: y0, y2: y0, class: "rowline" }, svg);
+  });
+  ticks(svg, scale, true, bottom + 4, bottom - top + 4, title);
+  for (const t of scale.marks())  // the scale at the top too
+    svgEl("text", { x: scale(t), y: top - 9, "text-anchor": "middle", class: "toptick" }, svg).textContent = scale.label(t);
+  const endText = (y, text, cls) => { svgEl("text", { x: width - 4, y: y + 4, "text-anchor": "end", class: cls }, svg).textContent = text; };
   lines.forEach(({ pos, people }, i) => {
-    const y = i * row + row / 2, them = people.filter(p => !p.squad), us = people.filter(p => p.squad);
-    if (i % 2) svgEl("rect", { x: left - 6, y: y - row / 2, width: width - left - right + 12, height: row, class: "stripe" }, svg);
-    const name = svgEl("text", { x: 0, y: y + 4, class: `pos${pos === choice.pos ? " on" : ""}` }, svg);
+    const y0 = top + i * row, laneThem = y0 + 22, laneUs = y0 + 47, mid0 = y0 + row / 2;
+    const them = people.filter(p => !p.squad), us = people.filter(p => p.squad);
+    const name = svgEl("text", { x: 12, y: mid0 + 4, class: `pos${pos === choice.pos ? " on" : ""}` }, svg);
     name.textContent = pos;
     name.addEventListener("click", () => choose("pos", pos));
-    if (!them.length) endText(y, "–", "count");
-    else {
-      const sorted = them.map(p => value(p, pos)).sort((a, b) => a - b), mid = quantile(sorted, 0.5);
+    let mid = null;
+    if (them.length) {
+      const sorted = them.map(p => value(p, pos)).sort((a, b) => a - b);
+      mid = quantile(sorted, 0.5);
       const q1 = x(quantile(sorted, 0.25)), q3 = x(quantile(sorted, 0.75));
-      svgEl("line", { x1: x(sorted[0]), x2: x(sorted[sorted.length - 1]), y1: y, y2: y, class: "spread" }, svg);
-      svgEl("rect", { x: q1, y: y - 7, width: Math.max(2, q3 - q1), height: 14, rx: 4, class: "middle-half" }, svg);
-      svgEl("rect", { x: x(mid) - 1.5, y: y - 10, width: 3, height: 20, rx: 1.5, class: "middle" }, svg);
-      if (labelMiddle) svgEl("text", { x: x(mid), y: y - 13, "text-anchor": "middle", class: "middle-value" }, svg).textContent = mid.toFixed(1);
-      them.forEach(p => marker(svg, p, x(value(p, pos)), y + 15, true));
-      if (us.length) {
-        const lead = Math.max(...us.map(p => value(p, pos))) - mid;
-        endText(y, `${lead >= 0 ? "+" : "−"}${Math.abs(lead).toFixed(1)}`, `lead ${lead >= 0 ? "up" : "down"}`);
-      } else endText(y, String(them.length), "count");
+      svgEl("line", { x1: x(sorted[0]), x2: x(sorted[sorted.length - 1]), y1: laneThem, y2: laneThem, class: "spread" }, svg);
+      svgEl("rect", { x: q1, y: laneThem - 7, width: Math.max(2, q3 - q1), height: 14, rx: 4, class: "middle-half" }, svg);
+      svgEl("rect", { x: x(mid) - 1.5, y: laneThem - 10, width: 3, height: 20, rx: 1.5, class: "middle" }, svg);
+      if (labelMiddle) svgEl("text", { x: x(mid), y: laneThem - 13, "text-anchor": "middle", class: "middle-value" }, svg).textContent = mid.toFixed(1);
+      them.forEach(p => marker(svg, p, x(value(p, pos)), laneThem + 10, true));
     }
-    us.forEach(p => marker(svg, p, x(value(p, pos)), y));
+    if (us.length) {
+      const best = us.reduce((a, b) => value(b, pos) > value(a, pos) ? b : a);
+      us.filter(p => p !== best).forEach(p => marker(svg, p, x(value(p, pos)), laneUs).classList.add("faint"));
+      const bx = x(value(best, pos)), m = marker(svg, best, bx, laneUs);
+      m.classList.add("best");
+      for (const [k, v] of Object.entries({ x: bx - 7, y: laneUs - 7, width: 14, height: 14 })) m.setAttribute(k, v);  // bigger
+      const label = svgEl("text", { x: bx + 10, y: laneUs + 4, class: "bestname" }, svg);
+      label.textContent = `${best.name.split(" ").pop()} ${value(best, pos).toFixed(1)}`;
+      if (bx + 10 + label.getComputedTextLength() > width - right) { label.setAttribute("x", bx - 10); label.setAttribute("text-anchor", "end"); }
+    }
+    if (mid != null && us.length) {
+      const lead = Math.max(...us.map(p => value(p, pos))) - mid;
+      endText(mid0, `${lead >= 0 ? "+" : "−"}${Math.abs(lead).toFixed(1)}`, `lead ${lead >= 0 ? "up" : "down"}`);
+    } else endText(mid0, them.length ? String(them.length) : "–", "count");
   });
 }
 
@@ -381,13 +410,13 @@ function draw() {
     how: `Each row is a position, each player at his best position. A player's value is his ${name.toLowerCase()} attributes ` +
       `averaged with the position's weights (the Attributes page), so it counts what matters there; under half of that weight ` +
       `scouted = no value. The bar in the accent colour is ${them}: the line runs from the worst to the best, the box holds the middle half, and ` +
-      `the white mark and number are the middle player. ${us} sit on top; the number at the far right is your best minus their ` +
+      `the white mark and number are the middle player. ${us} are on the lower lane, your best at each position big and named; the number at the far right is your best minus their ` +
       `middle (<span class="good">green</span> = you're ahead).` });
   const charts = {
     score: { name: "Role score by position", sub: "How good your players are at each position, against the others",
       draw: () => byPosition("chartBox", (p, at) => p.scores[at], "role score", atBest, undefined, true, 10),
       how: `Each row is a position. The bar in the accent colour is ${them}: the line runs from the worst to the best, the box holds the middle half, ` +
-        `and the white mark and number are the middle player. ${us} sit on top: right of the white mark = better than most of them. ` +
+        `and the white mark and number are the middle player. ${us} are on the lower lane, your best big and named: right of the white mark = better than most of them. ` +
         `The number at the far right is your best minus their middle (<span class="good">green</span> = you're ahead). Click a position to pick it.` },
     technical: group("technical", "Technical", "Corners to Technique: on the ball"),
     mental: group("mental", "Mental", "Anticipation to Work Rate: reading the game and effort"),

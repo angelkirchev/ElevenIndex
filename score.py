@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.12.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.12.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -1329,7 +1329,8 @@ GUIDE = [
              "<b>no backup</b> in red. On the Formations pitch's Positions the weakest is outlined red, the strongest green.</li>"
              "<li><b>Development</b> and <b>Compare</b>: green = better, red = worse; in Compare the first player is sky "
              "blue, the second the accent colour.</li>"
-             "<li><b>Research</b>: your players are the diamonds; by age, 21 or under in sky blue, 30+ in orange.</li>"
+             "<li><b>Research</b>: each position is a band; the players you compare with are the accent-coloured range on top, "
+             "your players the orange diamonds below it (your best big, with his name and score).</li>"
              "<li><b>Theme</b> (Menu → Theme…) changes the top bar, panels and accent only: these colours stay the "
              "same in every theme.</li></ul>"},
     {"key": "", "title": "A player's profile",

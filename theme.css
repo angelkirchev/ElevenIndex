@@ -90,3 +90,18 @@
   /* the logo, large and faint, in the bottom-right corner (clicks pass through) */
   .watermark { position: fixed; right: -40px; bottom: -50px; z-index: 5; width: 360px; height: 360px; opacity: .04;
                background: center / contain no-repeat; pointer-events: none; }
+  /* every table's header row: a light band, so it stands apart from the rows (the sorted column keeps its own) */
+  thead th { background: color-mix(in srgb, var(--fg) 11%, transparent); color: var(--purple); }
+  thead th:first-child { border-top-left-radius: 6px; } thead th:last-child { border-top-right-radius: 6px; }
+  /* every table: a hairline between columns (not on the outer edges), very faint */
+  th + th, td + td { border-left: 1px solid color-mix(in srgb, var(--fg) 6%, transparent); }
+  /* …and the same faint line round each table, with rounded corners (Formations' small stat cards are framed already) */
+  table { border-collapse: separate !important; border-spacing: 0; border: 1px solid color-mix(in srgb, var(--fg) 6%, transparent);
+          border-radius: 7px; }
+  tbody tr:last-child td:first-child { border-bottom-left-radius: 6px; } tbody tr:last-child td:last-child { border-bottom-right-radius: 6px; }
+  table.fstats { border: 0; border-radius: 0; } table.fstats td + td { border-left: 0; }
+  /* every dropdown: a lighter box and list than the panels, so it reads as something to click */
+  select { color: var(--fg) !important; background-color: color-mix(in srgb, var(--fg) 12%, var(--bg)) !important;
+           border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent) !important; }
+  select:hover { border-color: color-mix(in srgb, var(--blue) 60%, transparent) !important; }
+  select option { color: var(--fg); background-color: color-mix(in srgb, var(--fg) 14%, var(--bg)); }
