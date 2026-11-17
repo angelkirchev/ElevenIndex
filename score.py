@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.8.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.8.2"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -577,9 +577,9 @@ def search_attrs(weights):
 FORMATIONS = [
     ("4-2-3-1", "Double pivot, a ten, wingers pressing high", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "AMC": 1, "ST": 1}),
     ("4-3-3 DM Wide", "A holder, two box-to-box eights, wingers", {"DL/DR": 2, "DC": 2, "DM": 1, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("4-3-3", "Flat midfield three, width from wingers", {"DL/DR": 2, "DC": 2, "MC": 3, "AML/AMR": 2, "ST": 1}),
+    ("4-3-3", "Flat midfield three, a front three of strikers", {"DL/DR": 2, "DC": 2, "MC": 3, "ST": 3}),
     ("4-2-3-1 DM Wide", "Two holders, a ten, two wide forwards", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 1, "AML/AMR": 2, "ST": 1}),
-    ("3-4-3", "Back three, wide midfielders, pressing front three", {"DC": 3, "ML/MR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("3-4-3", "Back three, wide midfielders, three strikers", {"DC": 3, "ML/MR": 2, "MC": 2, "ST": 3}),
     ("3-4-2-1", "Two tens behind a striker, wing backs for width", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AMC": 2, "ST": 1}),
     ("4-4-2", "Two banks of four, strike partnership", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "ST": 2}),
     ("4-2-2-2", "Narrow: two tens, two strikers", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 2, "ST": 2}),
@@ -588,7 +588,7 @@ FORMATIONS = [
     ("5-4-1", "Deep low block, counter-attacks", {"DC": 3, "WBL/WBR": 2, "ML/MR": 2, "MC": 2, "ST": 1}),
     ("5-2-2-1", "Back five, two inside forwards, lone striker", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
     ("4-2-4", "All-out attack, two wingers and two strikers", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "ST": 2}),
-    ("3-5-2", "Wing backs, midfield three, two strikers", {"DC": 3, "WBL/WBR": 2, "DM": 1, "MC": 2, "ST": 2}),
+    ("3-5-2", "Wide midfielders, midfield three, two strikers", {"DC": 3, "ML/MR": 2, "DM": 1, "MC": 2, "ST": 2}),
     ("5-3-2", "Back five, midfield three, direct to two strikers", {"DC": 3, "WBL/WBR": 2, "MC": 3, "ST": 2}),
     ("4-1-4-1", "A holder behind a midfield four, compact", {"DL/DR": 2, "DC": 2, "DM": 1, "ML/MR": 2, "MC": 2, "ST": 1}),
     ("4-4-1-1", "Compact 4-4-2 with a deep-lying forward", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "AMC": 1, "ST": 1}),
