@@ -303,6 +303,18 @@ class App:
             self.commit(f"{target.name}: restored")
         return target.name
 
+    def remove_deleted(self, folder):
+        """Saves… → Deleted saves → Delete now (clicked twice): remove a deleted save for good, without the 14 days."""
+        src = score.ROOT / "saves" / "_deleted" / folder
+        if not self._plain_name(folder) or not (src / "save.toml").is_file():
+            raise ValueError(f"There's no deleted save called {folder}.")
+        def writable(func, path, _):  # Windows: a read-only file can't be removed until it's writable
+            os.chmod(path, 0o666)
+            func(path)
+        with self.lock:
+            shutil.rmtree(src, onerror=writable)
+            self.commit(f"{folder}: deleted for good (Delete now)")
+
     # --- theme (Menu → Theme…) -------------------------------------------------------------------------------------
 
     def themes(self):
@@ -585,6 +597,9 @@ class MainApi:
         except (Exception, SystemExit) as e:
             return {"error": str(e)}
 
+    def remove_deleted(self, folder):
+        return self._call(self._app.remove_deleted, folder)
+
     def setup(self, club, division, currency, exports, name, shortcut):
         return self._call(self._app.setup, club, division, currency, exports, name, shortcut)
 
@@ -680,6 +695,10 @@ body { position: relative; overflow: hidden; color: #f2efe7; font: 15px/1.55 Int
 svg.pitch { position: absolute; inset: 0; width: 100%; height: 100%; }
 svg.pitch .l { fill: none; stroke: #f2efe7; stroke-opacity: .07; stroke-width: 2; }
 svg.pitch .d { fill: #c5f04f; fill-opacity: .16; } svg.pitch .gk { fill: #f2efe7; fill-opacity: .14; }
+:root { --body: Inter, 'Segoe UI', system-ui, sans-serif; }
+.bar.corner { position: absolute; top: 26px; right: 40px; display: flex; }
+.bar.corner .promo { transform: scale(1.25); transform-origin: top right; }
+__PROMO_CSS__
 .brand { position: absolute; top: 34px; left: 40px; display: flex; gap: 12px; align-items: center; }
 .brand svg { width: 46px; height: 46px; }
 .brand b { display: block; font: 600 26px/1 'Bahnschrift SemiCondensed', 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: .32em; }
@@ -715,6 +734,7 @@ svg.pitch .d { fill: #c5f04f; fill-opacity: .16; } svg.pitch .gk { fill: #f2efe7
   <circle class="d" cx="900" cy="250" r="11"/><circle class="d" cx="870" cy="500" r="11"/><circle class="d" cx="900" cy="750" r="11"/>
 </svg>
 <div class="brand">__LOGO__<span><b>INDEX</b><small>Rate smarter. Build better.</small></span></div>
+<div class="bar corner">__PROMO__</div>
 __BODY__
 </body></html>"""
 
@@ -743,7 +763,11 @@ def screen(kind, club="", detail=""):
 </ol><div class="more"><b>Scouting:</b> Player Search with <b>Search - Outfield Players View</b> (or <b>Goalkeepers</b>) and a position
 filter, then F8 and import the same way. <b>No such view in FM?</b> Extract <b>ElevenIndex-FM27-views-and-filters.zip</b> into
 Documents\\Sports Interactive\\Football Manager 27, then in FM's view menu: <b>Custom → Import view</b>.</div></div>"""
-    return SCREEN_HTML.replace("__LOGO__", logo).replace("__BODY__", body)
+    theme = (score.APP / "theme.css").read_text(encoding="utf-8") if (score.APP / "theme.css").exists() else ""
+    i, j = theme.find("  /* the banner at the right of the top bar"), theme.find("  .bar #filter {")
+    promo_css = theme[i:j] if 0 <= i < j else ""  # the banner's own rules (score.PROMO), as on every page
+    return (SCREEN_HTML.replace("__PROMO_CSS__", promo_css).replace("__PROMO__", score.promo_html())
+            .replace("__LOGO__", logo).replace("__BODY__", body))
 
 TOOLBAR_JS = """(() => {
   if (document.getElementById("fm-import")) return;
@@ -859,7 +883,7 @@ TOOLBAR_JS = """(() => {
     const deleted = await pywebview.api.deleted_saves();
     if (deleted.length) {
       box.append(css(make("h3", "Deleted saves"), "margin:20px 0 4px;font-size:16px"),
-        css(make("div", "Kept for 14 days after they're deleted, then removed for good."), "color:#9aa49f;margin-bottom:6px"));
+        css(make("div", "Kept for 14 days after they're deleted, then removed for good. Delete now removes one straight away (click it twice)."), "color:#9aa49f;margin-bottom:6px"));
       for (const s of deleted) {
         const line = css(make("div"), "display:flex;gap:6px;align-items:center;margin:4px 0;padding:6px 6px 6px 12px;border:1px dashed #2a332f;border-radius:6px");
         line.append(css(make("span", (s.club || s.name) + "  (" + s.name + ")"), "flex:1;min-width:0;color:#cfd6d1"),
@@ -872,7 +896,23 @@ TOOLBAR_JS = """(() => {
           await window.fmSaves();
           window.fmNotice(`Restored ${r.result}: it's back in your saves.`, false);
         };
-        line.append(restore);
+        // Delete now: for good, without waiting the 14 days. The first click asks, a second within 5 s deletes.
+        const now = css(make("button", "Delete now"), "flex:none;padding:6px 12px;border:0;border-radius:6px;background:#33292e;color:#f87171;font:600 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
+        now.title = "Remove this save for good now. It can't be restored afterwards.";
+        let armed = null;
+        now.onclick = async () => {
+          if (!armed) {
+            now.textContent = "For good? Click again";
+            armed = setTimeout(() => { armed = null; now.textContent = "Delete now"; }, 5000);
+            return;
+          }
+          clearTimeout(armed); armed = null; now.disabled = true;
+          const r = await pywebview.api.remove_deleted(s.folder);
+          if (r && r.error) { error.textContent = r.error; now.disabled = false; now.textContent = "Delete now"; return; }
+          await window.fmSaves();
+          window.fmNotice(`${s.name} is deleted for good.`, false);
+        };
+        line.append(restore, now);
         box.append(line);
       }
     }

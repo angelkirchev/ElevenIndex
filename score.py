@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.11.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.11.2"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -1467,7 +1467,7 @@ GUIDE = [
     {"key": "", "title": "Saves, folders and mistakes",
      "text": "<ul><li><b>Menu</b> (bottom right): <b>Import file…</b>, <b>Open the exports folder</b>, <b>Saves</b> (switch "
              "between FM saves, start one for a new game or club, or delete one: a deleted save can be restored there "
-             "for 14 days), <b>Theme</b> (five colour themes, for every save) and <b>About</b> (the version, your settings and the "
+             "for 14 days, or removed for good at once with Delete now, clicked twice), <b>Theme</b> (five colour themes, for every save) and <b>About</b> (the version, your settings and the "
              "project page).</li>"
              "<li>Your data is in <b>Documents\\ElevenIndex</b>: settings (config.toml), each save's data and pages. Updating the "
              "app keeps it all.</li>"
