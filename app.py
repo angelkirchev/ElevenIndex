@@ -845,7 +845,7 @@ TOOLBAR_JS = """(() => {
     shade.id = "fm-saves";
     shade.onclick = e => { if (e.target === shade) shade.remove(); };
     shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
-    const box = css(make("div"), "background:#121815;color:#f2efe7;border:1px solid #2a332f;border-radius:10px;padding:20px 22px;width:440px;max-width:90vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000");
+    const box = css(make("div"), "background:#121815;color:#f2efe7;border:1px solid #2a332f;border-radius:10px;padding:20px 22px;width:500px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000");
     const error = css(make("div"), "color:#f87171;min-height:1.2em;margin-top:8px");
     const run = async (call) => { error.textContent = "Working…"; const r = await call(); if (r && r.error) error.textContent = r.error; else shade.remove(); };
 
@@ -885,9 +885,11 @@ TOOLBAR_JS = """(() => {
       box.append(css(make("h3", "Deleted saves"), "margin:20px 0 4px;font-size:16px"),
         css(make("div", "Kept for 14 days after they're deleted, then removed for good. Delete now removes one straight away (click it twice)."), "color:#9aa49f;margin-bottom:6px"));
       for (const s of deleted) {
-        const line = css(make("div"), "display:flex;gap:6px;align-items:center;margin:4px 0;padding:6px 6px 6px 12px;border:1px dashed #2a332f;border-radius:6px");
-        line.append(css(make("span", (s.club || s.name) + "  (" + s.name + ")"), "flex:1;min-width:0;color:#cfd6d1"),
-          css(make("span", "deleted " + s.deleted + " · gone " + s.gone), "color:#9aa49f;white-space:nowrap;font-size:12px"));
+        const line = css(make("div"), "display:flex;gap:8px;align-items:center;margin:6px 0;padding:8px 8px 8px 12px;border:1px dashed #2a332f;border-radius:6px");
+        const who = css(make("div"), "flex:1;min-width:0;display:flex;flex-direction:column;gap:2px");
+        who.append(css(make("span", (s.club || s.name) + "  (" + s.name + ")"), "color:#cfd6d1;overflow-wrap:anywhere"),
+          css(make("span", "deleted " + s.deleted + " · gone " + s.gone), "color:#9aa49f;font-size:12px"));
+        line.append(who);
         const restore = css(make("button", "Restore"), "flex:none;padding:6px 12px;border:0;border-radius:6px;background:#2a332f;color:#c5f04f;font:600 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
         restore.onclick = async () => {
           restore.disabled = true;
