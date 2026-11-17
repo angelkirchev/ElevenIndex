@@ -63,6 +63,26 @@
   .subnav .info { margin-left: auto; align-self: center; padding: 0 2px; color: var(--sub-ink); font-size: 12px; white-space: nowrap;
                   overflow: hidden; text-overflow: ellipsis; }
   /* the search box and count, on the bar: light, like FM's search */
+  /* the banner at the right of the top bar (score.PROMO): fixed colours, the same in every theme, with an FM Scout tab
+     on its top-right edge */
+  .bar .promo { position: relative; display: flex; gap: 9px; align-items: center; margin: 12px 0 6px auto;
+                padding: 6px 13px 6px 6px; color: #f2efe7; text-decoration: none; background: #14181a;
+                border: 1px solid #3a4246; border-radius: 8px; white-space: nowrap; transition: border-color .12s, background .12s; }
+  .bar .promo:hover { background: #1b2124; border-color: #c5f04f; }
+  .bar .promo svg { flex: none; width: 28px; height: 28px; filter: drop-shadow(0 1px 2px #0008); }
+  .bar .promo svg .tile { stroke: #7fe0a6; stroke-opacity: .45; stroke-width: 1; }
+  .bar .promo svg .shine { fill: none; stroke: #ffffff; stroke-opacity: .22; stroke-width: 1.2; stroke-linecap: round; }
+  .bar .promo svg .frame { fill: none; stroke: #f2efe7; stroke-opacity: .28; stroke-width: .8; }  /* the inner frame */
+  .bar .promo svg .shirt { stroke-linejoin: round; }
+  .bar .promo svg .shirt.side { fill: #f2efe7; fill-opacity: .4; stroke: #f2efe7; stroke-opacity: .55; stroke-width: 1; }
+  .bar .promo svg .shirt.main { fill: #f2efe7; stroke: #124a28; stroke-width: 1.1; }
+  .bar .promo span { display: flex; flex-direction: column; font: 600 13px/1.15 var(--body); }
+  .bar .promo small { color: #c5f04f; font: 700 9px/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; }
+  .bar .promo em { font-style: normal; } .bar .promo em b { color: #c5f04f; }
+  .bar .promo .promo-tab { position: absolute; top: -10px; right: 9px; padding: 1px 5px 0; background: #f2efe7; border-radius: 3px;
+                           color: #e3262f; font: 900 9px/1.25 "Arial Black", "Segoe UI Black", "Segoe UI", sans-serif;
+                           font-style: normal; letter-spacing: -.02em; box-shadow: 0 1px 3px #0006; }
+  .bar .promo .promo-tab b { color: #111; font-weight: 900; }
   .bar #filter { color: #fff; background: #ffffff1f; border-color: #ffffff3d; }
   .bar #filter::placeholder { color: var(--sub-ink); }
   .bar #filter:focus { background: #ffffff2e; border-color: #fff; }

@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.10.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.11.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -1217,6 +1217,32 @@ def as_script(value):
     return json.dumps(value, ensure_ascii=False).replace("</", "<\\/")
 
 
+# The small banner at the right of the top bar (blank url = no banner): Knap × ElevenIndex, the author's
+# partnership with Knap (2026-11-17); the link goes to his FM27 tactics.
+PROMO = {"url": "https://www.fmscout.com/f-knap-tactics-for-fm27.html", "kicker": "Knap × ElevenIndex",
+         "text": "Knap's FM27 tactics", "title": "Knap × ElevenIndex: Knap's FM27 tactics, on FM Scout (opens in your browser)"}
+
+
+def promo_html():
+    if not PROMO.get("url"):
+        return ""
+    # an app-style tile in the app's green: a plain shirt in front, two see-through shirts behind it left and right (no words)
+    shirt = ("M8.3 4.2 5.2 5.6 3.2 9.2l2.6 1.5 1.3-1.3V19.8h9.8V9.4l1.3 1.3 2.6-1.5-2-3.6-3.1-1.4"
+             "c-.7 1.3-2 2.1-3.7 2.1s-3-.8-3.7-2.1Z")
+    icon = ('<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="promo-g" x1="0" y1="0" x2="0" y2="1">'
+            '<stop offset="0" stop-color="#2a9a57"/><stop offset="1" stop-color="#124a28"/></linearGradient></defs>'
+            '<rect class="tile" x=".75" y=".75" width="22.5" height="22.5" rx="5.5" fill="url(#promo-g)"/>'
+            '<rect class="frame" x="2.6" y="2.6" width="18.8" height="18.8" rx="3.8"/>'
+            '<path class="shine" d="M4.6 5.4c2.8-1.7 12-1.7 14.8 0"/>'
+            f'<path class="shirt side" transform="translate(1.6 5.6) scale(.48 .56)" d="{shirt}"/>'
+            f'<path class="shirt side" transform="translate(10.9 5.6) scale(.48 .56)" d="{shirt}"/>'
+            f'<path class="shirt main" transform="translate(4.5 3.4) scale(.625)" d="{shirt}"/></svg>')
+    return (f'<a class="promo" href="{html.escape(PROMO["url"])}" target="_blank" rel="noopener" '
+            f'title="{html.escape(PROMO["title"])}"><i class="promo-tab"><b>FM</b>SCOUT</i>{icon}'
+            f'<span><small>{html.escape(PROMO["kicker"])}</small>'
+            f'<em>{html.escape(PROMO["text"])} <b>→</b></em></span></a>')
+
+
 # Menu > Theme: the colour themes, (name, label, top bar, accent); theme.css has their colours, the first is :root's.
 THEMES = [("green", "Pitch green", "#1b6b3a", "#c5f04f"), ("blue", "Night blue", "#1c4a80", "#6cc4ff"),
           ("claret", "Claret & gold", "#7a1f35", "#f5c542"), ("graphite", "Graphite & orange", "#343b40", "#ff9a3c"),
@@ -1238,7 +1264,7 @@ def write_pages(save, config, cfg, pages):
     for page, (columns, data, *extra) in pages.items():
         extra = extra[0] if extra else {}
         text = templates["charts.html" if page == "charts" else "template.html"]
-        for marker, value in {**fills, "__NAV__": menu(page), "__PAGE__": page,
+        for marker, value in {**fills, "__NAV__": menu(page), "__PROMO__": promo_html(), "__PAGE__": page,
                               "__TITLE__": f"{fills['__HOME__']} · {PAGE_LABELS[page]}", "__COLS__": json.dumps(columns),
                               "__LINEUP__": as_script(extra.get("lineup")), "__INFO__": as_script(extra.get("info")),
                               "__DATA__": as_script(data)}.items():
