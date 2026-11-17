@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.10.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.10.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -341,6 +341,16 @@ def parse_money(text):
     return float(found.group(1)) * {"": 1, "K": 1e3, "M": 1e6, "B": 1e9}[found.group(2).upper()]
 
 
+def parse_wage(text):
+    """A wage, per week as the pages show it: FM's views can show it a year ('€15.43M p/a', the Salary column) or a
+    month ('p/m'); a scouted range ('€5.65M - €9.46M p/a') counts its lower end."""
+    v = parse_money(text)
+    if v is None:
+        return None
+    t = text.lower()
+    return v / 52 if "p/a" in t or "p/y" in t else v * 12 / 52 if "p/m" in t else v
+
+
 def carry_forward(dates):
     """The observation dates in order, each with every attribute's newest value so far: one FM couldn't show on a
     later screen keeps the value seen before."""
@@ -392,7 +402,7 @@ def row_facts(row):
     elif row.get("Left Foot"):  # older views: how good the left foot is
         facts["leftFoot"] = "Left" if row["Left Foot"] in LEFT_FOOTED else "Right"
     if row.get("Wage"):
-        facts["wage"] = parse_money(row["Wage"])
+        facts["wage"] = parse_wage(row["Wage"])
     if row.get("Transfer Value"):  # a scouted range, "£16K - £150K", or one figure
         low, _, high = row["Transfer Value"].partition(" - ")
         facts["value"] = (parse_money(low), parse_money(high or low))

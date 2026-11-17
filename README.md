@@ -38,10 +38,10 @@
   </tr>
   <tr>
     <td valign="top"><img src="docs/screenshots/compare.png" alt="Compare players"><br><sub><b>Compare</b>: two players side by side, at any position</sub></td>
-    <td valign="top"><img src="docs/screenshots/research.png" alt="Research"><br><sub><b>Research</b>: your best at each position against everyone you've scouted, or your squad by age</sub></td>
+    <td valign="top"><img src="docs/screenshots/research.png" alt="Research"><br><sub><b>Research</b>: your best at each position against everyone you've scouted</sub></td>
   </tr>
   <tr>
-    <td valign="top"><img src="docs/screenshots/analysis.png" alt="Analysis"><br><sub><b>Analysis</b>: your team position by position, ranked by score or any attribute</sub></td>
+    <td valign="top"><img src="docs/screenshots/analysis.png" alt="Analysis"><br><sub><b>Analysis</b>: your team position by position, with recommendations: ageing starters, backups, youngsters</sub></td>
     <td valign="top"><img src="docs/screenshots/development.png" alt="Development"><br><sub><b>Development</b>: how your players changed between two squad exports</sub></td>
   </tr>
   <tr>
