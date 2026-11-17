@@ -122,7 +122,8 @@ class App:
                      + ", ".join(skipped[:5]) + (f" and {len(skipped) - 5} more" if len(skipped) > 5 else "") + ".")
         self.notice = (text, False)  # shown by on_load after the reload
         page = "last_staff.html" if kind == "staff" else "last.html"
-        self.window.load_url((out / page).resolve().as_uri())
+        # a fresh address each time, so the page is read again even when it's the one already open
+        self.window.load_url((out / page).resolve().as_uri() + f"?t={int(time.time())}")
 
     # --- clearing old lists --------------------------------------------------------------------------------------
 

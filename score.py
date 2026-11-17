@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.8.3"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.9.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -70,9 +70,16 @@ MENU = [("1", "Squad", ["squad", "formations", "analysis", "development"], "squa
 SUB_LABELS = {"squad": "Lineup", "formations": "Formations", "analysis": "Analysis", "development": "Development",
               "elsewhere": "All players", "last": "Last import", "filters": "Search", "compare": "Compare",
               "staff": "All staff", "last_staff": "Last import", "staff_filters": "Search"}
-META = {"Name", "Club", "Age", "Position", "Left Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating", "Division"}  # every other column is an attribute
+META = {"Name", "Club", "Age", "Position", "Left Foot", "Preferred Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating",
+        "Division"}  # every other column is an attribute
 STAFF_META = {"Name", "Club", "Age", "Job", "Personality"}  # a staff file's other columns are attributes
-LEFT_FOOTED = {"Very Strong", "Strong", "Fairly Strong"}  # left foot this good or better: Foot = Left
+LEFT_FOOTED = {"Very Strong", "Strong", "Fairly Strong"}  # older views' Left Foot this good or better: Foot = Left
+
+
+def foot_word(preferred):
+    """FM's Preferred Foot ("Left-Footed", "Right-Footed Only", "Either") -> Left, Right or Either."""
+    p = preferred.strip().lower()
+    return "Either" if p.startswith("either") else "Left" if p.startswith("left") else "Right" if p.startswith("right") else None
 MIN_KNOWN_WEIGHT = 0.85  # a player is scored at a position when attributes carrying 85% of its weight are known (FM shows "-" for unscouted ones)
 PARTIAL_SQUAD = re.compile(r"-(u\d+s?|reserves)$")  # an export of only part of the club (U18s, U21s, reserves)
 # Filters page (players): search minimums for the fewest top-weighted attributes making up this share of a position's
@@ -202,7 +209,7 @@ def weights_toml(w, header):
     for name in [*order, *(k for k in w if k not in order)]:
         if name in w:
             v = w[name]
-            if isinstance(v, dict) and all(isinstance(x, dict) for x in v.values()):  # [outfield.DC], [staff.Mgr]…
+            if isinstance(v, dict) and all(isinstance(x, dict) for x in v.values()):  # [outfield.CD], [staff.Mgr]…
                 for k, sub in v.items():
                     table(f"{name}.{toml_key(k)}", sub)
             else:
@@ -211,7 +218,7 @@ def weights_toml(w, header):
 
 
 def with_positions(base, positions):
-    """base's weights with the position tables replaced by positions ({"GK": {...}, "DC": {...}…}), zero weights dropped."""
+    """base's weights with the position tables replaced by positions ({"GK": {...}, "CD": {...}…}), zero weights dropped."""
     clean = {p: {a: float(v) if float(v) % 1 else int(float(v)) for a, v in t.items() if float(v) > 0} for p, t in positions.items()}
     if bad := [p for p, t in clean.items() if not t]:
         raise ValueError(f"Every position needs at least one attribute with a weight: {', '.join(bad)} has none.")
@@ -297,7 +304,7 @@ def read_weights_table(text):
     rows = list(csv.reader(lines, delimiter=sep))
     head = [h.strip() for h in rows[0]]
     if len(head) < 2 or head[0].lower() != "attribute":
-        raise ValueError("its first row should be: Attribute, then the positions (GK, DC, DL/DR…)")
+        raise ValueError("its first row should be: Attribute, then the positions (GK, CD, DL/DR…)")
     positions = {p: {} for p in head[1:] if p}
     for row in rows[1:]:
         attr = row[0].strip() if row else ""
@@ -380,8 +387,10 @@ def obs_parts(stem):
 def row_facts(row):
     """What an observation row says about the player besides his attributes, keyed as the snapshot keeps it."""
     facts = {}
-    if row.get("Left Foot"):
-        facts["leftFoot"] = row["Left Foot"]
+    if row.get("Preferred Foot"):  # FM's "Left-Footed", "Right-Footed Only", "Either"...
+        facts["leftFoot"] = foot_word(row["Preferred Foot"])
+    elif row.get("Left Foot"):  # older views: how good the left foot is
+        facts["leftFoot"] = "Left" if row["Left Foot"] in LEFT_FOOTED else "Right"
     if row.get("Wage"):
         facts["wage"] = parse_money(row["Wage"])
     if row.get("Transfer Value"):  # a scouted range, "£16K - £150K", or one figure
@@ -391,8 +400,9 @@ def row_facts(row):
         facts["position"] = row["Position"]
     if "Loan" in row:  # squad screens only: in, out, trial, or blank for none
         facts["loan"] = row["Loan"] or None
-    if row.get("Rating"):  # a season's minutes and average rating, from screens that show them
-        facts.update(minutes=int(row["Minutes"]), rating=float(row["Rating"]), division=row.get("Division"))
+    if row.get("Rating"):  # a season's average rating (and minutes, from views that show them)
+        facts.update(rating=float(row["Rating"]),
+                     minutes=int(row["Minutes"]) if (row.get("Minutes") or "").isdigit() else None)
     return facts
 
 
@@ -439,17 +449,17 @@ def player_row(name, person, w):
         best = max(allowed, key=scores.get)
         history.append({"date": stamp, "club": seen["club"], "age": seen["age"], "leftFoot": facts["leftFoot"], **scores,
                         "best": best, "score": scores[best], "vsAge": scores[best] / expected(seen["age"]),
-                        "minutes": seen.get("minutes"), "rating": seen.get("rating"), "division": seen.get("division"),
+                        "minutes": seen.get("minutes"), "rating": seen.get("rating"),
                         "attrs": attrs})
     if not history:
         return None
-    foot = facts["leftFoot"]
-    strong_left = foot in LEFT_FOOTED
+    foot = facts["leftFoot"]  # Left, Right, Either or None
+    strong_left = foot in ("Left", "Either")
     row = {key: val for key, val in history[-1].items() if key not in ("date", "leftFoot", "attrs")}
     row.update(name=name, position=facts["position"],
                plays=[g for g in fm_positions(facts["position"]) if g in groups] or None,
                left=None if foot is None else ("yes" if strong_left else "no"),
-               foot=None if foot is None else ("Left" if strong_left else "Right"),
+               foot=foot,
                loan=facts["loan"], wage=facts["wage"], valueLo=facts["value"][0], value=facts["value"][1],
                history=history)
     return row
@@ -466,7 +476,7 @@ def player_cols(w, with_club):
             *(col(g, g, num=True, fmt="f1") for g in ("GK", *w["outfield"])),
             col("position", "FM position"), col("best", "Best"), col("score", "Score", num=True, fmt="f1"),
             col("vsAge", "vs Age", num=True, fmt="pct"),
-            *((col("rating", "Rating", num=True, fmt="f2"), col("minutes", "Mins", num=True)) if with_club else ())]
+            *((col("rating", "Rating", num=True, fmt="f2"),) if with_club else ())]
 
 
 def filters(squad, w):
@@ -490,7 +500,7 @@ def filters(squad, w):
 
 def charts(rows, squad, w, cfg, last=frozenset()):
     """The Research page: every player (yours flagged squad), each with his position scores and the attributes its menus
-    can show (each position's top ones by weight), to compare with your latest import, everyone, or a division."""
+    can show (each position's top ones by weight), to compare with your latest import or everyone."""
     weights = {"GK": w["gk"], **w["outfield"]}
     tops = {pos: [a for a, _ in sorted(table.items(), key=lambda item: item[1], reverse=True)][:CHART_GK_ATTRS if pos == "GK" else CHART_ATTRS]
             for pos, table in weights.items()}
@@ -499,7 +509,7 @@ def charts(rows, squad, w, cfg, last=frozenset()):
     players = []
     for r in [*(r for r in rows if id(r) not in mine), *squad]:
         attrs = r["history"][-1]["attrs"]
-        players.append({"name": r["name"], "club": r["club"], "division": r["division"], "age": r["age"],
+        players.append({"name": r["name"], "club": r["club"], "age": r["age"],
                         "squad": id(r) in mine, "last": r["name"] in last, "wage": r["wage"], "rating": r["rating"],
                         "minutes": r["minutes"], "best": r["best"],
                         # where he plays, as the Lineup sees it: FM's positions when exported, else his best and its neighbours
@@ -536,7 +546,7 @@ def fm_positions(text):
         wide = bool(set(sides) & set("RL"))
         for role in m.group(1).split("/"):
             found = {"GK": ["GK"], "DM": ["DM"], "ST": ["ST"], "WB": ["WBL/WBR"],
-                     "D": ["DC"] * ("C" in sides) + ["DL/DR"] * wide,
+                     "D": ["CD"] * ("C" in sides) + ["DL/DR"] * wide,
                      "M": ["MC"] * ("C" in sides) + ["ML/MR"] * wide,
                      "AM": ["AMC"] * ("C" in sides) + ["AML/AMR"] * wide}.get(role, [])
             groups += [g for g in found if g not in groups]
@@ -575,33 +585,33 @@ def search_attrs(weights):
 # Common FM formations, as the weights' position groups (a wide pair counts twice: one left, one right). Roles and duties
 # don't show in the scores, so shapes with the same positions (5-2-3 Wide and 5-2-2-1) rank the same.
 FORMATIONS = [
-    ("4-2-3-1", "Double pivot, a ten, wingers pressing high", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "AMC": 1, "ST": 1}),
-    ("4-3-3 DM Wide", "A holder, two box-to-box eights, wingers", {"DL/DR": 2, "DC": 2, "DM": 1, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("4-3-3", "Flat midfield three, a front three of strikers", {"DL/DR": 2, "DC": 2, "MC": 3, "ST": 3}),
-    ("4-2-3-1 DM Wide", "Two holders, a ten, two wide forwards", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 1, "AML/AMR": 2, "ST": 1}),
-    ("3-4-3", "Back three, wide midfielders, three strikers", {"DC": 3, "ML/MR": 2, "MC": 2, "ST": 3}),
-    ("3-4-2-1", "Two tens behind a striker, wing backs for width", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AMC": 2, "ST": 1}),
-    ("4-4-2", "Two banks of four, strike partnership", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "ST": 2}),
-    ("4-2-2-2", "Narrow: two tens, two strikers", {"DL/DR": 2, "DC": 2, "DM": 2, "AMC": 2, "ST": 2}),
-    ("5-2-3 Wide", "Back five, front three on the break", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("4-3-1-2", "Diamond midfield, ten behind two strikers", {"DL/DR": 2, "DC": 2, "DM": 1, "MC": 2, "AMC": 1, "ST": 2}),
-    ("5-4-1", "Deep low block, counter-attacks", {"DC": 3, "WBL/WBR": 2, "ML/MR": 2, "MC": 2, "ST": 1}),
-    ("5-2-2-1", "Back five, two inside forwards, lone striker", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("4-2-4", "All-out attack, two wingers and two strikers", {"DL/DR": 2, "DC": 2, "MC": 2, "AML/AMR": 2, "ST": 2}),
-    ("3-5-2", "Wide midfielders, midfield three, two strikers", {"DC": 3, "ML/MR": 2, "DM": 1, "MC": 2, "ST": 2}),
-    ("5-3-2", "Back five, midfield three, direct to two strikers", {"DC": 3, "WBL/WBR": 2, "MC": 3, "ST": 2}),
-    ("4-1-4-1", "A holder behind a midfield four, compact", {"DL/DR": 2, "DC": 2, "DM": 1, "ML/MR": 2, "MC": 2, "ST": 1}),
-    ("4-4-1-1", "Compact 4-4-2 with a deep-lying forward", {"DL/DR": 2, "DC": 2, "ML/MR": 2, "MC": 2, "AMC": 1, "ST": 1}),
-    ("3-4-1-2", "Back three, a ten feeding two strikers", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AMC": 1, "ST": 2}),
-    ("4-3-2-1", "Christmas tree: narrow, two tens", {"DL/DR": 2, "DC": 2, "MC": 3, "AMC": 2, "ST": 1}),
-    ("3-4-3-0", "Strikerless: false nine and inside forwards", {"DC": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "AMC": 1}),
+    ("4-2-3-1", "Double pivot, a ten, wingers pressing high", {"DL/DR": 2, "CD": 2, "MC": 2, "AML/AMR": 2, "AMC": 1, "ST": 1}),
+    ("4-3-3 DM Wide", "A holder, two box-to-box eights, wingers", {"DL/DR": 2, "CD": 2, "DM": 1, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("4-3-3", "Flat midfield three, a front three of strikers", {"DL/DR": 2, "CD": 2, "MC": 3, "ST": 3}),
+    ("4-2-3-1 DM Wide", "Two holders, a ten, two wide forwards", {"DL/DR": 2, "CD": 2, "DM": 2, "AMC": 1, "AML/AMR": 2, "ST": 1}),
+    ("3-4-3", "Back three, wide midfielders, three strikers", {"CD": 3, "ML/MR": 2, "MC": 2, "ST": 3}),
+    ("3-4-2-1", "Two tens behind a striker, wing backs for width", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AMC": 2, "ST": 1}),
+    ("4-4-2", "Two banks of four, strike partnership", {"DL/DR": 2, "CD": 2, "ML/MR": 2, "MC": 2, "ST": 2}),
+    ("4-2-2-2", "Narrow: two tens, two strikers", {"DL/DR": 2, "CD": 2, "DM": 2, "AMC": 2, "ST": 2}),
+    ("5-2-3 Wide", "Back five, front three on the break", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("4-3-1-2", "Diamond midfield, ten behind two strikers", {"DL/DR": 2, "CD": 2, "DM": 1, "MC": 2, "AMC": 1, "ST": 2}),
+    ("5-4-1", "Deep low block, counter-attacks", {"CD": 3, "WBL/WBR": 2, "ML/MR": 2, "MC": 2, "ST": 1}),
+    ("5-2-2-1", "Back five, two inside forwards, lone striker", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    ("4-2-4", "All-out attack, two wingers and two strikers", {"DL/DR": 2, "CD": 2, "MC": 2, "AML/AMR": 2, "ST": 2}),
+    ("3-5-2", "Wide midfielders, midfield three, two strikers", {"CD": 3, "ML/MR": 2, "DM": 1, "MC": 2, "ST": 2}),
+    ("5-3-2", "Back five, midfield three, direct to two strikers", {"CD": 3, "WBL/WBR": 2, "MC": 3, "ST": 2}),
+    ("4-1-4-1", "A holder behind a midfield four, compact", {"DL/DR": 2, "CD": 2, "DM": 1, "ML/MR": 2, "MC": 2, "ST": 1}),
+    ("4-4-1-1", "Compact 4-4-2 with a deep-lying forward", {"DL/DR": 2, "CD": 2, "ML/MR": 2, "MC": 2, "AMC": 1, "ST": 1}),
+    ("3-4-1-2", "Back three, a ten feeding two strikers", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AMC": 1, "ST": 2}),
+    ("4-3-2-1", "Christmas tree: narrow, two tens", {"DL/DR": 2, "CD": 2, "MC": 3, "AMC": 2, "ST": 1}),
+    ("3-4-3-0", "Strikerless: false nine and inside forwards", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "AMC": 1}),
 ]
-FORMATION_ORDER = ["GK", "DC", "DL/DR", "WBL/WBR", "DM", "MC", "ML/MR", "AMC", "AML/AMR", "ST"]
-LINES = {"Defence": {"DC", "DL/DR", "WBL/WBR"}, "Midfield": {"DM", "MC", "ML/MR"}, "Attack": {"AMC", "AML/AMR", "ST"}}  # Formations' lines
+FORMATION_ORDER = ["GK", "CD", "DL/DR", "WBL/WBR", "DM", "MC", "ML/MR", "AMC", "AML/AMR", "ST"]
+LINES = {"Defence": {"CD", "DL/DR", "WBL/WBR"}, "Midfield": {"DM", "MC", "ML/MR"}, "Attack": {"AMC", "AML/AMR", "ST"}}  # Formations' lines
 # Without FM's positions, a player's best position (from attributes) and the ones next to it: so a midfielder isn't put
 # at full-back just because his attributes would score there
-NEAR = {"GK": ["GK"], "DC": ["DC", "DL/DR", "DM"], "DL/DR": ["DL/DR", "WBL/WBR", "DC"], "WBL/WBR": ["WBL/WBR", "DL/DR", "ML/MR"],
-        "DM": ["DM", "MC", "DC"], "MC": ["MC", "DM", "AMC"], "ML/MR": ["ML/MR", "AML/AMR", "WBL/WBR", "MC"],
+NEAR = {"GK": ["GK"], "CD": ["CD", "DL/DR", "DM"], "DL/DR": ["DL/DR", "WBL/WBR", "CD"], "WBL/WBR": ["WBL/WBR", "DL/DR", "ML/MR"],
+        "DM": ["DM", "MC", "CD"], "MC": ["MC", "DM", "AMC"], "ML/MR": ["ML/MR", "AML/AMR", "WBL/WBR", "MC"],
         "AMC": ["AMC", "MC", "AML/AMR", "ST"], "AML/AMR": ["AML/AMR", "ML/MR", "AMC", "ST", "MC"], "ST": ["ST", "AMC", "AML/AMR"]}
 
 
@@ -613,6 +623,8 @@ def side_ok(r, group, side):
     sides = fm_sides(r.get("position")).get(group)
     if sides:
         return side in sides
+    if r.get("foot") == "Either":
+        return True
     return (r.get("left") == "yes") == (side == "L")
 
 
@@ -1228,25 +1240,40 @@ GUIDE = [
              "<b>Players › All players</b>. Re-importing the same file updates that list.</li>"
              "<li><b>A staff search</b> (the <b>Search - Staff View</b>) or your club's staff screen: on <b>Staff › "
              "Last import</b> and <b>Staff › All staff</b>.</li>"
-             "<li><b>A whole division</b> with Division, Minutes and Average Rating columns: adds the rating charts to "
-             "<b>Research</b> (rename the file after the league first, e.g. league-one.csv).</li></ul>"
+             "<li>Players with a <b>Rating</b> (FM shows one for those who've played this season) add the score vs "
+             "rating chart to <b>Research</b>.</li></ul>"
              "After each import a message in the corner says how many were imported, and who was skipped (not enough "
              "attributes known). <b>Ctrl + F8</b> in FM adds every attribute column to a view."},
     {"key": "", "title": "What the numbers mean",
-     "text": "<ul><li><b>Position scores</b> (GK, DC, DL/DR, WBL/WBR, DM, MC, ML/MR, AMC, AML/AMR, ST): how well a "
+     "text": "<ul><li><b>Position scores</b> (GK, CD, DL/DR, WBL/WBR, DM, MC, ML/MR, AMC, AML/AMR, ST): how well a "
              "player's attributes suit that position, on FM's 1–20 scale. Each attribute counts by its weight there (see "
              "<b>Attributes</b>); pace, acceleration and stamina count most, because they win the most matches.</li>"
              "<li><b>Best</b>: the position he scores highest at; <b>Score</b>: that score. With FM's <b>Position</b> column "
              "in your exports, only positions FM says he plays count, so a striker stays a striker.</li>"
              "<li><b>vs Age</b>: his score against what's normal for his age. 100% = on track to be a good Championship or "
              "low Premier League player at his peak; more is ahead of that, less behind.</li>"
-             "<li><b>Foot</b>: Left if his left foot is Fairly Strong or better, else Right.</li>"
-             "<li><b>Colours</b>: attributes like FM (grey 1–5, white 6–9, yellow 10–14, green 15+); scores in a tone per "
-             "point: red under 9, orange 9, yellow 10, yellow-green 11, light green 12, green 13, teal 14, sky blue 15, "
-             "violet 16+; vs Age from red (weak) to green (well ahead).</li>"
-             "<li><b>loan in</b> / <b>loan out</b> / <b>trial</b> next to a name; <b>↑DC</b> = moved up from Third to fill "
-             "an empty slot (his best position was DC).</li>"
+             "<li><b>Foot</b>: FM's preferred foot: Left, Right or Either (Either can play both sides).</li>"
+             "<li>What the colours mean: see <b>Colours</b>.</li>"
+             "<li><b>loan in</b> / <b>loan out</b> / <b>trial</b> next to a name; <b>↑CD</b> = moved up from Third to fill "
+             "an empty slot (his best position was CD).</li>"
              "<li>A player whose scouted attributes are mostly unknown (FM shows -) isn't scored until you know more.</li></ul>"},
+    {"key": "", "title": "Colours",
+     "text": "<b>Scores</b> (every position score, Best, Score, the pitch, profiles, Formations) get a colour per point, "
+             "so good players don't all look alike:<br>"
+             + " ".join(f'<span style="color:{c};font-weight:700">■ {t}</span>' for c, t in (
+                 ("#f87171", "under 9"), ("#fb923c", "9"), ("#fbd13d", "10"), ("#d7e35a", "11"), ("#a6e163", "12"),
+                 ("#4ade80", "13"), ("#2dd4bf", "14"), ("#38bdf8", "15"), ("#c084fc", "16+"))) +
+             "<ul><li><b>Attributes</b>: like FM: grey 1–5, white 6–9, yellow 10–14, green 15+.</li>"
+             "<li><b>vs Age</b>: red (well behind for his age), orange, white, yellow, green (well ahead).</li>"
+             "<li><b>Lineup › Depth</b>: green = two or more backups there, yellow = one, red = none.</li>"
+             "<li><b>Weakest spot</b> (Lineup, Formations): in a quiet tone by how far it is below the eleven's average, "
+             "shown after it (e.g. −1.1): grey = about level, sand = a little below, amber = 1 or more below; "
+             "<b>no backup</b> in red. On the Formations pitch's Positions the weakest is outlined red, the strongest green.</li>"
+             "<li><b>Development</b> and <b>Compare</b>: green = better, red = worse; in Compare the first player is sky "
+             "blue, the second the accent colour.</li>"
+             "<li><b>Research</b>: your players are the diamonds; by age, 21 or under in sky blue, 30+ in orange.</li>"
+             "<li><b>Theme</b> (Menu → Theme…) changes the top bar, panels and accent only: these colours stay the "
+             "same in every theme.</li></ul>"},
     {"key": "", "title": "A player's profile",
      "text": "<b>Click a name</b> on any page (or double-click a row, or press <b>Enter</b>) to open it; <b>Esc</b> closes it.<br>"
              "<b>Overview:</b> a scout report (what kind of player he is, his level, how he's doing for his age), his key facts, "
@@ -1295,7 +1322,7 @@ GUIDE = [
              "squad imports: export your squad every half-season or so.<br>"
              "<b>Use it to:</b> see whether training and game time are working, and who's stalling."},
     {"key": "charts", "title": "Research",
-     "text": "<b>Shows:</b> your squad (orange) against players you've imported (pink), position by position: first a table, "
+     "text": "<b>Shows:</b> your squad (orange) against players you've imported (the accent colour), position by position: first a table, "
              "<b>Listed players by position</b> (how many there are, their middle and best score, your best there, how many "
              "beat him and the cheapest of those; click a row to pick the position), then one graph at a time, picked in "
              "<b>Graph</b>, with how to read it underneath.<br>"
@@ -1303,15 +1330,15 @@ GUIDE = [
              "and his age, average age, how many are 30+ or 21 or under, and advice (an ageing starter with no successor, "
              "no backup, a young player ready to step up); the graphs colour your players by age.<br>"
              "<b>Controls:</b> <b>compare with</b> = whom to compare with: your <b>Last player import</b>, <b>All imported "
-             "players</b>, or a division you've imported with ratings. <b>position</b> picks the position for the "
+             "players</b>. <b>position</b> picks the position for the "
              "score vs wage and rating charts. Hover a dot to see who it is.<br>"
              "<b>Charts:</b> <b>Role score</b>, <b>Technical</b>, <b>Mental</b>, <b>Physical</b> and <b>Goalkeeping by position</b> "
-             "(a group's value = its attributes averaged with that position's weights, so it counts what matters there): for each position the pink "
+             "(a group's value = its attributes averaged with that position's weights, so it counts what matters there): for each position the accent-coloured "
              "range is the players you compare with (the line from lowest to highest, the shaded box their middle half, the "
              "white bar and number their middle, a tick for each player); your players are the orange diamonds, and the "
              "number at the right is your best minus their middle (green = you're ahead). <b>Score vs wage</b>: four "
              "quadrants split at their middle; top left = <b>better and cheaper</b> (good value), bottom right = <b>worse "
-             "and dearer</b>. With a division import, <b>Score vs average rating</b>: does a higher score mean better matches?"},
+             "and dearer</b>. When imported players have a Rating, <b>Score vs average rating</b>: does a higher score mean better matches?"},
     {"key": "elsewhere", "title": "All players",
      "text": "<b>Shows:</b> everyone you've imported who isn't at your club, scored the same way as your squad, with club, "
              "wage and value (the top of FM's range).<br>"
@@ -1371,7 +1398,7 @@ GUIDE = [
     {"key": "", "title": "Searching and filtering",
      "text": "Type in the <b>Search</b> box at the top of a table (<b>/</b> or <b>f</b> jumps there, <b>Esc</b> clears it):"
              "<ul><li>a name or club: <b>kalu</b>, <b>levski</b></li>"
-             "<li>a condition on any column: <b>age&lt;=21</b>, <b>best=DC</b>, <b>best!=GK</b>, <b>vs&gt;=90</b>, "
+             "<li>a condition on any column: <b>age&lt;=21</b>, <b>best=CD</b>, <b>best!=GK</b>, <b>vs&gt;=90</b>, "
              "<b>score&gt;=12</b>, <b>foot=left</b>, <b>club:levski</b> (contains), <b>wage&lt;=10k</b>, <b>value&lt;=500k</b></li>"
              "<li>loans: <b>loan-in</b>, <b>loan-out</b>, <b>trial</b>; staff: <b>job:coach</b>, <b>PosTct&gt;=12</b></li>"
              "<li>several at once, with spaces: <b>age&lt;=23 best=ST vs&gt;=90</b></li></ul>"

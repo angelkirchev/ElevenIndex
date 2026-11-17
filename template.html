@@ -169,6 +169,11 @@ __THEME__
   .gpos .gp { display: inline-flex; flex-direction: column; align-items: center; min-width: 58px; padding: 3px 6px; background: var(--bg);
               border: 1px solid var(--line); border-radius: 6px; }
   .gpos .gp i { color: var(--dim); font: 600 10px var(--body); font-style: normal; }
+  /* the weakest spot: the words light grey, the number in its tone, the gap a lighter shade of that tone */
+  .weakspot { color: #c3c9c5; } .weakspot b { font-weight: 700; } .weakspot small { margin-left: 3px; font-size: 11px; font-weight: 600; }
+  .weakspot.wk0 b { color: var(--fg); } .weakspot.wk0 small { color: #dde2df; }
+  .weakspot.wk1 b { color: #c8bc9f; } .weakspot.wk1 small { color: #e6dfcf; }
+  .weakspot.wk2 b { color: #e9a066; } .weakspot.wk2 small { color: #f6c9a6; }
   .gpos .gweak { border-color: var(--red); } .gpos .gstrong { border-color: var(--green); }
   table.fstats td { padding: 5px 8px; white-space: normal; } table.fstats td:first-child { width: 48%; color: var(--dim); }
 
@@ -263,7 +268,7 @@ __THEME__
 <body>
 <div class="bar">
   <span class="pages">__NAV__</span>
-  <input id="filter" placeholder="Search…" title="Type a name, or filters like age<=24 best=DC vs>=90 foot=left" spellcheck="false" autocomplete="off">
+  <input id="filter" placeholder="Search…" title="Type a name, or filters like age<=24 best=CD vs>=90 foot=left" spellcheck="false" autocomplete="off">
   <span id="fm-info" class="info" hidden><span id="pinfo"></span><span id="count"></span></span>
 </div>
 <div id="squadtop" hidden><div class="tile" id="lineup"></div><div class="tile" id="formations"></div></div>
@@ -288,7 +293,7 @@ __THEME__
     <tr><td><kbd>Esc</kbd></td><td>empty it</td></tr>
   </table>
   <p>Find a player or club by typing part of the name, or test any column:
-    <b>age&lt;=21</b> · <b>best=DC</b> · <b>best!=GK</b> · <b>vs&gt;=90</b> · <b>foot=left</b> · <b>club:levski</b> (contains) ·
+    <b>age&lt;=21</b> · <b>best=CD</b> · <b>best!=GK</b> · <b>vs&gt;=90</b> · <b>foot=left</b> · <b>club:levski</b> (contains) ·
     <b>wage&lt;=10k</b> · <b>value&lt;=500k</b> (the top of FM's range) · <b>loan-in</b>, <b>loan-out</b>, <b>trial</b>.
     Several at once, with spaces: <b>age&lt;=23 best=ST vs&gt;=90</b>.</p>
 </div></div>
@@ -378,8 +383,14 @@ function compileSearch(text) {
 }
 
 // ---- drawing the table ----
+// positions sort from the back to the front, not A-Z: FM position by the positions he plays (most defensive first),
+// Best by its place in this order
+const POS_ORDER = ["GK", "CD", "DL/DR", "WBL/WBR", "DM", "MC", "ML/MR", "AMC", "AML/AMR", "ST"];
+const posKey = list => list && list.length ? list.map(g => String(POS_ORDER.indexOf(g)).padStart(2, "0")).sort().join(" ") : null;
+const sortValue = (r, key) => key === "position" ? posKey(r.plays) ?? r.position
+  : key === "best" && POS_ORDER.includes(r.best) ? POS_ORDER.indexOf(r.best) : r[key];
 function byColumn(a, b) {  // the sort; blanks always go last
-  const x = a[sort.key], y = b[sort.key];
+  const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
   if (x == null || y == null) return (x == null) - (y == null);
   return sort.dir * (typeof x === "number" ? x - y : String(x).localeCompare(String(y)));
 }
@@ -457,7 +468,7 @@ document.addEventListener("keydown", e => {
 
 // A scout's report on a player, like FM's: 2-3 sentences from his position (FM's own when the export showed it, else his
 // best), the attributes that stand out for it, his level, and how he's doing for his age
-const ROLE_NAME = { GK: "goalkeeper", DC: "centre-back", "DL/DR": "full-back", "WBL/WBR": "wing-back", DM: "defensive midfielder",
+const ROLE_NAME = { GK: "goalkeeper", CD: "centre-back", "DL/DR": "full-back", "WBL/WBR": "wing-back", DM: "defensive midfielder",
   MC: "central midfielder", "ML/MR": "wide midfielder", AMC: "attacking midfielder", "AML/AMR": "winger", ST: "striker" };
 const TRAITS = [[["Pace", "Acceleration"], "quick"], [["Stamina", "Work Rate"], "tireless"], [["Strength"], "strong"],
   [["Jumping Reach", "Heading"], "good in the air"], [["Dribbling", "Technique"], "skilful"], [["Finishing"], "clinical"],
@@ -682,7 +693,7 @@ function renderFilters() {
 }
 // ---- the pitch: Squad › Lineup and Squad › Formations ----
 // A formation (formations() in score.py): { name, shape: {pos: count}, players: [XI], second: [2nd XI], lines, xi, depth }
-const ROW_Y = { ST: 9, AMC: 27, "AML/AMR": 25, MC: 45, "ML/MR": 43, DM: 60, "WBL/WBR": 63, "DL/DR": 75, DC: 79, GK: 93 };
+const ROW_Y = { ST: 9, AMC: 27, "AML/AMR": 25, MC: 45, "ML/MR": 43, DM: 60, "WBL/WBR": 63, "DL/DR": 75, CD: 79, GK: 93 };
 const WIDE = { "DL/DR": ["DL", "DR"], "WBL/WBR": ["WBL", "WBR"], "ML/MR": ["ML", "MR"], "AML/AMR": ["AML", "AMR"] };
 const SPREAD = { 1: [50], 2: [36, 64], 3: [26, 50, 74], 4: [17, 39, 61, 83] };
 // which side a player plays at a wide position: FM's Position column (L / R) when exported, else his foot
@@ -720,9 +731,18 @@ function pitchHtml(f, chosen, box, extra = "") {  // box(slot) -> the inside of 
 }
 const surnameOf = n => n.split(" ").pop();
 // a position group in words, for the weakest / strongest spot: "Weak central defence"
-const GROUP_NAMES = { GK: "goalkeeper", DC: "central defence", "DL/DR": "full backs", "WBL/WBR": "wing backs", DM: "defensive midfield",
+const GROUP_NAMES = { GK: "goalkeeper", CD: "central defence", "DL/DR": "full backs", "WBL/WBR": "wing backs", DM: "defensive midfield",
                       MC: "central midfield", "ML/MR": "wide midfield", AMC: "attacking midfield", "AML/AMR": "wingers", ST: "strikers" };
 const groupName = (pos, lead) => `${lead} ${GROUP_NAMES[pos] || pos}`;
+// the weakest spot: not in the score's colour (a 13.8 would look good), but in a quiet warm tone set by how far it is below
+// the team's eleven: about level = grey, a little below = sand, well below = amber; the gap shown after it
+function weakSpot(weak, team) {
+  const gap = team != null ? team - weak.v : null;
+  const tone = gap == null || gap < 0.3 ? "wk0" : gap < 1 ? "wk1" : "wk2";
+  return `<span class="weakspot ${tone}" title="${esc(weak.pos)}: its starters and backups averaged${gap != null ? `, ${gap.toFixed(1)} below the eleven's average` : ""}">` +
+    `${groupName(weak.pos, "Weak")} <b>${weak.v.toFixed(1)}</b>${gap != null && gap >= 0.05 ? ` <small>−${gap.toFixed(1)}</small>` : ""}</span>` +
+    (weak.missing ? ` <span class="t0">no backup</span>` : "");
+}
 
 // Squad › Lineup: the pitch for a formation, and everyone of yours who plays the position you click
 const SHAPE_STORE = "fm:__SAVE__:lineup-shape", SLOT_STORE = "fm:__SAVE__:lineup-slot", MODE_STORE = "fm:__SAVE__:lineup-mode";
@@ -759,7 +779,7 @@ function renderLineup() {
       <span class="seg" id="lmode"><button data-m="score" class="${mode === "score" ? "on" : ""}">Score</button><button data-m="depth" class="${mode === "depth" ? "on" : ""}">Depth</button></span></div>
     ${pitchHtml(f, chosen, box)}
     <div class="pfoot"><span>Team average <b class="${stier(f.xi)}">${f.xi.toFixed(2)}</b></span>
-      ${weak ? `<span title="${esc(weak.pos)}: its starters and backups averaged">${groupName(weak.pos, "Weak")} <b class="${stier(weak.v)}">${weak.v.toFixed(1)}</b>${weak.missing ? ` <span class="t0">no backup</span>` : ""}</span>` : ""}
+      ${weak ? weakSpot(weak, f.xi) : ""}
       ${f.short ? `<span class="t0">${f.short} empty</span>` : ""}</div>`;
   // the chosen position: everyone of yours who plays it, best first
   const slot = slots.find(s => s.key === chosen), pos = slot.pos;
@@ -812,7 +832,7 @@ function renderFormationsPage() {
       <td><b>${esc(x.name)}</b><div class="sub">${esc(x.note)}</div></td>
       <td class="num ${stier(x.xi)}">${x.xi.toFixed(2)}</td><td class="num ${stier(x.depth)}">${x.depth.toFixed(2)}</td>
       <td title="${x.weak ? `${esc(x.weak.pos)}: its ${x.weak.starters} starter(s) and ${x.weak.backups} backup(s) averaged` : ""}">${x.weak ?
-        `${groupName(x.weak.pos, "Weak")} <span class="${stier(x.weak.v)}">${x.weak.v.toFixed(1)}</span>${x.weak.missing ? ` <span class="t0">no backup</span>` : ""}` : "–"}${x.short ? ` <span class="t0">${x.short} empty</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+        weakSpot(x.weak, x.xi) : "–"}${x.short ? ` <span class="t0">${x.short} empty</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   // the chosen shape: its eleven, the backup under each, and the numbers
   const box = s => s.xi ? { cls: stier(s.xi.v), html: `<div class="plab">${s.label}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div>
       <div class="pval">${s.xi.v.toFixed(1)}</div><div class="psec">${s.sec ? `${esc(surnameOf(s.sec.name))} ${s.sec.v.toFixed(1)}` : "no backup"}</div>` }
@@ -836,7 +856,7 @@ function renderFormationsPage() {
       `<tr><td colspan="2"><div class="gpos">${f.groups.map(g => `<span class="gp${g.pos === weak?.pos ? " gweak" : ""}${g.pos === strong?.pos ? " gstrong" : ""}"
         title="${g.starters} starter(s) + ${g.backups} backup(s)${g.missing ? ", a backup missing" : ""}"><i>${g.pos}</i>${val(g.v, 1)}${g.missing ? `<span class="t0">!</span>` : ""}</span>`).join("")}</div></td></tr>` +
       row("Strongest", strong ? `${groupName(strong.pos, "Strong")} ${val(strong.v, 1)}` : "–") +
-      row("Weakest", weak ? `${groupName(weak.pos, "Weak")} ${val(weak.v, 1)}${weak.missing ? ` <span class="t0">no backup</span>` : ""}` : "–") +
+      row("Weakest", weak ? weakSpot(weak, f.xi) : "–") +
       row(`No real backup <span class="sub">(none, or 1.5 below)</span>`, thin.length ? thin.map(s => s.label).join(", ") : `<span class="t4">none</span>`)) +
     group("Spots <span class=\"sub\">(the eleven, by score colour)</span>",
       row("Good · average · weak", `<b class="t4">${counts.good}</b> · <b class="t2">${counts.average}</b> · <b class="t0">${counts.weak}</b>`));
@@ -979,7 +999,7 @@ document.getElementById("main").addEventListener("click", e => {
   if (el && getSelection().isCollapsed && DATA.rows[el.dataset.name]) showDetail(DATA.rows[el.dataset.name]);
 });
 // Attributes page: DATA = { custom (your own saved, for every save), saved, values: {attr: 1-20}, defaults (the same, the
-// default's), costs: { GK: {attr: CA cost}, DC: {...}… }, search: [the 18 a player search shows], attrs: [every attribute with a
+// default's), costs: { GK: {attr: CA cost}, CD: {...}… }, search: [the 18 a player search shows], attrs: [every attribute with a
 // CA cost] } (attributes_page() in score.py). One weight per attribute (1-20) for every position, keepers' too; a position's
 // weights = CA cost there × the attribute's weight (compose() in score.py). The app saves them (pywebview.api.save_weights).
 let edited = null;

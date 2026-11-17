@@ -116,8 +116,8 @@ everything in its **`payload`** folder into FM's game folder. Then start FM and 
 
    ```
    Football Manager 27\          ← in Documents\Sports Interactive
-   ├── views\                    5 views
-   ├── player search filters\    FB, WB, DM, MC, MLR, AMC, AMLR, ST
+   ├── views\                    4 views
+   ├── player search filters\    GK, FB, WB, DM, MC, MLR, AMC, AMLR, ST
    └── staff search filters\     one per job: Assistant Manager … U18 Manager
    ```
    If Windows asks about replacing files of yours, choose **Skip**.
@@ -126,9 +126,8 @@ everything in its **`payload`** folder into FM's game folder. Then start FM and 
    | Screen in FM | View | Filter |
    |---|---|---|
    | Your squad | **`Squad - All Players View`** (the one to export) | |
-   | Your squad, at a glance | **`Squad - General View`** | |
    | Player search, outfield | **`Search - Outfield Players View`** | the position: FB, WB, DM, MC, MLR, AMC, AMLR, ST |
-   | Player search, goalkeepers | **`Search - Goalkeepers View`** | |
+   | Player search, goalkeepers | **`Search - Goalkeepers View`** | GK |
    | Staff search | **`Search - Staff View`** | the job: Assistant Manager, Coach, Director of Football… |
 
 ### 4 · Start ElevenIndex

@@ -35,7 +35,7 @@ __THEME__
   .howto::before { content: "i"; position: absolute; left: 10px; top: 9px; width: 18px; height: 18px; color: var(--bg);
                    font: 700 12px/18px var(--body); text-align: center; background: var(--blue); border-radius: 50%; }
   .howto b { color: var(--fg); font-weight: 600; }
-  .howto .us { color: var(--orange); font-weight: 600; } .howto .them { color: #dff79a; font-weight: 600; }
+  .howto .us { color: var(--orange); font-weight: 600; } .howto .them { color: var(--blue); font-weight: 600; }
   .howto .good { color: var(--green); font-weight: 600; } .howto .bad { color: var(--red); font-weight: 600; }
   .chead { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 2px; }
   .chead .pick { display: flex; gap: 6px; align-items: center; color: var(--dim); font-weight: 600; }
@@ -134,14 +134,11 @@ function groupValue(p, pos, group) {
   return total && known >= total / 2 ? sum / known : null;
 }
 
-// whom yours are compared with: the latest import, everyone imported, or a division with a league-wide search (20+ rated)
-const LATEST = "Last player import", EVERYONE = "All imported players", SQUAD = "My squad (by age)", LEAGUE_SIZE = 20;
-const perDivision = {};
-for (const p of PLAYERS) if (p.division) perDivision[p.division] = (perDivision[p.division] || 0) + 1;
+// whom yours are compared with: the latest import, everyone imported, or your own squad by age
+const LATEST = "Last player import", EVERYONE = "All imported players", SQUAD = "My squad (by age)";
 const CHOICES = [
   ...(PLAYERS.some(p => !p.squad && p.last) ? [LATEST] : []),
   ...(PLAYERS.some(p => !p.squad) ? [EVERYONE] : []),
-  ...Object.keys(perDivision).filter(d => perDivision[d] >= LEAGUE_SIZE).sort(),
   ...(PLAYERS.some(p => p.squad) ? [SQUAD] : []),
 ];
 const ageMode = () => choice.against === SQUAD;  // your squad on its own, by age
@@ -156,6 +153,7 @@ try {
   Object.assign(choice, { pos: old.pos ?? choice.pos, against: old.against ?? old.division ?? choice.against,
                           chart: old.chart ?? choice.chart });
 } catch (e) {}
+if (choice.pos === "DC") choice.pos = "CD";  // the centre-back used to be called DC
 if (!POSITIONS.includes(choice.pos)) choice.pos = POSITIONS[0];
 if (!CHOICES.includes(choice.against)) choice.against = CHOICES[0];
 function choose(key, value) {
@@ -163,7 +161,7 @@ function choose(key, value) {
   try { localStorage.setItem(KEPT, JSON.stringify(choice)); } catch (e) {}
   draw();
 }
-const compared = p => !ageMode() && !p.squad && (choice.against === EVERYONE || (choice.against === LATEST ? p.last : p.division === choice.against));
+const compared = p => !ageMode() && !p.squad && (choice.against === EVERYONE || choice.against === LATEST && p.last);
 const shown = () => PLAYERS.filter(p => p.squad || compared(p));  // in age mode: your squad only
 const atBest = (p, pos) => p.best === pos && p.scores[pos] != null;  // each player counts at his best position
 
@@ -256,7 +254,7 @@ function point(p, e) {
   tip.innerHTML = `<div class="who">${p.name}</div><div class="faint">${p.club} · ${p.age} · ${p.wage == null ? "–" : `${wageText(p.wage)} p/w`}` +
     ` · <span class="best">best as ${p.best}</span></div>` +
     `<div class="scores">${scores}</div>` +
-    `<div>${p.rating == null ? "" : `rating ${p.rating.toFixed(2)} <span class="faint">in ${p.minutes} mins</span> · `}${attrs}</div>`;
+    `<div>${p.rating == null ? "" : `rating ${p.rating.toFixed(2)}${p.minutes ? ` <span class="faint">in ${p.minutes} mins</span>` : ""} · `}${attrs}</div>`;
   tip.style.display = "block";
   const w = tip.offsetWidth, h = tip.offsetHeight, x = e.clientX + 14, y = e.clientY + 14;
   tip.style.left = `${Math.min(x, innerWidth - w - 8)}px`;
@@ -388,13 +386,13 @@ function draw() {
                            name === "Goalkeeping" ? ["GK"] : undefined),
     how: `Each row is a position, each player at his best position. A player's value is his ${name.toLowerCase()} attributes ` +
       `averaged with the position's weights (the Attributes page), so it counts what matters there; under half of that weight ` +
-      `scouted = no value. The pink bar is ${them}: the line runs from the worst to the best, the box holds the middle half, and ` +
+      `scouted = no value. The bar in the accent colour is ${them}: the line runs from the worst to the best, the box holds the middle half, and ` +
       `the white mark and number are the middle player. ${us} sit on top; the number at the far right is your best minus their ` +
       `middle (<span class="good">green</span> = you're ahead).` });
   const charts = {
     score: { name: "Role score by position", sub: "How good your players are at each position, against the others",
       draw: () => byPosition("chartBox", (p, at) => p.scores[at], "role score", atBest, undefined, true, 10),
-      how: `Each row is a position. The pink bar is ${them}: the line runs from the worst to the best, the box holds the middle half, ` +
+      how: `Each row is a position. The bar in the accent colour is ${them}: the line runs from the worst to the best, the box holds the middle half, ` +
         `and the white mark and number are the middle player. ${us} sit on top: right of the white mark = better than most of them. ` +
         `The number at the far right is your best minus their middle (<span class="good">green</span> = you're ahead). Click a position to pick it.` },
     technical: group("technical", "Technical", "Corners to Technique: on the ball"),
@@ -414,15 +412,15 @@ function draw() {
     } : {}),
   };
   if (!charts[choice.chart]) choice.chart = "score";
-  fillSelect("chart", Object.entries(charts).map(([k, c]) => [k, c.name]).concat(rated ? [] : [["", "Score vs average rating (after a division import)"]]),
+  fillSelect("chart", Object.entries(charts).map(([k, c]) => [k, c.name]).concat(rated ? [] : [["", "Score vs average rating (once imported players have a Rating)"]]),
              choice.chart, "chart");
   document.querySelector('#chart option[value=""]')?.setAttribute("disabled", "");
   const c = charts[choice.chart];
   document.getElementById("chartTitle").textContent = c.name;
   document.getElementById("chartSub").textContent = c.sub;
   document.getElementById("chartHow").innerHTML = (ageMode() ? `<b>Your squad on its own:</b> each dot is one of your players, coloured by age ` +
-    `(<span class="good">mint</span> 21 or under, grey 22–29, <span class="bad">orange</span> 30+); the pink bar is your squad's own spread. ` : "") + c.how + (rated ? "" : ` <br>The score vs average rating charts appear once you import a whole division ` +
-    `with Division, Minutes and Average Rating columns (rename the export after the league, e.g. league-one.csv).`);
+    `(<span style="color:var(--cyan);font-weight:600">sky blue</span> 21 or under, grey 22–29, <span style="color:var(--orange);font-weight:600">orange</span> 30+); the bar in the accent colour is your squad's own spread. ` : "") + c.how + (rated ? "" : ` <br>The score vs average rating chart appears once imported players have a Rating ` +
+    `(FM shows one for players who've played this season).`);
   document.getElementById("chartBox").innerHTML = "";
   c.draw();
 }

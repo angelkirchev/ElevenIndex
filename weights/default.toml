@@ -25,7 +25,7 @@
 #   Keepers share the other attributes' weights with outfield players (Decisions counts little for them too).
 # The pages show weights scaled so each position's biggest is 10.
 
-outfield_positions = ["DC", "DL/DR", "WBL/WBR", "DM", "MC", "ML/MR", "AMC", "AML/AMR", "ST"]
+outfield_positions = ["CD", "DL/DR", "WBL/WBR", "DM", "MC", "ML/MR", "AMC", "AML/AMR", "ST"]
 
 [attributes]
 Pace = 20

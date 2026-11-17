@@ -25,9 +25,9 @@ HERE = Path(__file__).parent
 RENAME = {
     "Player": "Name", "Salary": "Wage", "Team Work": "Teamwork",
     "Command Of Area": "Command of Area", "One On Ones": "One on Ones",
-    "Average Rating": "Rating", "Av Rat": "Rating", "Mins": "Minutes", "Based": "Division",
+    "Average Rating": "Rating", "Av Rat": "Rating", "Mins": "Minutes",
 }
-META_ORDER = ["Name", "Club", "Age", "Position", "Left Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating", "Division"]
+META_ORDER = ["Name", "Club", "Age", "Position", "Preferred Foot", "Left Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating"]
 GK_CHECK = ["Handling", "Reflexes", "One on Ones", "Aerial Reach", "Command of Area"]  # outfielders show 1-5 here
 GK_ATTRS = set(GK_CHECK) | {"Communication", "Eccentricity", "Kicking", "Punching", "Rushing Out (Tendency)", "Throwing"}
 OUTFIELD_ONLY = {"Finishing", "Tackling", "Marking", "Heading", "Dribbling", "Crossing", "Long Shots", "Penalty Taking",
@@ -101,8 +101,9 @@ def attr_value(v):
 
 def convert(rows, headers, club):
     """Split into {'outfield': rows, 'gk': rows} in ElevenIndex's format, plus the column list for each."""
-    known_meta = set(META_ORDER) | {"Best Pos", "Nation", "Ability", "Potential", "Height", "Inf",
-                                   "Picked", "Best Role", "Playing Time", "Club"}
+    known_meta = set(META_ORDER) | {"Best Pos", "Nation", "Ability", "Potential", "Height", "Inf", "Weight", "DoB",
+                                   "DOB", "Date Of Birth", "Date of Birth", "Nationality", "Personality", "Division", "Based",
+                                   "Picked", "Best Role", "Playing Time", "Club"}  # not attributes (most aren't used)
     attrs = [h for h in headers if h not in known_meta and h]
     out = {"outfield": [], "gk": []}
     for r in rows:
@@ -110,20 +111,23 @@ def convert(rows, headers, club):
             continue
         view = "gk" if is_keeper(r) else "outfield"
         new = {"Name": r["Name"], "Club": r.get("Club") or club, "Age": r.get("Age", ""),
-               "Left Foot": r.get("Left Foot", ""), "Wage": r.get("Wage", ""),
+               "Wage": r.get("Wage", ""),
                "Transfer Value": r.get("Transfer Value", ""), "Loan": r.get("Loan", "")}
+        for foot in ("Preferred Foot", "Left Foot"):  # the views now show Preferred Foot; older ones Left Foot
+            if (r.get(foot) or "").strip() not in ("", "-"):
+                new[foot] = r[foot].strip()
         if (r.get("Position") or "").strip() not in ("", "-"):  # FM's own positions, e.g. "D/WB (R), M (RC)"
             new["Position"] = r["Position"].strip()
         if new["Club"] in ("-", ""):
             new["Club"] = "Free agent"
-        # The charts page: season minutes and average rating. FM shows '-' for a player who hasn't played, so both are
-        # kept only when they're numbers (score.py reads them as such).
+        # Research: the season's average rating (and minutes, when a view shows them). FM shows '-' for a player who
+        # hasn't played, so each is kept only when it's a number (score.py reads them as such).
         minutes = (r.get("Minutes") or "").replace(",", "").strip()
         rating = (r.get("Rating") or "").strip()
-        if minutes.isdigit() and re.fullmatch(r"\d+(\.\d+)?", rating):
-            new.update(Minutes=minutes, Rating=rating)
-        if (r.get("Division") or "").strip() not in ("", "-"):
-            new["Division"] = r["Division"].strip()
+        if re.fullmatch(r"\d+(\.\d+)?", rating):
+            new["Rating"] = rating
+            if minutes.isdigit():
+                new["Minutes"] = minutes
         for a in attrs:
             if view == "gk" and a in OUTFIELD_ONLY or view == "outfield" and a in GK_ATTRS:
                 continue
