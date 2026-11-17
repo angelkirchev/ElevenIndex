@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.12.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.13.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -991,7 +991,9 @@ def analysis(squad, others, lineup, w):
             weight[a] = weight.get(a, 0) + v
     known = {a for r in squad for a in attrs_of(r)}
     attrs = sorted(known, key=lambda a: (-weight.get(a, 0), a))
-    return {"positions": out, "attrs": attrs, "players": rows}  # players: for the history overlay
+    best_shape = (lineup.get("formations") or [None])[0]  # the Squad plan's formation line: the best fit's weak spot
+    shape = {"name": best_shape["name"], "xi": best_shape["xi"], "weak": best_shape.get("weak")} if best_shape else None
+    return {"positions": out, "attrs": attrs, "players": rows, "shape": shape}  # players: for the history overlay
 
 
 def attributes_page(cfg, w, rows, save_dir):
@@ -1254,9 +1256,20 @@ def write_pages(save, config, cfg, pages):
     out = ROOT / "out" / save
     out.mkdir(parents=True, exist_ok=True)
     stamps = [f.name[:10] for folder in ("obs", "staff") for f in (ROOT / "saves" / save / folder).glob("*.csv")]
-    site = json.dumps({"where": nav_where(), "currency": config.get("currency", "£"),
-                       "gameDate": max(stamps, default=None)})  # the newest date: the profile's "years ago"
     w = load_weights(cfg, ROOT / "saves" / save)
+    # for the profiles of other clubs' players: your best at each position (where he'd start for you), and the score
+    # expected at each age (a youngster's estimate at 24)
+    squad_rows = pages["squad"][1] if "squad" in pages and isinstance(pages["squad"][1], list) else []
+    squad_best = {}
+    for pos in ("GK", *w["outfield"]):
+        cands = [r for r in squad_rows if r.get(pos) is not None and (not r.get("plays") or pos in r["plays"] or r.get("best") == pos)]
+        if cands:
+            top = max(cands, key=lambda r: r[pos])
+            squad_best[pos] = [top["name"], round(top[pos], 2)]
+    site = json.dumps({"where": nav_where(), "currency": config.get("currency", "£"),
+                       "gameDate": max(stamps, default=None),  # the newest date: the profile's "years ago"
+                       "club": cfg.get("managed_club", ""), "squadBest": squad_best,
+                       "ageBench": {str(k): v for k, v in w.get("age_benchmark", {}).items()}}, ensure_ascii=False)
     weights = json.dumps({"GK": w["gk"], **w["outfield"], **w.get("staff", {})}, ensure_ascii=False)  # the profile's ordering
     fills = {"__THEME__": (APP / "theme.css").read_text(encoding="utf-8"), "__SITE__": site, "__WEIGHTS__": weights,
              "__SAVE__": save, "__HOME__": html.escape(cfg["short_name"])}
@@ -1313,6 +1326,15 @@ GUIDE = [
              "<li><b>loan in</b> / <b>loan out</b> / <b>trial</b> next to a name; <b>↑CD</b> = moved up from Third to fill "
              "an empty slot (his best position was CD).</li>"
              "<li>A player whose scouted attributes are mostly unknown (FM shows -) isn't scored until you know more.</li></ul>"},
+    {"key": "", "title": "Advice and extras",
+     "text": "<ul><li><b>Advice lines</b>: under the Lineup pitch (how good your eleven is and what to do about its weak "
+             "spot), by the top 3 Formations (why they fit), on Research (<b>Next step</b>), Development (who's growing, who's "
+             "slowing) and Compare (who's better now, younger, cheaper).</li>"
+             "<li><b>A scouted player's profile</b>: <b>For you</b> = where he'd start in your team and over whom; <b>At 24 "
+             "(estimate)</b> for youngsters; a radar of what counts most at his position.</li>"
+             "<li><b>Analysis › Squad plan</b>: every position's recommendations as one list, most urgent first (Act now, "
+             "Strengthen, Plan ahead, Bring on), with a line on where to start. <b>Research</b> graphs <b>Your squad: age vs "
+             "score</b> and <b>wage vs score</b>.</li></ul>"},
     {"key": "", "title": "Colours",
      "text": "<b>Scores</b> (every position score, Best, Score, the pitch, profiles, Formations) get a colour per point, "
              "so good players don't all look alike:<br>"

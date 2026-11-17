@@ -223,6 +223,19 @@ __THEME__
   .cradar { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
   @media (max-width: 1100px) { .cradar { grid-template-columns: minmax(0, 1fr); } }
   svg.radar { width: 100%; overflow: visible; font: 11px var(--body); }
+  /* a line of advice under a result (Lineup, Formations, Development, Compare, Analysis) */
+  .advice { margin: 10px 0 0; padding: 8px 12px; color: var(--purple); background: var(--row); border-left: 3px solid var(--blue);
+            border-radius: 0 6px 6px 0; font-size: 13px; line-height: 1.5; }
+  .advice b { color: var(--fg); } .advice a { color: var(--blue); }
+  .plan { margin: 10px 0 0; padding: 0; list-style: none; counter-reset: pl; }
+  .plan li { display: flex; gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid var(--line); counter-increment: pl; }
+  .plan li::before { content: counter(pl); min-width: 18px; color: var(--dim); font-size: 12px; text-align: right; }
+  .plan .ppos { min-width: 70px; color: var(--fg); } .plan .rec { font-size: 13px; }
+  .ptag { flex: none; min-width: 84px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-align: center; color: #0f1412 !important; }
+  .ptag.act { background: #e9a066; } .ptag.warn { background: #d8c38f; } .ptag.plan { background: #9aa49f; } .ptag.young { background: var(--cyan); }
+  .why { margin-top: 3px; color: var(--dim); font-size: 12px; white-space: normal; max-width: 300px; } .why b { color: var(--purple); font-weight: 600; }
+  .fit { margin: 0 0 10px; padding: 8px 12px; color: var(--purple); background: var(--row); border-left: 3px solid var(--dim); border-radius: 0 6px 6px 0; }
+  .fit.up { color: var(--fg); border-left-color: var(--green); background: color-mix(in srgb, var(--green) 8%, transparent); }
   svg.radar .ring { fill: none; stroke: var(--line); } svg.radar .spoke { stroke: var(--line); stroke-opacity: .6; }
   svg.radar text { fill: var(--dim); }
   svg.radar .pa { fill: color-mix(in srgb, var(--cyan) 20%, transparent); stroke: var(--cyan); stroke-width: 2; } svg.radar .pb { fill: color-mix(in srgb, var(--blue) 20%, transparent); stroke: var(--blue); stroke-width: 2; }
@@ -537,6 +550,33 @@ const levelWord = v => v >= 14 ? "excellent" : v >= 13 ? "very good" : v >= 12 ?
 const colLabel = k => { const c = COLS.find(c => c.key === k); return c?.title || c?.label || k; };
 const bar = (v, lo = 6, hi = 15) => `<span class="dbar"><i class="${stier(v)}" style="width:${Math.max(4, Math.min(100, (v - lo) / (hi - lo) * 100)).toFixed(0)}%"></i></span>`;
 const card = (label, value, sub = "") => `<div class="dcard"><div class="dlab">${label}</div><div class="dval">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
+// a radar of a position's most weighted attributes (1-20 from the centre), one shape per [attrs, class] pair
+function radarSvg(w, players, size = 1) {
+  const axes = Object.entries(w).sort((x, y) => y[1] - x[1]).map(([a]) => a).slice(0, 8);
+  if (axes.length < 3) return "";
+  const R0 = 105, cx = 160, cy = 140, ang = i => -Math.PI / 2 + i * 2 * Math.PI / axes.length;
+  const pt = (i, v) => [cx + Math.cos(ang(i)) * R0 * v / 20, cy + Math.sin(ang(i)) * R0 * v / 20];
+  return `<svg class="radar" viewBox="-40 0 400 290" style="max-width:${Math.round(380 * size)}px">${[5, 10, 15, 20].map(r => `<polygon class="ring" points="${axes.map((a, i) => pt(i, r).join(",")).join(" ")}"/>`).join("")}
+    ${axes.map((a, i) => { const [x, y] = pt(i, 20), [lx, ly] = pt(i, 23.5);
+      return `<line class="spoke" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/><text x="${lx}" y="${ly + 4}" text-anchor="${Math.abs(lx - cx) < 8 ? "middle" : lx > cx ? "start" : "end"}">${esc(a)}</text>`; }).join("")}
+    ${players.map(([attrs, cls]) => `<polygon class="${cls}" points="${axes.map((a, i) => pt(i, attrs[a] ?? 0).map(n => n.toFixed(1)).join(",")).join(" ")}"/>`).join("")}</svg>`;
+}
+// a scouted player in your team: the position where he'd do most for you, against your best there (SITE.squadBest)
+function fitForYou(r, s, fm) {
+  if (!SITE.club || r.club === SITE.club || !SITE.squadBest) return "";
+  const options = Object.entries(SITE.squadBest).filter(([pos]) => s[pos] != null && (!fm.length || fm.includes(pos)))
+    .map(([pos, [who, v]]) => ({ pos, who, gap: s[pos] - v })).sort((a, b) => b.gap - a.gap);
+  if (!options.length) return "";
+  const o = options[0], last = o.who.split(" ").pop(), g = Math.abs(o.gap).toFixed(1);
+  return o.gap >= 0.05
+    ? `<div class="fit up"><b>For you:</b> he'd start at <b>${esc(o.pos)}</b> over ${esc(last)} (<b>+${g}</b>).${options[1] && options[1].gap >= 0.05 ? ` Also better than your best at ${esc(options[1].pos)} (+${options[1].gap.toFixed(1)}).` : ""}</div>`
+    : `<div class="fit"><b>For you:</b> a backup at <b>${esc(o.pos)}</b>, ${g} below ${esc(last)}; he wouldn't start anywhere in your best eleven.</div>`;
+}
+// a youngster (21 or under): his score at 24 if he keeps his pace for his age (vs Age × what's expected at 24)
+function at24(s) {
+  const bench = SITE.ageBench || {}, top = Math.max(...Object.keys(bench).map(Number));
+  return s.age != null && s.age <= 21 && s.vsAge != null && bench[top] ? s.vsAge * bench[top] : null;
+}
 function playerOverview(r, s, groups, snaps, scored) {
   const a = s.attrs, best = s.best, w = WEIGHTS[best] || {};
   const known = Object.keys(w).filter(k => a[k] != null), wsum = known.reduce((t, k) => t + w[k], 0);
@@ -562,14 +602,18 @@ function playerOverview(r, s, groups, snaps, scored) {
   const gain = k => wsum ? ` <i title="what each +1 adds to his ${best} score">+1 → +${(w[k] / wsum).toFixed(2)}</i>` : "";
   const facts = [card("Best position", `${best} <b class="${stier(s.score)}">${FMT.f1(s.score)}</b>`, levelWord(s.score)),
                  card("vs Age", s.vsAge == null ? "–" : `<b class="${tier(s.vsAge, RANGE.pct)}">${FMT.pct(s.vsAge)}</b>`, s.age != null ? `at ${s.age}` : ""),
+                 ...(at24(s) != null ? [card("At 24 (estimate)", `~<b class="${stier(at24(s))}">${at24(s).toFixed(1)}</b>`, "if he keeps his pace for his age")] : []),
                  card("FM position", esc(r.position || "–")), card("Foot", esc(r.foot || "–")),
                  card("Wage", r.wage == null ? "–" : `${FMT.money(r.wage)} <span class="sub">p/w</span>`),
                  card("Value", r.value == null ? "–" : r.valueLo != null && r.valueLo !== r.value ? `${FMT.money(r.valueLo)}–${FMT.money(r.value)}` : FMT.money(r.value))].join("");
+  const radar = radarSvg(w, [[a, "pa"]], 0.85);
   return `${scored ? `<div class="scout">${scoutReport(r, snaps)}</div>` : ""}
+    ${fitForYou(r, s, fm)}
     <div class="dcards">${facts}</div>
     <div class="dgrid">
       <div><div class="dhead">Good for</div><div class="chips">${goodFor || `<span class="dim">no scores yet</span>`}</div>
-        <div class="dhead">At ${esc(best)}, by group</div><table class="dtable">${groupRows || `<tr><td class="dim">not enough known</td></tr>`}</table></div>
+        <div class="dhead">At ${esc(best)}, by group</div><table class="dtable">${groupRows || `<tr><td class="dim">not enough known</td></tr>`}</table>
+        ${radar ? `<div class="dhead">At ${esc(best)}, the attributes that count most</div>${radar}` : ""}</div>
       <div><div class="dhead">Strengths <span class="sub">(13+, what counts at ${esc(best)})</span></div><div class="chips">${attrList(strengths)}</div>
         <div class="dhead">Weaknesses <span class="sub">(10 or less)</span></div><div class="chips">${attrList(weaknesses)}</div>
         <div class="dhead">Train first <span class="sub">(the most to gain at ${esc(best)})</span></div><div class="chips">${attrList(train, gain)}</div>
@@ -768,6 +812,17 @@ const ageTag = p => p && p.age != null ? ` <span class="agetag ${p.age <= 21 ? "
 const SHAPE_STORE = "fm:__SAVE__:lineup-shape", SLOT_STORE = "fm:__SAVE__:lineup-slot", MODE_STORE = "fm:__SAVE__:lineup-mode";
 const stored = (k, d) => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
 const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+// 1-2 sentences under the pitch: how good the eleven is, and what to do about its weak spot
+function researchLink(pos, text) {  // Research, opened at a position
+  return `<a href="charts.html" onclick="try{const k='fm:__SAVE__:charts',o=JSON.parse(localStorage.getItem(k)||'{}');o.pos='${pos}';localStorage.setItem(k,JSON.stringify(o))}catch(e){}">${text}</a>`;
+}
+function lineupVerdict(f, weak) {
+  const head = `Your eleven is <b>${levelWord(f.xi)}</b> (${f.xi.toFixed(2)}).`;
+  if (!weak || f.xi - weak.v < 0.3) return `${head} No position is well below the rest: strengthen where you have no backup, or keep developing your youngsters (Analysis).`;
+  return `${head} The weak spot is <b>${GROUP_NAMES[weak.pos] || weak.pos}</b> (${weak.v.toFixed(1)}, ${(f.xi - weak.v).toFixed(1)} below the eleven)` +
+    `${weak.missing ? ", with no backup" : ""}: find a ${esc(weak.pos)} with the minimums on <a href="filters.html">Players › Search</a>, ` +
+    `then see who's worth it on ${researchLink(weak.pos, "Research › " + esc(weak.pos))}.`;
+}
 function renderLineup() {
   const d = LINEUP;
   if (!d || !(d.formations || []).length) return;
@@ -800,7 +855,8 @@ function renderLineup() {
     ${pitchHtml(f, chosen, box)}
     <div class="pfoot"><span>Team average <b class="${stier(f.xi)}">${f.xi.toFixed(2)}</b></span>
       ${weak ? weakSpot(weak, f.xi) : ""}
-      ${f.short ? `<span class="t0">${f.short} empty</span>` : ""}</div>`;
+      ${f.short ? `<span class="t0">${f.short} empty</span>` : ""}</div>
+    <div class="advice">${lineupVerdict(f, weak)}</div>`;
   // the chosen position: everyone of yours who plays it, best first
   const slot = slots.find(s => s.key === chosen), pos = slot.pos;
   const role = r => {
@@ -840,6 +896,13 @@ document.getElementById("squadtop").addEventListener("click", e => {
 
 // Squad › Formations: DATA = { formations } (formations() in score.py): the shapes ranked; one opens on a pitch with its numbers
 const FORM_STORE = "fm:__SAVE__:formation";
+// why a top formation fits: its strongest line, and against the best shape what it gains or loses
+function formationWhy(x, top) {
+  const lines = Object.entries(x.lines || {}).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
+  const best = lines[0] ? `your <b>${lines[0][0].toLowerCase()}</b> (${lines[0][1].toFixed(2)}) is its strongest line` : "";
+  const vs = x === top ? "the best fit for this squad" : `${(top.xi - x.xi).toFixed(2)} behind ${esc(top.name)}`;
+  return `Why: ${[best, vs].filter(Boolean).join("; ")}.`;
+}
 function renderFormationsPage() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), fs = DATA.formations || [];
@@ -849,7 +912,7 @@ function renderFormationsPage() {
   const list = `<div class="tile"><div class="ttitle">Formations <span class="sub">best fit first</span></div>
     <table class="flist"><thead><tr><th class="num">#</th><th>Formation</th><th class="num">XI</th><th class="num">2nd XI</th><th>Weakest spot</th></tr></thead>
     <tbody>${fs.map((x, i) => `<tr class="f${x.name === f.name ? " on" : ""}" data-f="${esc(x.name)}"><td class="num dim">${i + 1}</td>
-      <td><b>${esc(x.name)}</b><div class="sub">${esc(x.note)}</div></td>
+      <td><b>${esc(x.name)}</b><div class="sub">${esc(x.note)}</div>${i < 3 ? `<div class="why">${formationWhy(x, fs[0])}</div>` : ""}</td>
       <td class="num ${stier(x.xi)}">${x.xi.toFixed(2)}</td><td class="num ${stier(x.depth)}">${x.depth.toFixed(2)}</td>
       <td title="${x.weak ? `${esc(x.weak.pos)}: its ${x.weak.starters} starter(s) and ${x.weak.backups} backup(s) averaged` : ""}">${x.weak ?
         weakSpot(x.weak, x.xi) : "–"}${x.short ? ` <span class="t0">${x.short} empty</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
@@ -934,6 +997,26 @@ function recommendations(g) {
 }
 const recHtml = list => list.map(x => `<span class="rec ${x.cls}">${x.text}</span>`).join("<br>");
 
+// the Squad plan's squad-wide lines: the formation's weak spot, the market, age across the eleven, youngsters' chances
+function squadWide(ps, shape) {
+  const out = [], sc = p => p.score ?? -1, last = n => esc(n.split(" ").pop());
+  if (shape && shape.weak && shape.xi - shape.weak.v >= 0.5)
+    out.push({ cls: shape.weak.missing || shape.xi - shape.weak.v >= 1 ? "act" : "warn", pos: "Shape",
+      text: `Your best shape is <b>${esc(shape.name)}</b> (${shape.xi.toFixed(2)}); its weak spot is <b>${GROUP_NAMES[shape.weak.pos] || shape.weak.pos}</b> ` +
+        `(${shape.weak.v.toFixed(1)}, ${(shape.xi - shape.weak.v).toFixed(1)} below)${shape.weak.missing ? " with no backup" : ""}: that's the signing that lifts the whole eleven.` });
+  for (const g of ps) {  // the market: what you've imported there is clearly better than your group
+    const avg = g.players.length ? g.players.filter(p => p.score != null).reduce((t, p) => t + p.score, 0) / g.players.filter(p => p.score != null).length : null;
+    if (g.importedScore != null && avg != null && g.importedScore - avg >= 1.5)
+      out.push({ cls: "warn", pos: g.pos, text: `The ${esc(g.pos)}s you've imported average ${g.importedScore.toFixed(1)}, ${(g.importedScore - avg).toFixed(1)} above yours: depth there is cheap to improve.` });
+  }
+  const starters = ps.flatMap(g => g.players.filter(p => p.role === "Starter"));
+  const old = [...new Map(starters.filter(p => p.age >= 30).map(p => [p.name, p])).values()];
+  if (old.length >= 3) out.push({ cls: "plan", pos: "Squad", text: `${old.length} of your starters are 30+ (${old.map(p => `${last(p.name)} ${p.age}`).join(", ")}): spread their replacements over the next windows, not all at once.` });
+  const young = ps.flatMap(g => g.players.filter(p => p.age <= 21 && (p.role === "Starter" || p.role === "Backup")));
+  if (!young.length) out.push({ cls: "young", pos: "Squad", text: `No youngster (21 or under) is a starter or first backup anywhere: give the best of your youth minutes, or scout U21s for the future.` });
+  else out.push({ cls: "young", pos: "Squad", text: `${[...new Set(young.map(p => last(p.name)))].join(", ")} ${young.length > 1 ? "are" : "is"} already among your first two choices: keep their minutes up.` });
+  return out;
+}
 function renderAnalysis() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA;
@@ -961,17 +1044,13 @@ function renderAnalysis() {
     esc(o === "Speed" ? "Speed (Pace + Acceleration)" : o === "Score" ? "Position score" : o)}</option>`).join("")}</select>`;
   const summary = `<div class="tile wide"><div class="ttitle">Positions ranked <span class="rankby">by ${select}</span></div>
     <table><thead><tr><th class="num">#</th><th>Position</th><th class="num">Players</th><th class="num">Your average</th><th>Your best</th>
-    <th class="num">Imported</th><th class="num">±</th><th>Recommendations</th></tr></thead><tbody>${ranked.map((g, i) => `<tr><td class="num dim">${i + 1}</td>
+    <th class="num">Imported</th><th class="num">±</th></tr></thead><tbody>${ranked.map((g, i) => `<tr><td class="num dim">${i + 1}</td>
       <td>${esc(g.pos)}</td><td class="num">${g.players.length}</td><td class="num ${cls(g.avg)}">${avg1(g.avg)}</td>
       <td>${g.top ? `<span class="pl" data-name="${esc(g.top.name)}">${esc(g.top.name)}</span> <span class="${cls(g.top.v)}">${fmt(g.top.v)}</span>` : "–"}</td>
       <td class="num ${cls(g.imp)}" title="average of ${g.imported} imported player(s) whose best position is ${esc(g.pos)}">${avg1(g.imp)}${
-        g.imported ? ` <span class="sub">(${g.imported})</span>` : ""}</td>${diff(g.avg, g.imp)}<td class="wrap">${recHtml(recommendations(g)) || `<span class="rec ok">Nothing to do</span>`}</td></tr>`).join("")}</tbody></table>
+        g.imported ? ` <span class="sub">(${g.imported})</span>` : ""}</td>${diff(g.avg, g.imp)}</tr>`).join("")}</tbody></table>
     <div class="sub">Players per position as on the <b>Lineup</b>. <b>Imported</b>: the average of the imported players whose best position it is,
-    and <b>±</b> how your players compare with them. <b>Recommendations</b> (advice only, no scores change):
-    <span class="rec act">act</span> (an ageing starter with no one ready, no backup), <span class="rec warn">a weak backup</span>,
-    <span class="rec plan">plan ahead</span> (someone of yours can take over), <span class="rec young">youngsters</span> (minutes, or
-    what to train first). Ageing = ${AGE_OLD}+, his ~next-season score an estimate (Pace, Acceleration, Stamina and Jumping Reach
-    a point lower, two from 33); youngsters = ${AGE_YOUNG} or under.</div></div>`;
+    and <b>±</b> how your players compare with them. What to do about it: the <b>Squad plan</b> below.</div></div>`;
   const tiles = ps.map(g => `<div class="tile"><div class="ttitle">${esc(g.pos)} <span class="sub">${esc(label)} · your average
     <span class="${cls(g.avg)}">${avg1(g.avg)}</span>${g.imp != null ? ` · imported <span class="${cls(g.imp)}">${avg1(g.imp)}</span>` : ""}</span></div>
     ${recommendations(g).length ? `<div class="agebox">${recHtml(recommendations(g))}</div>` : ""}
@@ -981,7 +1060,18 @@ function renderAnalysis() {
       <td class="num">${p.age}</td><td class="num ${cls(p.v)}">${fmt(p.v)}</td>
       ${rankBy === "Score" ? "" : `<td class="num ${p.score == null ? "dim" : stier(p.score)}">${p.score == null ? "–" : p.score.toFixed(1)}</td>`}</tr>`).join("")}</tbody></table>`
       : `<div class="sub">No one here on the Lineup.</div>`}</div>`).join("");
-  main.innerHTML = summary + tiles;
+  // the squad plan: every position's recommendations as one list, most urgent first (act, weak backup, plan, youngsters)
+  const URGENT = { act: 0, warn: 1, plan: 2, young: 3 }, LABEL = { act: "Act now", warn: "Strengthen", plan: "Plan ahead", young: "Bring on" };
+  const all = [...ranked.flatMap(g => recommendations(g).map(x => ({ ...x, pos: g.pos }))), ...squadWide(ps, d.shape)]
+    .sort((a, b) => URGENT[a.cls] - URGENT[b.cls]);
+  const count = k => all.filter(x => x.cls === k).length;
+  const sumLine = [["act", "to act on"], ["warn", "to strengthen"], ["plan", "to plan for"], ["young", "youngsters to bring on"]]
+    .filter(([k]) => count(k)).map(([k, w]) => `<b class="rec ${k}">${count(k)}</b> ${w}`).join(", ");
+  const plan = `<div class="tile wide"><div class="ttitle">Squad plan <span class="sub">what to do, most urgent first: by position, your best shape, the market, age and youth</span></div>
+    ${all.length ? `<div class="advice">${sumLine}.${count("act") ? " Start with the first: it's where you lose most if nothing changes." : count("warn") ? " No emergencies: fix the thin backups first." : " Nothing urgent: plan your successions and give the youngsters minutes."}</div>
+    <ol class="plan">${all.map(x => `<li><span class="ptag ${x.cls}">${LABEL[x.cls]}</span><b class="ppos">${esc(x.pos)}</b><span class="rec ${x.cls}">${x.text}</span></li>`).join("")}</ol>`
+    : `<div class="advice">Nothing to do at any position: your squad is balanced. Keep importing your squad to track it.</div>`}</div>`;
+  main.innerHTML = summary + plan + tiles;
   document.getElementById("rankby").onchange = e => {
     rankBy = e.target.value;
     try { localStorage.setItem(ANALYSIS_STORE, rankBy); } catch (err) {}
@@ -997,6 +1087,17 @@ document.getElementById("main").addEventListener("click", e => {
 const DEV_STORE = "fm:__SAVE__:development";
 let devFrom = null, devTo = null;
 try { [devFrom, devTo] = JSON.parse(localStorage.getItem(DEV_STORE) || "[null,null]"); } catch (e) {}
+// 1-2 sentences: how the youngsters and the 30+ players moved, and who to give minutes or replace
+function devAdvice(both) {
+  const avg = ps => ps.length ? ps.reduce((t, p) => t + p.ds, 0) / ps.length : null, sg = v => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`;
+  const young = both.filter(p => p.b.age <= 21), old = both.filter(p => p.b.age >= 30);
+  const rise = both.filter(p => p.b.age <= 23 && p.ds > 0.3).sort((a, b) => b.ds - a.ds).slice(0, 3).map(p => esc(p.name.split(" ").pop()));
+  const fall = old.filter(p => p.ds < -0.2).sort((a, b) => a.ds - b.ds).slice(0, 3).map(p => esc(p.name.split(" ").pop()));
+  return [young.length ? `Youngsters (21 or under) <b>${sg(avg(young))}</b> on average` : "",
+          old.length ? `players 30+ <b>${sg(avg(old))}</b>` : ""].filter(Boolean).join(", ") + ". " +
+    (rise.length ? `Keep giving minutes to <b>${rise.join(", ")}</b>: they're growing fastest. ` : "") +
+    (fall.length ? `<b>${fall.join(", ")}</b> ${fall.length > 1 ? "are" : "is"} slowing down: Analysis › Recommendations has who could take over.` : "");
+}
 function renderDevelopment() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA, S = d.snapshots;
@@ -1045,6 +1146,7 @@ function renderDevelopment() {
       <div><b>${joined.length}</b><span>joined${joined.length ? ": " + joined.map(p => esc(p.name.split(" ").pop())).join(", ") : ""}</span></div>
       <div><b>${left.length}</b><span>left${left.length ? ": " + left.map(p => esc(p.name.split(" ").pop())).join(", ") : ""}</span></div>
     </div>
+    <div class="advice">${devAdvice(both)}</div>
     <div class="sub">Squad attributes, summed over the players compared: rose most ${tot.filter(t => t[1] > 0).slice(0, 5).map(([k, v]) =>
       `<span class="t4">+${v}</span> ${esc(k)}`).join(", ") || "–"} · fell most ${tot.filter(t => t[1] < 0).reverse().slice(0, 5).map(([k, v]) =>
       `<span class="t0">−${Math.abs(v)}</span> ${esc(k)}`).join(", ") || "–"}</div></div>
@@ -1185,6 +1287,17 @@ function compareTray() {  // the picks at the bottom left of the players' pages,
   document.body.append(tray);
 }
 let cmpEdit = [false, false];
+// who's better at the position now, who's younger and cheaper, and who's better at more positions
+function compareVerdict(A, B, at, positions) {
+  const sur = p => esc(p.name.split(" ").pop()), a = A.scores[at], b = B.scores[at];
+  const now = a == null || b == null ? "" : Math.abs(a - b) < 0.05 ? `At ${esc(at)} they're level (${a.toFixed(1)}).`
+    : `At ${esc(at)} <b>${sur(a > b ? A : B)}</b> is better now (+${Math.abs(a - b).toFixed(1)}).`;
+  const more = positions.filter(p => A.scores[p] != null && B.scores[p] != null), wa = more.filter(p => A.scores[p] > B.scores[p]).length, wb = more.filter(p => B.scores[p] > A.scores[p]).length;
+  const extras = [A.age != null && B.age != null && A.age !== B.age ? `<b>${sur(A.age < B.age ? A : B)}</b> is ${Math.abs(A.age - B.age)} year${Math.abs(A.age - B.age) > 1 ? "s" : ""} younger` : "",
+    A.wage != null && B.wage != null && A.wage !== B.wage ? `<b>${sur(A.wage < B.wage ? A : B)}</b> earns ${shortMoney(Math.abs(A.wage - B.wage))} p/w less` : "",
+    wa !== wb ? `<b>${sur(wa > wb ? A : B)}</b> is better at ${Math.max(wa, wb)} of ${more.length} positions` : ""].filter(Boolean);
+  return now + (extras.length ? " " + extras.join("; ") + "." : "");
+}
 function renderCompare() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA;
@@ -1222,6 +1335,7 @@ function renderCompare() {
       <select id="cat"><option value="auto"${chosen === "auto" ? " selected" : ""}>Auto: ${auto}</option>${
         d.positions.map(p => `<option${chosen === p ? " selected" : ""}>${p}</option>`).join("")}</select></span></div>
     <div class="cmpgrid">${card(A, 0)}<button id="cswap" title="swap the sides"${A || B ? "" : " disabled"}>⇄</button>${card(B, 1)}</div>
+    ${A && B ? `<div class="advice">${compareVerdict(A, B, at, d.positions)}</div>` : ""}
     <datalist id="cnames">${d.players.map(p => `<option value="${esc(p.name)}" label="${esc(`${p.club || "–"} · ${p.age ?? "–"}y · ${p.best} ${f1(p.score)}`)}"></option>`).join("")}</datalist></div>`;
   let body = "";
   if (A && B) {
@@ -1321,6 +1435,7 @@ document.getElementById("head").addEventListener("click", e => {
 // A short column header's full name (Staff: Mgr → Manager…): a balloon under it while the mouse is on it, and one that
 // stays under the column you clicked until you click anywhere else
 let colTipPinned = null, colTipHover = null;
+
 const colTip = document.createElement("div");
 colTip.className = "coltip";
 document.body.append(colTip);

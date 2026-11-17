@@ -336,15 +336,15 @@ function byPosition(boxId, value, title, counts, step, labelMiddle, floor, only)
 }
 
 // ---- two values against each other, at the chosen position ----
-function plot({ x: getX, y: getY, xTitle, yTitle, wages, zones, spreadX }) {
+function plot({ x: getX, y: getY, xTitle, yTitle, wages, zones, spreadX, who }) {  // who: which players (else those best at the position)
   const box = document.getElementById("chartBox");
   box.innerHTML = "";
-  const has = p => atBest(p, choice.pos) && getX(p) != null && getY(p) != null;
+  const has = p => (who ? who(p) : atBest(p, choice.pos)) && getX(p) != null && getY(p) != null;
   const people = shown().filter(has), them = people.filter(p => !p.squad), us = people.filter(p => p.squad);
   const r = correlation(them.filter(compared).map(p => [wages ? Math.log(getX(p)) : getX(p), getY(p)]));
   const note = document.createElement("div");
   note.className = "note";
-  note.innerHTML = `${them.length} ${shortName(choice.against)}${us.length ? ` + ${us.length} ${CLUB}` : ""} at ${choice.pos}` +
+  note.innerHTML = (who ? `${us.length} of your players, each at his best position` : `${them.length} ${shortName(choice.against)}${us.length ? ` + ${us.length} ${CLUB}` : ""} at ${choice.pos}`) +
     `${r == null ? "" : ` · r = <b>${r.toFixed(2)}</b>`}`;
   box.appendChild(note);
   if (!people.length) return;
@@ -428,6 +428,21 @@ function draw() {
       how: `<b>Higher = better</b>, <b>further left = cheaper</b>. The dashed lines are the middle of the others. ` +
         `<span class="good">Top left</span>: better and cheaper than most (good value: worth a look). ` +
         `<span class="bad">Bottom right</span>: worse and dearer. Pick the position at the top; hover a mark for the player.` },
+    age: { name: "Your squad: age vs score", sub: "Every player of yours at his best position: who's young and good, who's older and fading",
+      draw: () => plot({ x: p => p.age, y: p => p.scores[p.best], xTitle: "age", yTitle: "best score", who: p => p.squad }),
+      how: (() => { const sq = people.filter(p => p.squad && p.age != null && p.scores[p.best] != null);
+        const young = sq.filter(p => p.age <= 21).sort((a, b) => b.scores[b.best] - a.scores[a.best])[0], old = sq.filter(p => p.age >= 30).sort((a, b) => b.scores[b.best] - a.scores[a.best])[0];
+        return `<b>Top left</b> = young and already good (keep them, give minutes); <b>top right</b> = your experienced core; <b>bottom right</b> = older ` +
+          `and fading (replace before they decline). ${young ? `Best youngster: <b>${young.name}</b> (${young.age}, ${young.scores[young.best].toFixed(1)}). ` : ""}` +
+          `${old ? `Best 30+: <b>${old.name}</b> (${old.age}, ${old.scores[old.best].toFixed(1)}): plan his successor.` : ""}`; })() },
+    wages: { name: "Your squad: wage vs score", sub: "What you pay for what you get: every player of yours at his best position",
+      draw: () => plot({ x: p => p.wage || null, y: p => p.scores[p.best], xTitle: "wage p/w (log)", yTitle: "best score", wages: true, who: p => p.squad }),
+      how: (() => { const sq = people.filter(p => p.squad && p.wage && p.scores[p.best] != null);
+        if (!sq.length) return "Your squad export needs a wage (Salary) column for this graph.";
+        const dear = sq.slice().sort((a, b) => b.wage / b.scores[b.best] - a.wage / a.scores[a.best])[0];
+        const alt = people.filter(p => !p.squad && p.best === dear.best && p.wage && p.scores[dear.best] >= dear.scores[dear.best] && p.wage < dear.wage).sort((a, b) => a.wage - b.wage)[0];
+        return `<b>Higher</b> = better, <b>further right</b> = dearer. Most expensive for his score: <b>${dear.name}</b> (${dear.best} ${dear.scores[dear.best].toFixed(1)}, ${wageText(dear.wage)} p/w)` +
+          (alt ? `; on your lists <b>${alt.name}</b> is as good for ${wageText(alt.wage)} p/w.` : "."); })() },
     ...(rated ? {
       rating: { name: `${pos} score vs average rating`, sub: "Whether the score matches how players do in matches",
         draw: () => plot({ x: p => p.rating, y: scoreOf, xTitle: "average rating", yTitle: `${pos} score` }),
@@ -474,7 +489,10 @@ function summary(people) {
       upgrades.map(r => `${r.pos} (${r.better.length})`).join(", ") + ". " : `No one listed beats your best anywhere. `) +
     (biggest ? `Biggest gap: <span class="bad">${biggest.pos}</span>, ${biggest.theirs.name} is <b>${sign(biggest.gap)}</b> on ${biggest.mine.name}. ` : "") +
     (ahead.length ? `You're ahead of everyone listed at <span class="good">${ahead.join(", ")}</span>. ` : "") +
-    (empty.length ? `<span class="faint">No player of yours plays ${empty.join(", ")}.</span>` : "");
+    (empty.length ? `<span class="faint">No player of yours plays ${empty.join(", ")}.</span>` : "") +
+    (listed ? `<br><b>Next step:</b> ` + (biggest && biggest.cheapest ? `at <b>${biggest.pos}</b>, ${biggest.cheapest.name} (${biggest.cheapest.scores[biggest.pos].toFixed(1)}, ${fmtWage(biggest.cheapest.wage)}) ` +
+      `is the cheapest who beats ${last(biggest.mine.name)}: worth a scout report.` : upgrades.length ? `look at ${upgrades.map(r => r.pos).join(", ")}: someone listed beats your best there.` :
+      `no one here beats your eleven: search for better players (Players › Search has the minimums to type into FM).`) : "");
   const body = rows.map(r => `<tr data-pos="${r.pos}" class="${r.pos === choice.pos ? "on" : ""}">
       <td class="pos-cell">${r.pos}</td>
       <td class="num">${r.them.length || "–"}</td>
