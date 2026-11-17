@@ -11,7 +11,7 @@ and track them over time. Everything runs locally; the user's data never leaves 
 ## How it fits together
 
 - `app.py`: the window (pywebview). Import file… → `import_export.import_file` → `score.build` + `score.write_pages` →
-  shows the page. Also the first-run setup screen, the Saves panel (switch, new, delete: a deleted save waits in `saves/_deleted` for 14 days, restorable, then
+  shows the page. Also the first-run setup screen, the new-save and error screens (`screen()`; a missing page opens the error one), the Saves panel (switch, new, delete: a deleted save waits in `saves/_deleted` for 14 days, restorable, then
   `purge_deleted` removes it), Menu → Theme… (five colour themes: `THEMES` in score.py, `:root[data-theme]` in
   theme.css, config.toml's `theme`, stamped on each page's `<html>`), Clear old lists, and the Attributes page's
   save / switch / import / export. Its title is `ElevenIndex <VERSION> — Save: <save>`.

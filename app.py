@@ -8,6 +8,7 @@ starts with "First Team"/"Squad", else as a search named after the file. Then sc
 Needs pywebview (pip install pywebview).
 """
 import csv
+import html
 import json
 import os
 import re
@@ -17,6 +18,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 import webview
 
@@ -122,8 +124,15 @@ class App:
                      + ", ".join(skipped[:5]) + (f" and {len(skipped) - 5} more" if len(skipped) > 5 else "") + ".")
         self.notice = (text, False)  # shown by on_load after the reload
         page = "last_staff.html" if kind == "staff" else "last.html"
-        # a fresh address each time, so the page is read again even when it's the one already open
-        self.window.load_url((out / page).resolve().as_uri() + f"?t={int(time.time())}")
+        url = (out / page).resolve().as_uri()
+        try:
+            here = (self.window.get_current_url() or "").split("?")[0].split("#")[0]
+        except Exception:
+            here = ""
+        if unquote(here).lower() == unquote(url).lower():  # already on it: read the new file in place
+            self.window.evaluate_js("location.reload()")
+        else:
+            self.open_url(url)
 
     # --- clearing old lists --------------------------------------------------------------------------------------
 
@@ -174,7 +183,7 @@ class App:
         self.notice = (f"Cleared {len(moved)} old list{'s' if len(moved) > 1 else ''}. They're not deleted: they're in {where}, "
                        "and moving them back brings them back.", False)
         page = "staff.html" if kind == "staff" else "elsewhere.html"
-        self.window.load_url((out / page).resolve().as_uri())
+        self.open_url((out / page).resolve().as_uri())
 
     def commit(self, message):
         """Commit the save data, as the screenshot workflow does. Silently skipped without git."""
@@ -218,7 +227,7 @@ class App:
                 self.show_soon(url=(out / "squad.html").resolve().as_uri())
             else:
                 self.notice = (notice or f"Switched to {name}: no players yet.", False)
-                self.show_soon(html=START_HTML)
+                self.show_soon(html=screen('start', self.club_name()))
 
     # A deleted save waits in saves/_deleted, where Saves… can restore it, for KEEP_DELETED_DAYS; then it's gone.
     KEEP_DELETED_DAYS = 14
@@ -416,8 +425,23 @@ class App:
 
     def show_soon(self, url=None, html=None):
         """Load a page a moment from now: called from the page, the reply has to reach it before it's replaced."""
-        load = (lambda: self.window.load_url(url)) if url else (lambda: self.window.load_html(html))
+        load = (lambda: self.open_url(url)) if url else (lambda: self.window.load_html(html))
         threading.Timer(0.3, load).start()
+
+    def open_url(self, url):
+        """Open one of our pages; if its file is missing, the error screen instead of the browser's "File not found"."""
+        path = Path(unquote(urlparse(url).path).lstrip("/")) if url.startswith("file:") else None
+        if path is not None and not path.exists():
+            log_error(f"missing page {path}")
+            self.window.load_html(screen("error", detail=f"Missing page: {path}"))
+        else:
+            self.window.load_url(url)
+
+    def club_name(self):
+        try:
+            return score.load_toml(self.save_dir / "save.toml").get("managed_club", "") if self.save_dir else ""
+        except Exception:
+            return ""
 
     def show_notice(self, text, error=False):
         """A message in the corner of the current page."""
@@ -456,7 +480,7 @@ class App:
         self.commit(f"{name}: new save")
         self.window.set_title(window_title(name))
         self.notice = (f"All set up for {club}. Now import your squad: press F8 on it in FM, then Menu → Import file…", False)
-        self.show_soon(html=START_HTML)
+        self.show_soon(html=screen('start', self.club_name()))
 
     def browse_folder(self, current):
         chosen = self.window.create_file_dialog(webview.FileDialog.FOLDER, directory=current or str(Path.home()))
@@ -474,7 +498,7 @@ class App:
                 self.notice = (f"Couldn't update the pages: {e}", True)
                 log_error("rescoring on start")
             page = score.ROOT / "out" / self.save / "squad.html"  # the app opens on Squad › Lineup
-            where = {"url": page.resolve().as_uri()} if page.exists() else {"html": START_HTML}
+            where = {"url": page.resolve().as_uri()} if page.exists() else {"html": screen("start", self.club_name())}
             title = window_title(self.save)
         self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
         self.window.events.loaded += self.on_load
@@ -646,9 +670,80 @@ $("go").onclick = go;
 document.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
 </script></body></html>"""
 
-START_HTML = """<!doctype html><html><body style="font: 15px Inter, 'Segoe UI', system-ui; background: #121815; color: #f2efe7; padding: 40px">
-<h2>No players yet</h2><p>In FM, point at a player list and press F8 (Ctrl+F8 first, to add every attribute).</p>
-<p>Then open <b>Menu</b> at the bottom right, click <b>Import file…</b> and choose the export.</p></body></html>"""
+# The new-save and error screens (screen()): a dark pitch, the XI INDEX logo, a title, instructions in the bottom-left
+# corner (the Menu button is bottom right).
+SCREEN_HTML = """<!doctype html><html><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { position: relative; overflow: hidden; color: #f2efe7; font: 15px/1.55 Inter, 'Segoe UI', system-ui, sans-serif;
+  background: radial-gradient(ellipse 70% 80% at 72% 42%, #1d4a30 0%, #142a1d 38%, #0f1412 72%), #0f1412; }
+svg.pitch { position: absolute; inset: 0; width: 100%; height: 100%; }
+svg.pitch .l { fill: none; stroke: #f2efe7; stroke-opacity: .07; stroke-width: 2; }
+svg.pitch .d { fill: #c5f04f; fill-opacity: .16; } svg.pitch .gk { fill: #f2efe7; fill-opacity: .14; }
+.brand { position: absolute; top: 34px; left: 40px; display: flex; gap: 12px; align-items: center; }
+.brand svg { width: 46px; height: 46px; }
+.brand b { display: block; font: 600 26px/1 'Bahnschrift SemiCondensed', 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: .32em; }
+.brand small { display: block; margin-top: 4px; color: #c5f04f; font: 700 9px/1 Inter, 'Segoe UI', sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.title { position: absolute; top: 24%; left: 40px; max-width: 640px; }
+.title .tag { display: inline-block; margin-bottom: 12px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; color: #0f1412; background: #c5f04f; }
+.title.error .tag { color: #fff; background: #d9534f; }
+.title h1 { margin: 0 0 10px; font: 600 48px/1.02 'Bahnschrift SemiCondensed', 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: .01em; }
+.title p { margin: 0; color: #cfd6d1; font-size: 17px; }
+.title code { display: block; margin-top: 12px; padding: 8px 12px; color: #f6c9a6; background: #00000040; border-left: 3px solid #e9a066;
+  border-radius: 0 6px 6px 0; font: 13px/1.5 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.card { position: absolute; left: 40px; bottom: 36px; width: 460px; max-width: calc(100% - 80px); padding: 18px 20px 16px;
+  background: #121815e8; border: 1px solid #2a332f; border-radius: 12px; box-shadow: 0 10px 30px #0009; }
+.card h2 { margin: 0 0 12px; font: 600 18px/1 'Bahnschrift SemiCondensed', 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  letter-spacing: .04em; text-transform: uppercase; color: #c5f04f; }
+.card ol { margin: 0; padding: 0; list-style: none; counter-reset: s; }
+.card li { position: relative; margin: 0 0 10px; padding-left: 34px; color: #e6e9e7; font-size: 14px; }
+.card li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: 1px; width: 22px; height: 22px;
+  border-radius: 50%; color: #0f1412; background: #c5f04f; font: 700 12px/22px Inter, 'Segoe UI', sans-serif; text-align: center; }
+.card b { color: #fff; } .card .k { padding: 0 5px; color: #0f1412; background: #e6e9e7; border-radius: 3px; font: 700 12px/1.5 Inter, sans-serif; }
+.card .more { margin-top: 12px; padding-top: 10px; border-top: 1px solid #2a332f; color: #9aa49f; font-size: 13px; }
+.card .more b { color: #cfd6d1; }
+</style></head><body>
+<svg class="pitch" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <rect class="l" x="60" y="60" width="1480" height="880" rx="6"/><path class="l" d="M800 60v880"/>
+  <circle class="l" cx="800" cy="500" r="120"/><circle class="l" cx="800" cy="500" r="4"/>
+  <path class="l" d="M60 300h220v400H60M60 400h80v200H60M1540 300h-220v400h220M1540 400h-80v200h80"/>
+  <path class="l" d="M280 420a110 110 0 0 1 0 160M1320 420a110 110 0 0 0 0 160"/>
+  <circle class="gk" cx="1470" cy="500" r="11"/>
+  <circle class="d" cx="1290" cy="230" r="11"/><circle class="d" cx="1310" cy="410" r="11"/><circle class="d" cx="1310" cy="590" r="11"/><circle class="d" cx="1290" cy="770" r="11"/>
+  <circle class="d" cx="1090" cy="300" r="11"/><circle class="d" cx="1060" cy="500" r="11"/><circle class="d" cx="1090" cy="700" r="11"/>
+  <circle class="d" cx="900" cy="250" r="11"/><circle class="d" cx="870" cy="500" r="11"/><circle class="d" cx="900" cy="750" r="11"/>
+</svg>
+<div class="brand">__LOGO__<span><b>INDEX</b><small>Rate smarter. Build better.</small></span></div>
+__BODY__
+</body></html>"""
+
+
+def screen(kind, club="", detail=""):
+    """The new-save screen ("start") or the error screen ("error"), as HTML."""
+    logo = (score.APP / "logo.svg").read_text(encoding="utf-8") if (score.APP / "logo.svg").exists() else ""
+    esc = lambda t: html.escape(str(t))
+    if kind == "error":
+        body = f"""<div class="title error"><span class="tag">Something went wrong</span>
+<h1>This page couldn't open</h1><p>Your saves and imports are safe; only the page that shows them is missing or broken.</p>
+{f'<code>{esc(detail)}</code>' if detail else ''}</div>
+<div class="card"><h2>What to do</h2><ol>
+<li><b>Open the save again:</b> Menu → <b>Saves…</b>, pick it: every page is rebuilt from your data.</li>
+<li><b>Import again</b> if it happened after an import: Menu → <b>Import file…</b> (re-importing the same file just updates it).</li>
+<li><b>Restart ElevenIndex.</b> It rescores everything when it starts.</li>
+<li><b>Still wrong?</b> Report it on the project page (Menu → <b>About</b>) and attach <b>app.log</b> from <b>{esc(score.ROOT)}</b>.</li>
+</ol><div class="more">Nothing is deleted when this happens: your exports stay in FM27 Exporter's folder and your data in <b>{esc(score.ROOT)}</b>.</div></div>"""
+    else:
+        body = f"""<div class="title"><span class="tag">New save</span>
+<h1>{esc(club) + ': n' if club else 'N'}o players yet</h1><p>Import your squad and every player gets a score at every position, your best eleven, and what to do next.</p></div>
+<div class="card"><h2>Get your squad in</h2><ol>
+<li>In FM, open your squad and pick the view <b>Squad - All Players View</b> (the view menu at the top of the list).</li>
+<li>Point at the list and press <span class="k">F8</span>: FM27 Exporter saves it to its exports folder.</li>
+<li>Here: Menu → <b>Import file…</b> and choose the newest <b>First Team …</b> file.</li>
+</ol><div class="more"><b>Scouting:</b> Player Search with <b>Search - Outfield Players View</b> (or <b>Goalkeepers</b>) and a position
+filter, then F8 and import the same way. <b>No such view in FM?</b> Extract <b>ElevenIndex-FM27-views-and-filters.zip</b> into
+Documents\\Sports Interactive\\Football Manager 27, then in FM's view menu: <b>Custom → Import view</b>.</div></div>"""
+    return SCREEN_HTML.replace("__LOGO__", logo).replace("__BODY__", body)
 
 TOOLBAR_JS = """(() => {
   if (document.getElementById("fm-import")) return;
