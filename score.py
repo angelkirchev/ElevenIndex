@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.8.2"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.8.3"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -1241,8 +1241,9 @@ GUIDE = [
              "<li><b>vs Age</b>: his score against what's normal for his age. 100% = on track to be a good Championship or "
              "low Premier League player at his peak; more is ahead of that, less behind.</li>"
              "<li><b>Foot</b>: Left if his left foot is Fairly Strong or better, else Right.</li>"
-             "<li><b>Colours</b>: attributes like FM (grey 1–5, white 6–9, yellow 10–14, green 15+); scores and vs Age from "
-             "red (weak) through white to green (very good).</li>"
+             "<li><b>Colours</b>: attributes like FM (grey 1–5, white 6–9, yellow 10–14, green 15+); scores in a tone per "
+             "point: red under 9, orange 9, yellow 10, yellow-green 11, light green 12, green 13, teal 14, sky blue 15, "
+             "violet 16+; vs Age from red (weak) to green (well ahead).</li>"
              "<li><b>loan in</b> / <b>loan out</b> / <b>trial</b> next to a name; <b>↑DC</b> = moved up from Third to fill "
              "an empty slot (his best position was DC).</li>"
              "<li>A player whose scouted attributes are mostly unknown (FM shows -) isn't scored until you know more.</li></ul>"},

@@ -55,6 +55,9 @@ __THEME__
 
   /* ---- value colours (tier and attrTier): red, orange, white, yellow, green; grey for an attribute of 1-5 ---- */
   .t0 { color: var(--red); } .t1 { color: var(--orange); } .t2 { color: var(--fg); } .t3 { color: var(--yellow); } .t4 { color: var(--green); }
+  /* scores' nine tones (stier), after the tiers so they win */
+  .s0 { color: #f87171; } .s1 { color: #fb923c; } .s2 { color: #fbd13d; } .s3 { color: #d7e35a; } .s4 { color: #a6e163; }
+  .s5 { color: #4ade80; } .s6 { color: #2dd4bf; } .s7 { color: #38bdf8; } .s8 { color: #c084fc; }
   .a1 { color: var(--dim); }
   .t0, .t1, .t2, .t3, .t4, .a1 { font-weight: 700; }
   /* a weight: small and dim, behind a divider, so it isn't read as a value */
@@ -135,6 +138,11 @@ __THEME__
   .pslot .psec { color: var(--dim); font-size: 10px; white-space: nowrap; }
   .pslot.t4 .pval, .pslot.t3 .pval { color: var(--green); } .pslot.t2 .pval { color: var(--yellow); } .pslot.t1 .pval, .pslot.t0 .pval { color: var(--red); }
   .pslot.t4, .pslot.t3 { border-bottom: 3px solid var(--green); } .pslot.t2 { border-bottom: 3px solid var(--yellow); } .pslot.t1, .pslot.t0 { border-bottom: 3px solid var(--red); }
+  /* the scores' nine tones on the pitch and on the bars */
+  .pslot.s0 { border-bottom-color: #f87171; } .pslot.s0 .pval { color: #f87171; } .pslot.s1 { border-bottom-color: #fb923c; } .pslot.s1 .pval { color: #fb923c; } .pslot.s2 { border-bottom-color: #fbd13d; } .pslot.s2 .pval { color: #fbd13d; }
+   .pslot.s3 { border-bottom-color: #d7e35a; } .pslot.s3 .pval { color: #d7e35a; } .pslot.s4 { border-bottom-color: #a6e163; } .pslot.s4 .pval { color: #a6e163; } .pslot.s5 { border-bottom-color: #4ade80; } .pslot.s5 .pval { color: #4ade80; }
+   .pslot.s6 { border-bottom-color: #2dd4bf; } .pslot.s6 .pval { color: #2dd4bf; } .pslot.s7 { border-bottom-color: #38bdf8; } .pslot.s7 .pval { color: #38bdf8; } .pslot.s8 { border-bottom-color: #c084fc; } .pslot.s8 .pval { color: #c084fc; }
+  .dbar i.s0 { background: #f87171; } .dbar i.s1 { background: #fb923c; } .dbar i.s2 { background: #fbd13d; } .dbar i.s3 { background: #d7e35a; } .dbar i.s4 { background: #a6e163; } .dbar i.s5 { background: #4ade80; } .dbar i.s6 { background: #2dd4bf; } .dbar i.s7 { background: #38bdf8; } .dbar i.s8 { background: #c084fc; }
   .pslot.deep3 { border-bottom: 3px solid var(--green); } .pslot.deep3 .pval { color: var(--green); }
   .pslot.deep2 { border-bottom: 3px solid var(--yellow); } .pslot.deep2 .pval { color: var(--yellow); }
   .pslot.deep1 { border-bottom: 3px solid var(--red); } .pslot.deep1 .pval { color: var(--red); }
@@ -310,6 +318,9 @@ const RANGE = { f1: [6, 13], f2: [6.5, 7.1], pct: [0.6, 1.0], attr: [5, 15] };  
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
 // a value's colour: where it falls in its span, in five steps from red (t0) to green (t4)
 function tier(v, [lo, hi]) { return "t" + clamp(Math.floor((v - lo) / (hi - lo) * 5), 0, 4); }
+// a score's colour (1-20): its five-step tier (good / average / weak) plus one of nine tones, a point apart from 9 to
+// 16, so good players don't all look the same green: s0 under 9 (red) ... s5 13-14 (green), s6 teal, s7 sky, s8 16+ violet
+function stier(v) { return v == null ? "dim" : `${tier(v, RANGE.f1)} s${clamp(Math.floor(v) - 8, 0, 8)}`; }
 // attribute values coloured as FM27 does: 1-5 grey, 6-9 white, 10-14 yellow, 15+ green
 function attrTier(v) { return v >= 15 ? "t4" : v >= 10 ? "t3" : v >= 6 ? "t2" : "a1"; }
 // a squad export's time: "2026-11-14T0032" -> "2026-11-14 00:32"
@@ -380,7 +391,7 @@ function cellHtml(r, c, marks) {
     case "range": return `<td ${cls("num")}>${r.valueLo === v ? FMT.money(v) : `${FMT.money(r.valueLo)}–${FMT.money(v)}`}</td>`;
     case "yesno": return `<td ${cls(v === "yes" ? "t4" : "dim")}>${v}</td>`;
   }
-  if (c.fmt) return `<td ${cls(`num ${tier(v, RANGE[c.fmt])}`)}>${FMT[c.fmt](v)}</td>`;
+  if (c.fmt) return `<td ${cls(`num ${c.fmt === "f1" ? stier(v) : tier(v, RANGE[c.fmt])}`)}>${FMT[c.fmt](v)}</td>`;
   if (c.key === "name") return `<td ${cls("")}><span class="pl" title="open ${esc(v)}'s profile">${esc(v)}</span>${cmpIcon(r)}` +
     (r.loan ? `<span class="loan ${r.loan}">${loanLabel(r)}</span>` : "") + "</td>";
   return `<td ${cls(c.num ? "num" : "text")}>${v}</td>`;
@@ -496,7 +507,7 @@ const ATTR_GROUPS = {  // FM's attribute groups (ATTRIBUTE_GROUPS in score.py)
 };
 const levelWord = v => v >= 14 ? "excellent" : v >= 13 ? "very good" : v >= 12 ? "good" : v >= 11 ? "decent" : v >= 10 ? "average" : "weak";
 const colLabel = k => { const c = COLS.find(c => c.key === k); return c?.title || c?.label || k; };
-const bar = (v, lo = 6, hi = 15) => `<span class="dbar"><i class="${tier(v, RANGE.f1)}" style="width:${Math.max(4, Math.min(100, (v - lo) / (hi - lo) * 100)).toFixed(0)}%"></i></span>`;
+const bar = (v, lo = 6, hi = 15) => `<span class="dbar"><i class="${stier(v)}" style="width:${Math.max(4, Math.min(100, (v - lo) / (hi - lo) * 100)).toFixed(0)}%"></i></span>`;
 const card = (label, value, sub = "") => `<div class="dcard"><div class="dlab">${label}</div><div class="dval">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
 function playerOverview(r, s, groups, snaps, scored) {
   const a = s.attrs, best = s.best, w = WEIGHTS[best] || {};
@@ -505,14 +516,14 @@ function playerOverview(r, s, groups, snaps, scored) {
   const fm = r.plays || [];
   // good for: his best positions, the ones FM lists for him marked
   // good for: the positions FM lists for him first (when known), then up to three more his attributes suit, dimmed
-  const chipFor = ([pos, v], extra) => `<span class="chip ${tier(v, RANGE.f1)}${extra ? " also" : ""}" title="${extra ? "by his attributes; FM doesn't list it for him" : fm.length ? "FM lists this position for him" : ""}">${pos}${fm.includes(pos) ? " ✓" : ""} <b>${v.toFixed(1)}</b> <i>${levelWord(v)}</i></span>`;
+  const chipFor = ([pos, v], extra) => `<span class="chip ${stier(v)}${extra ? " also" : ""}" title="${extra ? "by his attributes; FM doesn't list it for him" : fm.length ? "FM lists this position for him" : ""}">${pos}${fm.includes(pos) ? " ✓" : ""} <b>${v.toFixed(1)}</b> <i>${levelWord(v)}</i></span>`;
   const listed = fm.length ? scores.filter(([pos]) => fm.includes(pos)) : scores.slice(0, 5);
   const also = fm.length ? scores.filter(([pos, v]) => !fm.includes(pos) && v >= (listed[0]?.[1] ?? 0) - 0.5).slice(0, 3) : [];
   const goodFor = listed.map(x => chipFor(x, false)).join("") + (also.length ? `<span class="sub" style="align-self:center">by attributes also:</span>` + also.map(x => chipFor(x, true)).join("") : "");
   // FM's groups at his best position, weighted by it (as on Research)
   const gv = g => { let t = 0, k = 0, sum = 0; for (const x of ATTR_GROUPS[g]) { if (!w[x]) continue; t += w[x]; if (a[x] != null) { k += w[x]; sum += a[x] * w[x]; } } return t && k >= t / 2 ? sum / k : null; };
   const groupRows = Object.keys(ATTR_GROUPS).filter(g => g !== "Goalkeeping" || best === "GK").map(g => [g, gv(g)]).filter(([, v]) => v != null)
-    .map(([g, v]) => `<tr><td>${g}</td><td class="num ${tier(v, RANGE.f1)}"><b>${v.toFixed(1)}</b></td><td class="barcell">${bar(v)}</td></tr>`).join("");
+    .map(([g, v]) => `<tr><td>${g}</td><td class="num ${stier(v)}"><b>${v.toFixed(1)}</b></td><td class="barcell">${bar(v)}</td></tr>`).join("");
   // strengths, weaknesses, what to train, what's still unscouted: among what counts at his best position
   const weighted = known.slice().sort((x, y) => w[y] - w[x]);
   const strengths = weighted.filter(k => a[k] >= 13).sort((x, y) => a[y] - a[x] || w[y] - w[x]).slice(0, 5);
@@ -521,7 +532,7 @@ function playerOverview(r, s, groups, snaps, scored) {
   const unscouted = Object.keys(w).sort((x, y) => w[y] - w[x]).slice(0, 10).filter(k => a[k] == null);
   const attrList = (ks, extra = () => "") => ks.length ? ks.map(k => `<span class="chip">${esc(k)} <b class="${attrTier(a[k])}">${a[k]}</b>${extra(k)}</span>`).join("") : `<span class="dim">none stand out</span>`;
   const gain = k => wsum ? ` <i title="what each +1 adds to his ${best} score">+1 → +${(w[k] / wsum).toFixed(2)}</i>` : "";
-  const facts = [card("Best position", `${best} <b class="${tier(s.score, RANGE.f1)}">${FMT.f1(s.score)}</b>`, levelWord(s.score)),
+  const facts = [card("Best position", `${best} <b class="${stier(s.score)}">${FMT.f1(s.score)}</b>`, levelWord(s.score)),
                  card("vs Age", s.vsAge == null ? "–" : `<b class="${tier(s.vsAge, RANGE.pct)}">${FMT.pct(s.vsAge)}</b>`, s.age != null ? `at ${s.age}` : ""),
                  card("FM position", esc(r.position || "–")), card("Foot", esc(r.foot || "–")),
                  card("Wage", r.wage == null ? "–" : `${FMT.money(r.wage)} <span class="sub">p/w</span>`),
@@ -541,7 +552,7 @@ function playerPositions(r, s, groups) {
   const fm = r.plays || [];
   const rows = groups.map(k => [k, s[k]]).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
   return `<table class="dtable wide"><thead><tr><th>Position</th><th class="num">Score</th><th></th><th>Level</th><th>FM</th></tr></thead><tbody>${rows.map(([pos, v]) =>
-    `<tr class="${pos === s.best ? "on" : ""}"><td><b>${pos}</b>${pos === s.best ? ` <span class="sub">best</span>` : ""}</td><td class="num ${tier(v, RANGE.f1)}"><b>${v.toFixed(1)}</b></td>
+    `<tr class="${pos === s.best ? "on" : ""}"><td><b>${pos}</b>${pos === s.best ? ` <span class="sub">best</span>` : ""}</td><td class="num ${stier(v)}"><b>${v.toFixed(1)}</b></td>
      <td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td><td>${fm.length ? (fm.includes(pos) ? `<span class="t4">plays it</span>` : `<span class="dim">–</span>`) : ""}</td></tr>`).join("")}</tbody></table>
     <div class="sub">${fm.length ? "Best = his highest score among the positions FM lists for him." : "No FM positions in his exports: best = his highest score anywhere."}</div>`;
 }
@@ -568,10 +579,10 @@ function staffOverview(r, s, groups) {
   const strengths = ks.filter(k => a[k] >= 14).sort((x, y) => a[y] - a[x]).slice(0, 6);
   const weaknesses = ks.filter(k => w[k] && a[k] <= 8).sort((x, y) => w[y] - w[x]).slice(0, 4);
   const chip = k => `<span class="chip">${esc(k)} <b class="${attrTier(a[k])}">${a[k]}</b></span>`;
-  return `<div class="dcards">${card("Best job", best ? `${esc(colLabel(best))} <b class="${tier(jobs[0][1], RANGE.f1)}">${jobs[0][1].toFixed(1)}</b>` : "–", best ? levelWord(jobs[0][1]) : "")}
+  return `<div class="dcards">${card("Best job", best ? `${esc(colLabel(best))} <b class="${stier(jobs[0][1])}">${jobs[0][1].toFixed(1)}</b>` : "–", best ? levelWord(jobs[0][1]) : "")}
       ${card("Preferred job", esc(r.job || "–"))}${card("Personality", esc(r.personality || "–"))}${card("Age", r.age ?? "–")}</div>
     <div class="dgrid"><div><div class="dhead">Every job, best first</div><table class="dtable wide">${jobs.map(([k, v]) =>
-      `<tr class="${k === best ? "on" : ""}"><td>${esc(colLabel(k))}</td><td class="num ${tier(v, RANGE.f1)}"><b>${v.toFixed(1)}</b></td><td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td></tr>`).join("")}</table></div>
+      `<tr class="${k === best ? "on" : ""}"><td>${esc(colLabel(k))}</td><td class="num ${stier(v)}"><b>${v.toFixed(1)}</b></td><td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td></tr>`).join("")}</table></div>
       <div><div class="dhead">Strengths <span class="sub">(14+)</span></div><div class="chips">${strengths.length ? strengths.map(chip).join("") : `<span class="dim">none stand out</span>`}</div>
         <div class="dhead">Weaknesses <span class="sub">(8 or less, for ${esc(colLabel(best || ""))})</span></div><div class="chips">${weaknesses.length ? weaknesses.map(chip).join("") : `<span class="dim">none</span>`}</div></div></div>`;
 }
@@ -586,12 +597,12 @@ function showDetail(r) {
   const snaps = r.history, first = snaps[0], newest = snaps[snaps.length - 1], several = snaps.length > 1;
   const isStaff = "job" in r, scored = snaps.some(s => s.score != null), withAge = snaps.some(s => s.vsAge != null);
   const groups = COLS.filter(c => c.fmt === "f1" && c.key !== "score").map(c => c.key).filter(k => snaps.some(s => s[k] != null));
-  const scoreCell = (s, prev, k) => `<td class="num ${tier(s[k], RANGE.f1)}">${FMT.f1(s[k])}${changeMark(s[k], prev?.[k])}</td>`;
+  const scoreCell = (s, prev, k) => `<td class="num ${stier(s[k])}">${FMT.f1(s[k])}${changeMark(s[k], prev?.[k])}</td>`;
   const rows = snaps.map((s, i) => {
     const prev = snaps[i - 1];
     return `<tr><td>${fmtDate(s.date)}</td><td class="text">${s.club}</td><td class="num">${s.age ?? "–"}</td>` +
       groups.map(k => scoreCell(s, prev, k)).join("") + `<td class="text">${s.best ?? "–"}</td>` +
-      (scored ? `<td class="num ${tier(s.score, RANGE.f1)}"><b>${FMT.f1(s.score)}</b>${changeMark(s.score, prev?.score)}</td>` : "") +
+      (scored ? `<td class="num ${stier(s.score)}"><b>${FMT.f1(s.score)}</b>${changeMark(s.score, prev?.score)}</td>` : "") +
       (withAge ? `<td class="num ${tier(s.vsAge, RANGE.pct)}">${FMT.pct(s.vsAge)}${prev?.vsAge != null && Math.abs(s.vsAge - prev.vsAge) >= 0.005
         ? `<span class="chg ${s.vsAge > prev.vsAge ? "t4" : "t0"}">${pctPoints(s.vsAge - prev.vsAge)}</span>` : ""}</td>` : "") + "</tr>";
   }).join("");
@@ -740,15 +751,15 @@ function renderLineup() {
                html: `<div class="plab">${s.label}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${b ? `${b} backup${b === 1 ? "" : "s"}` : "no backup"}</div>` };
     }
     const off = s.side && s.xi.off;  // the starter on a side he doesn't play (no one who does was close enough)
-    return { cls: tier(s.xi.v, RANGE.f1), html: `<div class="plab">${s.label}${off ? ` <span class="offside" title="${esc(sideWhy(s.xi, s.pos))}: not his side">⚠</span>` : ""}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${s.xi.v.toFixed(1)}</div>` };
+    return { cls: stier(s.xi.v), html: `<div class="plab">${s.label}${off ? ` <span class="offside" title="${esc(sideWhy(s.xi, s.pos))}: not his side">⚠</span>` : ""}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${s.xi.v.toFixed(1)}</div>` };
   };
   const weak = f.weak;  // the position whose starters + backups average lowest (one without a backup first)
   document.getElementById("lineup").innerHTML = `<div class="ttitle lhead">Lineup
       <select id="lshape">${fs.map(x => `<option${x.name === f.name ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
       <span class="seg" id="lmode"><button data-m="score" class="${mode === "score" ? "on" : ""}">Score</button><button data-m="depth" class="${mode === "depth" ? "on" : ""}">Depth</button></span></div>
     ${pitchHtml(f, chosen, box)}
-    <div class="pfoot"><span>Team average <b class="${tier(f.xi, RANGE.f1)}">${f.xi.toFixed(2)}</b></span>
-      ${weak ? `<span title="${esc(weak.pos)}: its starters and backups averaged">${groupName(weak.pos, "Weak")} <b class="${tier(weak.v, RANGE.f1)}">${weak.v.toFixed(1)}</b>${weak.missing ? ` <span class="t0">no backup</span>` : ""}</span>` : ""}
+    <div class="pfoot"><span>Team average <b class="${stier(f.xi)}">${f.xi.toFixed(2)}</b></span>
+      ${weak ? `<span title="${esc(weak.pos)}: its starters and backups averaged">${groupName(weak.pos, "Weak")} <b class="${stier(weak.v)}">${weak.v.toFixed(1)}</b>${weak.missing ? ` <span class="t0">no backup</span>` : ""}</span>` : ""}
       ${f.short ? `<span class="t0">${f.short} empty</span>` : ""}</div>`;
   // the chosen position: everyone of yours who plays it, best first
   const slot = slots.find(s => s.key === chosen), pos = slot.pos;
@@ -768,12 +779,12 @@ function renderLineup() {
       <td class="num dim">${i + 1}</td><td><span class="pl" data-name="${esc(r.name)}">${esc(r.name)}</span>${cmpIcon(r)}${r.age <= d.youthAge ? ` <span class="ytag">youth</span>` : ""}${
         onSide(r, slot) ? "" : ` <span class="ytag offtag" title="not his side">${esc(sideWhy(r, pos, d.sides[r.name]))}</span>`}</td>
       <td class="text">${role(r)}</td><td class="text">${esc(r.position || "–")}</td>${slot.side ? `<td class="text">${esc(r.foot || "–")}</td>` : ""}<td class="num">${r.age ?? "–"}</td>
-      <td class="num ${tier(r[pos], RANGE.f1)}"><b>${r[pos].toFixed(1)}</b></td><td class="num ${tier(r.vsAge, RANGE.pct)}">${FMT.pct(r.vsAge)}</td>
+      <td class="num ${stier(r[pos])}"><b>${r[pos].toFixed(1)}</b></td><td class="num ${tier(r.vsAge, RANGE.pct)}">${FMT.pct(r.vsAge)}</td>
       <td class="num">${r.wage == null ? "–" : FMT.money(r.wage)}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">No player of yours plays ${esc(pos)}.</div>`}
     <div class="ttitle" style="margin-top:14px">Better on your lists <span class="sub">imported players best at ${esc(pos)}${starter != null ? `, above ${starter.toFixed(1)}` : ""}</span></div>
     ${targets.length ? `<table class="plist"><tbody>${targets.map(t => `<tr><td>${esc(t.name)}${cmpIcon(t)}</td><td class="text">${esc(t.club || "–")}</td>
       <td class="num">${t.age ?? "–"}</td><td class="num">${t.wage == null ? "–" : FMT.money(t.wage) + " p/w"}</td>
-      <td class="num ${tier(t.v, RANGE.f1)}"><b>${t.v.toFixed(1)}</b></td>${starter != null ? `<td class="num t4">+${(t.v - starter).toFixed(1)}</td>` : ""}</tr>`).join("")}</tbody></table>`
+      <td class="num ${stier(t.v)}"><b>${t.v.toFixed(1)}</b></td>${starter != null ? `<td class="num t4">+${(t.v - starter).toFixed(1)}</td>` : ""}</tr>`).join("")}</tbody></table>`
       : `<div class="sub">${(d.targets[pos] || []).length ? "No one on your lists beats your starter here." : "Nobody on your imported lists is best here yet."}</div>`}`;
   // the controls
   document.getElementById("lshape").onchange = e => { keep(SHAPE_STORE, e.target.value); renderLineup(); };
@@ -799,11 +810,11 @@ function renderFormationsPage() {
     <table class="flist"><thead><tr><th class="num">#</th><th>Formation</th><th class="num">XI</th><th class="num">2nd XI</th><th>Weakest spot</th></tr></thead>
     <tbody>${fs.map((x, i) => `<tr class="f${x.name === f.name ? " on" : ""}" data-f="${esc(x.name)}"><td class="num dim">${i + 1}</td>
       <td><b>${esc(x.name)}</b><div class="sub">${esc(x.note)}</div></td>
-      <td class="num ${tier(x.xi, RANGE.f1)}">${x.xi.toFixed(2)}</td><td class="num ${tier(x.depth, RANGE.f1)}">${x.depth.toFixed(2)}</td>
+      <td class="num ${stier(x.xi)}">${x.xi.toFixed(2)}</td><td class="num ${stier(x.depth)}">${x.depth.toFixed(2)}</td>
       <td title="${x.weak ? `${esc(x.weak.pos)}: its ${x.weak.starters} starter(s) and ${x.weak.backups} backup(s) averaged` : ""}">${x.weak ?
-        `${groupName(x.weak.pos, "Weak")} <span class="${tier(x.weak.v, RANGE.f1)}">${x.weak.v.toFixed(1)}</span>${x.weak.missing ? ` <span class="t0">no backup</span>` : ""}` : "–"}${x.short ? ` <span class="t0">${x.short} empty</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+        `${groupName(x.weak.pos, "Weak")} <span class="${stier(x.weak.v)}">${x.weak.v.toFixed(1)}</span>${x.weak.missing ? ` <span class="t0">no backup</span>` : ""}` : "–"}${x.short ? ` <span class="t0">${x.short} empty</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   // the chosen shape: its eleven, the backup under each, and the numbers
-  const box = s => s.xi ? { cls: tier(s.xi.v, RANGE.f1), html: `<div class="plab">${s.label}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div>
+  const box = s => s.xi ? { cls: stier(s.xi.v), html: `<div class="plab">${s.label}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div>
       <div class="pval">${s.xi.v.toFixed(1)}</div><div class="psec">${s.sec ? `${esc(surnameOf(s.sec.name))} ${s.sec.v.toFixed(1)}` : "no backup"}</div>` }
     : { cls: "empty", html: `<div class="plab">${s.label}</div><div class="pname dim">nobody</div>` };
   const slots = pitchSlots(f), xi = f.players, out = xi.filter(p => p.pos !== "GK");
@@ -813,10 +824,10 @@ function renderFormationsPage() {
   xi.forEach(p => counts[level(p.v)]++);
   const thin = slots.filter(s => s.xi && (!s.sec || s.sec.v < s.xi.v - 1.5));
   const age = side => side.length ? (side.reduce((a, p) => a + (p.age || 0), 0) / side.length).toFixed(1) : "–";
-  const num = (label, v, fmt = x => x.toFixed(2)) => `<tr><td>${label}</td><td class="num ${v == null ? "dim" : tier(v, RANGE.f1)}"><b>${v == null ? "–" : fmt(v)}</b></td></tr>`;
+  const num = (label, v, fmt = x => x.toFixed(2)) => `<tr><td>${label}</td><td class="num ${v == null ? "dim" : stier(v)}"><b>${v == null ? "–" : fmt(v)}</b></td></tr>`;
   const group = (title, rows) => `<div class="fgroup"><div class="fghead">${title}</div><table class="fstats"><tbody>${rows}</tbody></table></div>`;
   const row = (label, value) => `<tr><td>${label}</td><td class="num">${value}</td></tr>`;
-  const val = (v, d = 2) => v == null ? "–" : `<b class="${tier(v, RANGE.f1)}">${v.toFixed(d)}</b>`;
+  const val = (v, d = 2) => v == null ? "–" : `<b class="${stier(v)}">${v.toFixed(d)}</b>`;
   const stats = group("Elevens", row("Best eleven (XI)", val(f.xi)) + row("Second eleven", val(f.depth)) +
         row("Average age", `${age(xi)} <span class="sub">· 2nd XI ${age(f.second)}</span>`) +
         (f.short ? row("Empty spots", `<span class="t0">${f.short}</span>`) : "")) +
@@ -852,7 +863,7 @@ function renderAnalysis() {
   const val = (p, attrs, score) => rankBy === "Speed" ? mean([attrs.Pace, attrs.Acceleration]) : rankBy === "Score" ? score : attrs[rankBy] ?? null;
   const fmt = v => v == null ? "–" : rankBy === "Score" || !Number.isInteger(v) ? v.toFixed(1) : String(v);
   const avg1 = v => v == null ? "–" : v.toFixed(1);  // averages: always one decimal
-  const cls = v => v == null ? "dim" : rankBy === "Score" ? tier(v, RANGE.f1) : attrTier(v);
+  const cls = v => v == null ? "dim" : rankBy === "Score" ? stier(v) : attrTier(v);
   const label = rankBy === "Speed" ? "Speed (Pace + Acceleration)" : rankBy === "Score" ? "Position score" : rankBy;
   const diff = (a, b) => a == null || b == null ? `<td class="num dim">–</td>` :
     `<td class="num ${a - b >= 0 ? "t4" : "t0"}">${a - b >= 0 ? "+" : "−"}${Math.abs(a - b).toFixed(1)}</td>`;
@@ -881,7 +892,7 @@ function renderAnalysis() {
       ${rankBy === "Score" ? "" : `<th class="num">${esc(g.pos)} score</th>`}</tr></thead><tbody>${g.players.map((p, i) => `<tr><td class="num dim">${i + 1}</td>
       <td><span class="pl" data-name="${esc(p.name)}">${esc(p.name)}</span></td><td class="text">${esc(p.role)}${p.from ? ` <span class="sub">↑${esc(p.from)}</span>` : ""}</td>
       <td class="num">${p.age}</td><td class="num ${cls(p.v)}">${fmt(p.v)}</td>
-      ${rankBy === "Score" ? "" : `<td class="num ${p.score == null ? "dim" : tier(p.score, RANGE.f1)}">${p.score == null ? "–" : p.score.toFixed(1)}</td>`}</tr>`).join("")}</tbody></table>`
+      ${rankBy === "Score" ? "" : `<td class="num ${p.score == null ? "dim" : stier(p.score)}">${p.score == null ? "–" : p.score.toFixed(1)}</td>`}</tr>`).join("")}</tbody></table>`
       : `<div class="sub">No one here on the Lineup.</div>`}</div>`).join("");
   main.innerHTML = summary + tiles;
   document.getElementById("rankby").onchange = e => {
@@ -1118,8 +1129,8 @@ function renderCompare() {
       <div class="cname"><a href="#" class="cpick" data-i="${i}" title="pick someone else">${esc(p.name)}</a>
         <button class="cx" data-i="${i}" title="empty this slot">×</button></div>
       <div class="sub">${esc(p.club || "–")}${p.squad ? " (yours)" : ""} · ${p.age ?? "–"}y · ${money(p.wage)} p/w · value ${money(p.value)} · ${plays}</div>
-      <div class="cbig"><span class="sub">${esc(at)}</span> <b class="${p.scores[at] == null ? "dim" : tier(p.scores[at], RANGE.f1)}">${f1(p.scores[at])}</b>
-        <span class="sub">· best ${esc(p.best)}</span> <b class="${p.score == null ? "dim" : tier(p.score, RANGE.f1)}">${f1(p.score)}</b>
+      <div class="cbig"><span class="sub">${esc(at)}</span> <b class="${p.scores[at] == null ? "dim" : stier(p.scores[at])}">${f1(p.scores[at])}</b>
+        <span class="sub">· best ${esc(p.best)}</span> <b class="${p.score == null ? "dim" : stier(p.score)}">${f1(p.score)}</b>
         <span class="sub">· vs Age</span> <b class="${p.vsAge == null ? "dim" : tier(p.vsAge, RANGE.pct)}">${pct(p.vsAge)}</b></div>
       ${p.squad ? "" : `<button class="cbest" data-i="${i}" title="your best player at ${esc(at)} on the other side">vs my best at ${esc(at)}</button>`}
     </div>`;
@@ -1172,7 +1183,7 @@ function renderCompare() {
       <table class="ctable"><thead><tr><th>Attribute</th><th class="num ca">${esc(surname(A))}</th><th class="num cb">${esc(surname(B))}</th><th class="num">±</th></tr></thead>
       <tbody>${rows}</tbody></table></div>` : ""; }).join("");
     // score over time
-    const hist = p => p.history.length > 1 ? p.history.map(h => `<span class="sub">${fmtDate(h.date)}</span> <b class="${h.score == null ? "dim" : tier(h.score, RANGE.f1)}">${f1(h.score)}</b>`).join(" → ") : `<span class="sub">one snapshot (${fmtDate(p.history[0].date)})</span>`;
+    const hist = p => p.history.length > 1 ? p.history.map(h => `<span class="sub">${fmtDate(h.date)}</span> <b class="${h.score == null ? "dim" : stier(h.score)}">${f1(h.score)}</b>`).join(" → ") : `<span class="sub">one snapshot (${fmtDate(p.history[0].date)})</span>`;
     body = `<div class="tile"><div class="ttitle">At ${esc(at)} <span class="sub"><span class="ka">■</span> ${esc(A.name)} · <span class="kb">■</span> ${esc(B.name)}</span></div>
         <div class="cradar">${radar}<div>${groups}</div></div></div>
       <div class="tile"><div class="ttitle">Every position</div>${positions}
