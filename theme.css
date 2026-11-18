@@ -104,4 +104,11 @@
   select { color: var(--fg) !important; background-color: color-mix(in srgb, var(--fg) 12%, var(--bg)) !important;
            border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent) !important; }
   select:hover { border-color: color-mix(in srgb, var(--blue) 60%, transparent) !important; }
+  /* the app's own look on every dropdown: rounded, bold, a lime arrow instead of Windows' plain one */
+  select { appearance: none; -webkit-appearance: none; padding: 0 25px 0 9px !important; height: 23px !important; border-radius: 6px !important;
+           cursor: pointer; font: 600 12px var(--body, Inter, "Segoe UI", sans-serif) !important; line-height: 21px !important;
+           vertical-align: middle; box-shadow: 0 1px 6px #0004;  /* one size everywhere: as tall as the app's small buttons */
+           background-repeat: no-repeat; background-size: 10px 10px; background-position: right 8px center;
+           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c5f04f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); }
+  select:hover, select:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 35%, transparent); }
   select option { color: var(--fg); background-color: color-mix(in srgb, var(--fg) 14%, var(--bg)); }

@@ -135,7 +135,7 @@ __THEME__
   .dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px; }
   .dhead { margin: 12px 0 6px; color: var(--cyan); font: 700 14px var(--head); text-transform: uppercase; letter-spacing: .03em; }
   .dhead .sub { text-transform: none; letter-spacing: 0; font: 400 11px var(--body); }
-  .dhead select { margin-left: 4px; padding: 2px 6px; color: var(--fg); font: 600 12px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; text-transform: none; }
+  .dhead select { margin-left: 4px; padding: 2px 6px; color: var(--fg); font: 600 12px var(--body); background-color: var(--bg); border: 1px solid var(--line); border-radius: 5px; text-transform: none; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip { padding: 3px 9px; color: var(--fg); background: var(--row); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; }
   .chip i { color: var(--dim); font-style: normal; font-size: 11px; }
@@ -191,7 +191,7 @@ __THEME__
   #lineup { flex: 0 1 470px; min-width: 340px; }
   #formations { flex: 1 1 520px; min-width: 0; }
   .lhead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-  .lhead select { padding: 3px 6px; color: var(--fg); font: 600 13px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+  .lhead select { padding: 3px 6px; color: var(--fg); font: 600 13px var(--body); background-color: var(--bg); border: 1px solid var(--line); border-radius: 5px;
                   text-transform: none; letter-spacing: 0; }
   .lhead .seg button { padding: 3px 10px; font-size: 12px; text-transform: none; letter-spacing: 0; }
   /* the pitch: grass stripes, the lines, a box per slot */
@@ -262,8 +262,15 @@ __THEME__
 
   /* ---- Analysis and Development ---- */
   .rankby { margin-left: 6px; color: var(--dim); font: 500 13px var(--body); text-transform: none; letter-spacing: 0; }
-  #rankby { margin-left: 4px; padding: 3px 8px; color: var(--fg); font: 600 13px var(--body); background: var(--row);
+  #rankby { margin-left: 4px; padding: 3px 8px; color: var(--fg); font: 600 13px var(--body); background-color: var(--row);
             border: 1px solid var(--blue); border-radius: 6px; }
+  /* Development's two squad exports: labelled pickers with a calendar mark and the app's own arrow */
+  .devrange { display: inline-flex; align-items: center; gap: 8px; margin-left: 14px; vertical-align: 2px; text-transform: none; letter-spacing: 0; }
+  .devrange .dlab { color: var(--dim); font: 700 10.5px var(--body); letter-spacing: .08em; text-transform: uppercase; }
+  .devrange .darr { color: var(--blue); font: 600 15px var(--body); margin: 0 2px; }
+  select.snapsel { padding-left: 27px !important; font-variant-numeric: tabular-nums;  /* the size: every dropdown's (theme.css) */ background-size: 12px 12px, 10px 10px; background-position: 9px 50%, right 8px center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238bd3f7' stroke-width='2' stroke-linecap='round'%3E%3Crect x='3.5' y='5' width='17' height='15.5' rx='2.5'/%3E%3Cpath d='M3.5 10h17M8 3v4M16 3v4'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c5f04f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); }
   .devsum { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 10px; }
   .devsum > div { min-width: 120px; padding: 6px 12px; background: var(--row); border: 1px solid var(--line); border-radius: 8px; }
   .devsum b { display: block; color: var(--fg); font: 700 22px/1.1 var(--head); }
@@ -282,7 +289,7 @@ __THEME__
   .cx, #cswap, .cbest, .cadd { padding: 3px 10px; color: var(--fg); font: 600 12px var(--body); background: var(--bg); border: 1px solid var(--line);
                                border-radius: 6px; cursor: pointer; }
   .cx:hover, #cswap:hover:not(:disabled), .cbest:hover, .cadd:hover { color: #141414; background: var(--blue); border-color: var(--blue); }
-  #cat { padding: 3px 6px; color: var(--fg); font: 600 13px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
+  #cat { padding: 3px 6px; color: var(--fg); font: 600 13px var(--body); background-color: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
   #cswap { align-self: center; font-size: 18px; padding: 6px 10px; } #cswap:disabled { opacity: .3; cursor: default; }
   .cbest { margin-top: 6px; }
   .cadd { margin-left: 10px; vertical-align: 3px; text-transform: none; letter-spacing: 0; }
@@ -1335,8 +1342,9 @@ function renderDevelopment() {
     `<tr><td>${name(p)}</td><td class="num dim">${p.b.age}y</td><td class="text">${esc(p.b.best)}</td>
      <td class="num">${p.a.score.toFixed(1)} → ${p.b.score.toFixed(1)}</td><td class="num ${cls(p.ds)}">${sign(p.ds)}</td></tr>`).join("")}</tbody></table>`
     : `<div class="sub">No one.</div>`}</div>`;
-  main.innerHTML = `<div class="tile wide"><div class="ttitle">Development <span class="rankby">from
-      <select id="devfrom">${opt(devFrom)}</select> to <select id="devto">${opt(devTo)}</select></span></div>
+  main.innerHTML = `<div class="tile wide"><div class="ttitle">Development <span class="devrange"><span class="dlab">From</span>
+      <select id="devfrom" class="snapsel" title="the earlier squad export">${opt(devFrom)}</select><span class="darr">→</span><span class="dlab">To</span>
+      <select id="devto" class="snapsel" title="the later squad export">${opt(devTo)}</select></span></div>
     <div class="devsum">
       <div><b>${both.length}</b><span>players compared</span></div>
       <div><b class="${cls(avg)}">${sign(avg)}</b><span>average score change</span></div>
