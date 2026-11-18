@@ -55,6 +55,10 @@ __THEME__
     background: color-mix(in srgb, var(--fg) 6%, transparent); }
   .devpivot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
   @media (max-width: 1000px) { .devpivot { grid-template-columns: minmax(0, 1fr); } }
+  .devpivot { gap: 28px; } .dvchart .dhead { margin-bottom: 8px; }
+  .dvrow { display: grid; grid-template-columns: 112px minmax(80px, 1fr) 54px minmax(0, 1.3fr); gap: 10px; align-items: center; min-height: 32px; }
+  .dvlab { font-weight: 600; } .dvval { text-align: right; } .dvnote { font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dbar.dvtrack { display: block; width: auto; }  /* the app's own bar (.dbar), coloured by the nine tones */
   #main.tiles.dense { grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); }
   /* Positions ranked: the table, and beside it the same positions as bars (your average, your best, imported) */
   .rkwrap { display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 28px; align-items: start; }
@@ -1292,23 +1296,30 @@ function renderDevelopment() {
   // where training worked: by area (each player at his best position now) and by attribute group, side by side
   const AREAS = { GK: ["GK"], Defence: ["CD", "DL/DR", "WBL/WBR"], Midfield: ["DM", "MC", "ML/MR"], Attack: ["AMC", "AML/AMR", "ST"] };
   const signed = (v, d = 1) => `<span class="${v > 0.05 ? "t4" : v < -0.05 ? "t0" : "dim"}">${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(d)}</span>`;
-  const areaRows = Object.entries(AREAS).map(([area, poss]) => {
+  // two bar charts: a bar per area (the average score change a player) and per attribute group (the change a player)
+  // the nine score tones for a change: red/orange a drop, yellow about nothing, then green, teal, blue, purple the most
+  const AREA_STEPS = [-0.2, -0.05, 0.05, 0.1, 0.2, 0.3, 0.45, 0.6], GROUP_STEPS = [-1, -0.25, 0.25, 0.5, 1, 1.5, 2.25, 3];
+  const tone = (v, steps) => `s${steps.filter(t => v >= t).length}`;
+  const areaData = Object.entries(AREAS).map(([area, poss]) => {
     const ps = both.filter(p => poss.includes(p.b.best));
-    if (!ps.length) return `<tr><td><b>${area}</b></td><td class="num dim">0</td><td class="num dim">–</td><td class="num dim">–</td><td class="num dim">–</td><td class="dim">–</td></tr>`;
-    const a = ps.reduce((t, p) => t + p.ds, 0) / ps.length, best = [...ps].sort((x, y) => y.ds - x.ds)[0];
-    return `<tr><td><b>${area}</b></td><td class="num">${ps.length}</td><td class="num"><b>${signed(a, 2)}</b></td>
-      <td class="num t4">${ps.filter(p => p.ds > 0.05).length}</td><td class="num t0">${ps.filter(p => p.ds < -0.05).length}</td>
-      <td class="text">${best.ds > 0.05 ? `${name(best)} ${signed(best.ds)}` : `<span class="dim">–</span>`}</td></tr>`;
+    if (!ps.length) return { label: area, v: null, note: "no players" };
+    const v = ps.reduce((t, p) => t + p.ds, 0) / ps.length, top = [...ps].sort((x, y) => y.ds - x.ds)[0];
+    return { label: area, v, d: 2, steps: AREA_STEPS, note: `${ps.length} players · <span class="t4">${ps.filter(p => p.ds > 0.05).length}↑</span> <span class="t0">${ps.filter(p => p.ds < -0.05).length}↓</span>${
+      top.ds > 0.05 ? ` · best ${name(top)} ${signed(top.ds)}` : ""}` };
   });
-  const groupRows = CAT_ORDER.map(g => {
+  const groupData = CAT_ORDER.map(g => {
     const ts = tot.filter(([k]) => ATTR_GROUPS[g].includes(k)), net = ts.reduce((t, [, v]) => t + v, 0);
     const n = both.filter(p => Object.keys(p.b.attrs).some(k => ATTR_GROUPS[g].includes(k))).length;
-    const ups = both.reduce((t, p) => t + p.up.filter(c => ATTR_GROUPS[g].includes(c.k)).length, 0);
-    const downs = both.reduce((t, p) => t + p.down.filter(c => ATTR_GROUPS[g].includes(c.k)).length, 0);
+    if (!n) return { label: g, v: null, note: "not exported" };
     const most = ts.filter(t => t[1] > 0).slice(0, 2).map(([k, v]) => `${esc(k)} <span class="t4">+${v}</span>`).join(", ");
-    return `<tr><td><b>${g}</b></td><td class="num"><b>${signed(net, 0)}</b></td><td class="num">${n ? signed(net / n, 2) : "–"}</td>
-      <td class="num t4">${ups}</td><td class="num t0">${downs}</td><td class="text">${most || `<span class="dim">–</span>`}</td></tr>`;
+    return { label: g, v: net / n, d: 2, steps: GROUP_STEPS, note: `${signed(net, 0)} in all${most ? ` · ${most}` : ""}` };
   });
+  const barChart = (title, unit, rows) => {
+    const max = Math.max(0.01, ...rows.filter(r => r.v != null).map(r => Math.abs(r.v)));
+    return `<div class="dvchart"><div class="dhead">${title} <span class="sub">${unit}</span></div>${rows.map(r => `<div class="dvrow">
+      <span class="dvlab">${r.label}</span><span class="dbar dvtrack">${r.v == null ? "" : `<i class="${tone(r.v, r.steps)}" style="width:${Math.max(3, Math.abs(r.v) / max * 100).toFixed(1)}%"></i>`}</span>
+      <b class="dvval ${r.v == null ? "dim" : tone(r.v, r.steps)}">${r.v == null ? "–" : `${r.v > 0 ? "+" : r.v < 0 ? "−" : "±"}${Math.abs(r.v).toFixed(r.d)}`}</b><span class="dvnote">${r.note}</span></div>`).join("")}</div>`;
+  };
   const bestArea = Object.keys(AREAS).map((area, i) => [area, both.filter(p => AREAS[area].includes(p.b.best))])
     .filter(([, ps]) => ps.length).map(([area, ps]) => [area, ps.reduce((t, p) => t + p.ds, 0) / ps.length]).sort((x, y) => y[1] - x[1]);
   const perPlayer = CAT_ORDER.map(g => { const n = both.filter(p => Object.keys(p.b.attrs).some(k => ATTR_GROUPS[g].includes(k))).length;
@@ -1318,10 +1329,7 @@ function renderDevelopment() {
     `, <b>${perPlayer[perPlayer.length - 1][0]}</b> least (${signed(perPlayer[perPlayer.length - 1][1], 2)})` : ""}.` : "";
   const pivot = `<div class="tile wide"><div class="ttitle">Where training worked <span class="sub">by area (each player at his best position) and by attribute group</span></div>
     ${pivotNote ? `<div class="advice">${pivotNote}</div>` : ""}
-    <div class="devpivot"><table><thead><tr><th>Area</th><th class="num">Players</th><th class="num">Avg ±</th><th class="num">Improved</th><th class="num">Declined</th><th>Biggest riser</th></tr></thead>
-      <tbody>${areaRows.join("")}</tbody></table>
-    <table><thead><tr><th>Attribute group</th><th class="num">Net ±</th><th class="num">Per player</th><th class="num">Up</th><th class="num">Down</th><th>Rose most</th></tr></thead>
-      <tbody>${groupRows.join("")}</tbody></table></div></div>`;
+    <div class="devpivot">${barChart("By area", "average score change a player", areaData)}${barChart("By attribute group", "attribute points gained a player", groupData)}</div></div>`;
   const opt = (sel, keep) => S.map(s => `<option value="${esc(s)}"${s === sel ? " selected" : ""}>${esc(fmtDate(s))}</option>`).join("");
   const top = (title, ps) => `<div class="tile"><div class="ttitle">${title}</div>${ps.length ? `<table><tbody>${ps.map(p =>
     `<tr><td>${name(p)}</td><td class="num dim">${p.b.age}y</td><td class="text">${esc(p.b.best)}</td>
