@@ -643,6 +643,25 @@ class App:
         """A message in the corner of the current page."""
         self.window.evaluate_js(f"window.fmNotice && fmNotice({json.dumps(text)}, {json.dumps(error)})")
 
+    def on_closing(self):
+        """The window's X: stop the close and ask on the page (CLOSE_JS); its Close button calls quit(). When the page
+        can't show the question (broken, still loading), the app just closes."""
+        if getattr(self, "quitting", False):
+            return True
+        def ask():
+            try:
+                shown = self.window.evaluate_js(CLOSE_JS) == "shown"
+            except Exception:
+                shown = False
+            if not shown:
+                self.quit()
+        threading.Thread(target=ask, daemon=True).start()
+        return False
+
+    def quit(self):
+        self.quitting = True
+        threading.Timer(0.1, self.window.destroy).start()
+
     def on_load(self):
         """Every page, after each reload: add the toolbar, and show a pending notice."""
         if self.save is None:  # the setup page
@@ -708,9 +727,9 @@ class App:
             page = score.ROOT / "out" / self.save / "squad.html"  # the app opens on Squad › Lineup
             where = {"url": page.resolve().as_uri()} if page.exists() else {"html": screen("start", self.club_name())}
             title = window_title(self.save)
-        self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900,
-                                            confirm_close=True, **where)  # closing asks first (localization below)
+        self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
         self.window.events.loaded += self.on_load
+        self.window.events.closing += self.on_closing  # closing asks first, in the app's own style
         threading.Thread(target=self.watch_exports, daemon=True).start()
         threading.Thread(target=self.check_update, daemon=True).start()
         self.window.events.closed += lambda: os._exit(0)  # closing the window ends the app
@@ -723,8 +742,7 @@ class App:
             except (AttributeError, OSError):
                 pass
         icon = score.APP / "docs" / "ElevenIndex.ico"
-        webview.start(icon=str(icon) if icon.exists() else None,  # no menu bar: the page's Menu button has it all
-                      localization={"global.quitConfirmation": "Close ElevenIndex? Your saves and imports are kept."})
+        webview.start(icon=str(icon) if icon.exists() else None)  # no menu bar: the page's Menu button has it all
 
 
 def log_error(what):
@@ -781,6 +799,9 @@ class MainApi:
 
     def themes(self):
         return self._app.themes()
+
+    def quit(self):
+        self._app.quit()
 
     def set_auto_import(self, on):
         return self._call(self._app.set_auto_import, on)
@@ -875,6 +896,37 @@ class MainApi:
 
 # The first-run setup page: the same pitch, logo and banner as screen(), a welcome title, the form on the right and
 # what the app needs from FM in the bottom-left card.
+# The question when the window's X is clicked (App.on_closing): in the app's style, over the page. Enter closes, Esc stays.
+CLOSE_JS = r"""(() => {
+  if (document.getElementById("fm-close")) return "shown";
+  const shade = document.createElement("div");
+  shade.id = "fm-close";
+  shade.style.cssText = "position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:#0009;backdrop-filter:blur(2px)";
+  shade.innerHTML = `<div style="width:400px;max-width:90vw;padding:22px 24px 20px;background:#121815;color:#f2efe7;border:1px solid #2a332f;
+      border-radius:12px;box-shadow:0 14px 40px #000c;font:14px/1.5 Inter,'Segoe UI',system-ui,sans-serif">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <span style="flex:none;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:9px;background:#0f1412;border:1px solid #2a332f;
+        font:700 22px/1 'Bahnschrift SemiCondensed','Barlow Condensed','Arial Narrow',sans-serif"><span style="color:#f2efe7">X</span><span style="color:#c5f04f">I</span></span>
+      <div style="font:600 22px/1.1 'Bahnschrift SemiCondensed','Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.02em">Close ElevenIndex?</div>
+    </div>
+    <div style="color:#cfd6d1">Your saves and imports are kept: everything is here when you open it again.</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+      <button data-a="stay" style="padding:8px 18px;border:1px solid #2f3a35;border-radius:7px;background:transparent;color:#f2efe7;font:600 14px Inter,'Segoe UI',sans-serif;cursor:pointer">Stay</button>
+      <button data-a="close" style="padding:8px 20px;border:0;border-radius:7px;background:#c5f04f;color:#0f1412;font:700 14px Inter,'Segoe UI',sans-serif;cursor:pointer">Close</button>
+    </div></div>`;
+  const stay = () => { shade.remove(); document.removeEventListener("keydown", key, true); };
+  const close = () => { window.pywebview && pywebview.api.quit(); };
+  const key = e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); stay(); }
+                     else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); close(); } };
+  shade.addEventListener("click", e => { if (e.target === shade) stay(); });
+  shade.querySelector('[data-a="stay"]').onclick = stay;
+  shade.querySelector('[data-a="close"]').onclick = close;
+  document.addEventListener("keydown", key, true);
+  document.body.append(shade);
+  shade.querySelector('[data-a="close"]').focus();
+  return "shown";
+})()"""
+
 SETUP_HTML = """<style>
 .setup { position: absolute; right: 40px; top: 50%; transform: translateY(-42%); width: 440px; max-width: calc(100% - 80px);
   padding: 20px 22px 18px; background: #121815f0; border: 1px solid #2a332f; border-radius: 12px; box-shadow: 0 10px 30px #0009; }
@@ -1389,7 +1441,7 @@ TOOLBAR_JS = """(() => {
     n.id = "fm-notice";
     n.setAttribute("role", error ? "alert" : "status");
     n.style.cssText = "position:fixed;right:16px;bottom:" + (document.getElementById("fm-clear") ? 68 : 16) + "px;z-index:9999;width:420px;max-width:calc(100vw - 32px);overflow:hidden;" +
-      "display:flex;gap:12px;align-items:flex-start;padding:12px 12px 14px 14px;color:#f2efe7;background:#1d2522f5;" +
+      "display:flex;gap:12px;align-items:flex-start;padding:12px 12px 14px 14px;color:#f2efe7;background:#1d2522d9;backdrop-filter:blur(6px);" +
       "border:1px solid #2a332f;border-left:4px solid " + kind.c + ";border-radius:10px;box-shadow:0 10px 30px #000a;" +
       "font:14px/1.45 Inter,'Segoe UI',system-ui,sans-serif;animation:fmIn .18s ease-out";
     const icon = document.createElement("div");
@@ -1423,22 +1475,21 @@ TOOLBAR_JS = """(() => {
     close.textContent = "×"; close.title = "Close";
     close.style.cssText = "flex:none;margin:-4px -2px 0 0;padding:0 6px;border:0;background:transparent;color:#9aa49f;font:20px/1 Inter,sans-serif;cursor:pointer";
     close.onclick = () => { clearInterval(window.fmNoticeTimer); n.remove(); };
-    const bar = document.createElement("div");
-    bar.style.cssText = "position:absolute;left:0;bottom:0;height:3px;width:100%;background:" + kind.c + ";opacity:.7";
-    n.append(icon, body, close, bar);
+    n.append(icon, body, close);
     if (!document.getElementById("fm-notice-css")) {
       const st = document.createElement("style"); st.id = "fm-notice-css";
       st.textContent = "@keyframes fmIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes fmSpin{to{transform:rotate(360deg)}}";
       document.head.append(st);
     }
     document.body.append(n);
-    if (busy) { bar.remove(); return; }  // stays until the import's own notice replaces it
-    const total = offer ? 20000 : error ? 15000 : 6000; let left = total, paused = false;
+    if (busy) return;  // stays until the import's own notice replaces it
+    // on screen: 3 s for a done notice, 8 s for an error, 10 s for one with a button; paused while the pointer is on it
+    const total = offer ? 10000 : error ? 8000 : 3000; let left = total, paused = false;
     n.onmouseenter = () => paused = true; n.onmouseleave = () => paused = false;
     window.fmNoticeTimer = setInterval(() => {
       if (paused) return;
-      left -= 100; bar.style.width = Math.max(0, left / total * 100) + "%";
-      if (left <= 0) { clearInterval(window.fmNoticeTimer); n.remove(); }
+      left -= 100;  // no countdown bar: it just goes when its time is up
+      if (left <= 0) { clearInterval(window.fmNoticeTimer); n.style.transition = "opacity .25s"; n.style.opacity = "0"; setTimeout(() => n.remove(), 260); }
     }, 100);
   };
 })()"""
