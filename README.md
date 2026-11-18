@@ -38,7 +38,7 @@
   </tr>
   <tr>
     <td valign="top"><img src="docs/screenshots/compare.png" alt="Compare players"><br><sub><b>Compare</b>: two players side by side, at any position</sub></td>
-    <td valign="top"><img src="docs/screenshots/research.png" alt="Research"><br><sub><b>Research</b>: your best at each position against everyone you've scouted</sub></td>
+    <td valign="top"><img src="docs/screenshots/research.png" alt="Research"><br><sub><b>Research › Players</b>: your best at each position against everyone you've imported</sub></td>
   </tr>
   <tr>
     <td valign="top"><img src="docs/screenshots/analysis.png" alt="Analysis"><br><sub><b>Analysis</b>: your team position by position, and a Squad plan: what to do, most urgent first</sub></td>
@@ -47,6 +47,10 @@
   <tr>
     <td valign="top"><img src="docs/screenshots/staff-compare.png" alt="Compare staff"><br><sub><b>Compare staff</b>: two staff side by side, every job and attribute</sub></td>
     <td valign="top"><img src="docs/screenshots/staff.png" alt="Staff"><br><sub><b>Staff</b>: every staff member scored for every job</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/your-staff.png" alt="Your staff"><br><sub><b>Your staff</b>: your club's staff, one person per job, against the best on your lists, with a Staff plan</sub></td>
+    <td valign="top"><img src="docs/screenshots/research-staff.png" alt="Research › Staff"><br><sub><b>Research › Staff</b>: every job, the staff on your lists against the one who covers it</sub></td>
   </tr>
   <tr>
     <td valign="top"><img src="docs/screenshots/profile-attributes.png" alt="A player's attributes, like FM's"><br><sub><b>Attributes in a profile</b>: laid out like FM's, with the Key and Preferable ones at any position</sub></td>

@@ -54,13 +54,13 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.17.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.17.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 CREATOR, CREATOR_URL = "Angelski", "https://community.sports-interactive.com/profile/428404-angelski/"  # About: the maker, on the official FM forum
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "compare", "staff",
          "last_staff", "team_staff", "staff_compare", "staff_research", "attributes", "guide"]
 # Each page's full name (the window title, the Guide)
-PAGE_LABELS = {"squad": "Lineup", "formations": "Formations", "development": "Development", "elsewhere": "Scouted players", "last": "Latest player list",
+PAGE_LABELS = {"squad": "Lineup", "formations": "Formations", "development": "Development", "elsewhere": "All players", "last": "Latest player list",
                "charts": "Research", "compare": "Compare players", "staff": "All staff", "last_staff": "Latest staff list", "team_staff": "Your staff", "staff_compare": "Compare staff", "staff_research": "Staff research",
                "analysis": "Analysis", "attributes": "Attributes", "guide": "Guide"}
 # The top menu: (key, page) or (key, group name, its pages, the page it opens on), None = a divider. A group's pages are
@@ -70,7 +70,7 @@ MENU = [("1", "Squad", ["squad", "formations", "analysis", "development"], "squa
         ("4", "Staff", ["team_staff", "staff", "last_staff", "staff_compare"], "team_staff"),
         None, ("a", "attributes"), ("g", "guide")]
 SUB_LABELS = {"squad": "Lineup", "formations": "Formations", "analysis": "Analysis", "development": "Development",
-              "elsewhere": "Scouted", "last": "Latest list", "compare": "Compare",
+              "elsewhere": "All players", "last": "Latest list", "compare": "Compare",
               "staff": "All staff", "last_staff": "Latest list", "team_staff": "Your staff", "staff_compare": "Compare", "charts": "Players", "staff_research": "Staff"}
 META = {"Name", "Club", "Age", "Position", "Left Foot", "Preferred Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating",
         "Division"}  # every other column is an attribute
@@ -1391,233 +1391,111 @@ def write_pages(save, config, cfg, pages):
 # The guide page (key g): how to use the app and each page. Simple HTML; shown as tiles by template.html's renderGuide.
 # A tile with a key links to that page. The version and settings are in Menu → About (settings_tile()).
 GUIDE = [
-    {"key": "", "title": "Getting started",
-     "text": "<ol><li>In FM, open your <b>squad</b> screen with the <b>Squad - All Players View</b> (see the README for the views).</li>"
-             "<li>Point the mouse at the list and press <b>F8</b>: FM27 Exporter saves the list as a file.</li>"
-             "<li>Here, open <b>Menu</b> (under the logo, or key <b>M</b>) → click the export under <b>Recent exports</b>, or <b>Import file…</b> (key <b>I</b>), or drop the file on the window. While the app is open, a new export (F8 in FM) also pops up a notice with an <b>Import</b> button.</li></ol>"
-             "The app works out what it is (your squad, a search, staff), scores everyone and opens the right page. "
-             "Import your squad first; after that, import searches and shortlists whenever you're looking for players."},
-    {"key": "", "title": "Importing: what goes where",
-     "text": "<ul><li><b>Your squad</b> (the file name starts with First Team or Squad): your players, on <b>Squad</b>, "
-             "<b>Analysis</b> and <b>Development</b>. Every squad import is kept as a dated snapshot, so export it again every "
-             "half-season to track progress. Players missing from a newer squad export count as gone.</li>"
-             "<li><b>A player search or shortlist</b>: a list of its own, on <b>Players › Latest list</b>, and added to "
-             "<b>Players › Scouted</b>. Re-importing the same file updates that list.</li>"
-             "<li><b>A staff search</b> (the <b>Search - Staff View</b>) or your club's staff screen: on <b>Staff › "
-             "Latest list</b> and <b>Staff › All staff</b>.</li>"
-             "<li>Players with a <b>Rating</b> (FM shows one for those who've played this season) add the score vs "
-             "rating chart to <b>Research</b>.</li></ul>"
-             "After each import a message in the corner says how many were imported, and who was skipped (not enough "
-             "attributes known). <b>Ctrl + F8</b> in FM adds every attribute column to a view."},
-    {"key": "", "title": "What the numbers mean",
-     "text": "<ul><li><b>Position scores</b> (GK, CD, DL/DR, WBL/WBR, DM, MC, ML/MR, AMC, AML/AMR, ST): how well a "
-             "player's attributes suit that position, on FM's 1–20 scale. Each attribute counts by its weight there (see "
-             "<b>Attributes</b>); pace, acceleration and stamina count most, because they win the most matches.</li>"
-             "<li><b>Best</b>: the position he scores highest at; <b>Score</b>: that score. With FM's <b>Position</b> column "
-             "in your exports, only positions FM says he plays count, so a striker stays a striker.</li>"
-             "<li><b>vs Age</b>: his score against what's normal for his age. 100% = on track to be a good Championship or "
-             "low Premier League player at his peak; more is ahead of that, less behind.</li>"
-             "<li><b>Foot</b>: FM's preferred foot: Left, Right or Either (Either can play both sides).</li>"
-             "<li>What the colours mean: see <b>Colours</b>.</li>"
-             "<li><b>loan in</b> / <b>loan out</b> / <b>trial</b> next to a name; <b>↑CD</b> = moved up from Third to fill "
-             "an empty slot (his best position was CD).</li>"
-             "<li>A player whose scouted attributes are mostly unknown (FM shows -) isn't scored until you know more.</li></ul>"},
-    {"key": "", "title": "Advice and extras",
-     "text": "<ul><li><b>Advice lines</b>: under the Lineup pitch (how good your eleven is and what to do about its weak "
-             "spot), by the top 3 Formations (why they fit), on Research (<b>Next step</b>), Development (who's growing, who's "
-             "slowing) and Compare (who's better now, younger, cheaper).</li>"
-             "<li><b>A scouted player's profile</b>: <b>For you</b> = where he'd start in your team and over whom; <b>At 24 "
-             "(estimate)</b> for every player under 24 (his vs Age kept to 24: an estimate, not FM's potential); a radar of what counts most at his position.</li>"
-             "<li><b>Analysis › Squad plan</b>: every position's recommendations as one list, most urgent first (Act now, "
-             "Strengthen, Plan ahead, Bring on), with a line on where to start. <b>Research</b> graphs <b>Your squad: age vs "
-             "score</b> and <b>wage vs score</b>.</li></ul>"},
+    {"key": "", "title": "Start here",
+     "text": "<ol><li>In FM, open your <b>squad</b> with the <b>Squad - All Players View</b>.</li>"
+             "<li>Point at the list and press <b>F8</b>: FM27 Exporter saves it.</li>"
+             "<li>Here: <b>Menu</b> (key <b>M</b>) → click it under <b>Recent exports</b>, or drop the file on the window. "
+             "With <b>Menu → Auto-import</b> on, every F8 imports by itself.</li></ol>"
+             "Then import searches, shortlists and staff the same way: the app knows what each file is and opens the right page."},
+    {"key": "", "title": "What goes where",
+     "text": "<ul><li><b>Your squad</b> (file starts with First Team or Squad) → Squad. Each one is a dated snapshot: "
+             "export it every half-season for Development.</li>"
+             "<li><b>A player search or shortlist</b> → Players › Latest list, and All players.</li>"
+             "<li><b>A staff search</b> → Staff › Latest list, and All staff.</li>"
+             "<li><b>Your club's staff screen</b> (4 tabs, one F8 each) → Staff › Your staff.</li></ul>"
+             "A note in the corner says what came in and who was skipped (too little scouted)."},
+    {"key": "", "title": "The numbers",
+     "text": "<ul><li><b>Position score</b>: how well his attributes suit a position, 1–20 like FM. Each attribute counts "
+             "by its weight there (the <b>Attributes</b> page).</li>"
+             "<li><b>Best</b> / <b>Score</b>: his best position and his score there (only positions FM lists for him, when "
+             "your view has the Position column).</li>"
+             "<li><b>vs Age</b>: his score against what's normal at his age; 100% = on course for a solid top-flight player.</li>"
+             "<li><b>At 24</b> (profiles, under 24s): where he'd be at 24 if he keeps his vs Age. An estimate, not FM's potential.</li>"
+             "<li><b>Staff</b>: FM's words become numbers (Good 13, Very Good 16…), and each job gets a score the same way.</li></ul>"},
     {"key": "", "title": "Colours",
-     "text": "<b>Scores</b> (every position score, Best, Score, the pitch, profiles, Formations) get a colour per point, "
-             "so good players don't all look alike:<br>"
+     "text": "<b>Scores</b>, one colour per point:<br>"
              + " ".join(f'<span style="color:{c};font-weight:700">■ {t}</span>' for c, t in (
                  ("#f87171", "under 9"), ("#fb923c", "9"), ("#fbd13d", "10"), ("#d7e35a", "11"), ("#a6e163", "12"),
                  ("#4ade80", "13"), ("#2dd4bf", "14"), ("#38bdf8", "15"), ("#c084fc", "16+"))) +
-             "<ul><li><b>Attributes</b>: like FM: grey 1–5, white 6–9, yellow 10–14, green 15+.</li>"
-             "<li><b>vs Age</b>: red (well behind for his age), orange, white, yellow, green (well ahead).</li>"
-             "<li><b>Lineup › Depth</b>: green = two or more backups there, yellow = one, red = none.</li>"
-             "<li><b>Ages on the pitch</b> (Lineup, Formations): sky blue = 21 or under, white = 22–29, amber = 30+ "
-             "(see <b>Analysis</b> for who could replace an ageing starter).</li>"
-             "<li><b>Weakest spot</b> (Lineup, Formations): in a quiet tone by how far it is below the eleven's average, "
-             "shown after it (e.g. −1.1): grey = about level, sand = a little below, amber = 1 or more below; "
-             "<b>no backup</b> in red. On the Formations pitch's Positions the weakest is outlined red, the strongest green.</li>"
-             "<li><b>Development</b> and <b>Compare</b>: green = better, red = worse; in Compare the first player is sky "
-             "blue, the second the accent colour.</li>"
-             "<li><b>Research</b>: each position is a band; the players you compare with are the accent-coloured range on top, "
-             "your players the orange diamonds below it (your best big, with his name and score).</li>"
-             "<li><b>Theme</b> (Menu → Theme…) changes the top bar, panels and accent only: these colours stay the "
-             "same in every theme.</li></ul>"},
-    {"key": "", "title": "A player's profile",
-     "text": "<b>Click a name</b> on any page (or double-click a row, or press <b>Enter</b>) to open it; <b>Esc</b> closes it.<br>"
-             "<b>Overview:</b> a scout report (what kind of player he is, his level, how he's doing for his age), his key facts, "
-             "<b>Good for</b> (the positions FM lists for him, then others his attributes suit), his Technical / Mental / "
-             "Physical values at his best position, <b>Strengths</b> and <b>Weaknesses</b> among what counts there, "
-             "<b>Train first</b> (the attributes that would lift his score most: +1 → what it adds) and what isn't scouted yet.<br>"
-             "<b>Positions:</b> every position score, best first, with his level and whether FM lists it.<br>"
-             "<b>Attributes:</b> every attribute by group; the bar shows how much it counts at the position you pick.<br>"
-             "<b>History:</b> his scores and attributes at every snapshot, each with its change, and the total change.<br>"
-             "Staff profiles: every job ranked, strengths and weaknesses, attributes and history."},
+             "<ul><li><b>Attributes</b>, like FM: grey 1–5, white 6–9, yellow 10–14, green 15+.</li>"
+             "<li><b>Changes</b>: green = better, red/orange = worse.</li>"
+             "<li><b>Ages</b> on the pitch: sky blue 21 or under, white 22–29, amber 30+.</li>"
+             "<li><b>Research</b>: the others are the range on top, yours the orange diamonds.</li></ul>"
+             "Themes (Menu → Theme…) change the bars and panels, never these."},
+    {"key": "", "title": "Profiles",
+     "text": "<b>Click a name</b> anywhere (or <b>Enter</b> on a row); <b>Esc</b> closes it.<ul>"
+             "<li><b>Overview</b>: a short report, Good for, strengths and weaknesses, what to train first; on someone "
+             "else's player or staff, <b>For you</b> = where he'd beat yours.</li>"
+             "<li><b>Positions</b> (staff: jobs), <b>Attributes</b> laid out like FM's, <b>History</b> over every snapshot.</li>"
+             "<li><b>+ Compare</b> puts him in Compare.</li></ul>"},
     {"key": "squad", "title": "Lineup",
-     "text": "<b>Pitch</b> (left): your best eleven for the formation you pick (the best fit first), each box the starter "
-             "and his score there; on the wide positions each goes to the side he plays (FM's position, else his foot). "
-             "<b>Score</b> colours a box by that score, <b>Depth</b> by how many backups he has there: "
-             "everyone else of yours who plays it (that side, at a wide position), not counting those who start elsewhere "
-             "(green = 2 or more, yellow = 1, red = none).<br>"
-             "<b>Click a position</b>: on the right, everyone of yours who plays it (FM's positions, else his best and the ones "
-             "next to it), best first: his role in this formation (Starter, Backup, or where he starts instead), FM position, "
-             "age, score there, vs Age, wage. Under it, the best on your imported lists who'd beat your starter, with the "
-             "compare icon.<br>"
-             "<b>Table</b> (below): every player at your club with all his scores. Sort by clicking a heading, filter with the "
-             "Search box (see <b>Searching and filtering</b>).<br>"
-             "<b>Use it to:</b> spot thin positions, who's next in line, and who to buy."},
+     "text": "Your best eleven for the formation you pick. <b>Click a position</b> for everyone who plays it (lime = "
+             "starts here, blue = starts elsewhere) and the best on your lists who'd beat your starter. The advice under the "
+             "pitch names the weak spot. Below: your whole squad as a table."},
     {"key": "formations", "title": "Formations",
-     "text": "<b>Shows:</b> 20 common systems ranked by how well your squad fits them: <b>XI</b> = the average score of your "
-             "best eleven for that shape, <b>2nd XI</b> = a second eleven's, and the <b>weakest spot</b>: the position whose "
-             "starters and backups together average lowest (one without a backup counts first).<br>"
-             "<b>Click one</b>: its eleven on a pitch (with the backup under each), and the numbers: both elevens' averages, "
-             "<b>Defence</b>, <b>Midfield</b> and <b>Attack</b>, every position's group average (starters + backups), the "
-             "strongest and weakest spot, how many spots are good, average or weak, where there's no real backup, and the "
-             "eleven's average age."},
+     "text": "20 shapes ranked by how well your squad fits them: the eleven's average, a second eleven's, and the weakest "
+             "spot. Click one to see it on a pitch with backups and the numbers by line."},
     {"key": "analysis", "title": "Analysis",
-     "text": "<b>Shows:</b> your team position by position, as the Lineup places them, ranked by what you pick in "
-             "<b>Rank by</b>: the <b>position score</b> (the default), <b>Speed</b> (Pace and Acceleration together), or any "
-             "single attribute.<br>"
-             "<b>Positions ranked:</b> your positions from strongest to weakest: your average, your best player there, the "
-             "average of the imported players whose best position it is (<b>Imported</b>) and the difference (<b>±</b>; "
-             "green = you're ahead), and <b>Recommendations</b>: what to do there, most urgent first (advice only, "
-             "no score changes): <b>Replace soon</b> (amber) = a starter 30+ whose ~next-season score (an estimate: "
-             "Pace, Acceleration, Stamina and Jumping Reach a point lower, two from 33) no one of yours under 28 can match, "
-             "with the best and the cheapest on your lists who beat it; <b>Get a backup</b> / <b>Better backup needed</b> "
-             "(none, or 1.5+ below the starter); <b>Plan ahead</b> (grey) = someone of yours can take over from an "
-             "ageing starter; <b>Give … minutes</b> / <b>Develop …</b> (sky blue) = a youngster (21 or under) level with "
-             "the starter, or within 2.0 with what to train first. Each position's tile repeats it; on the pitches "
-             "every starter's age shows by his position (amber 30+, sky blue 21 or under).<br>"
-             "<b>Below:</b> each position's players, best first, with their role (Starter, Backup, Third, Youth).<br>"
-             "<b>Use it to:</b> see where your team is quick or slow, strong or weak, and where to strengthen."},
+     "text": "Your team position by position, strongest to weakest, against the players you've imported. "
+             "<b>Rank by</b> a score, Speed or any attribute. The <b>Squad plan</b> lists what to do, most urgent first "
+             "(Act now, Strengthen, Plan ahead, Bring on)."},
     {"key": "development", "title": "Development",
-     "text": "<b>Shows:</b> how your players changed between two squad snapshots: average score change, how many improved or "
-             "declined, who joined or left, which attributes rose or fell most across the squad, the biggest risers and "
-             "fallers, and every player's change with the attributes that went up and down.<br>"
-             "<b>How:</b> pick the snapshots in <b>from</b> and <b>to</b> (the latest two by default). It needs at least two "
-             "squad imports: export your squad every half-season or so.<br>"
-             "<b>Use it to:</b> see whether training and game time are working, and who's stalling."},
+     "text": "Two squad snapshots compared (pick them in <b>From → To</b>): who improved or declined, who came and went, "
+             "and <b>where training worked</b>: by area and by attribute group. Needs two squad imports."},
     {"key": "charts", "title": "Research › Players",
-     "text": "<b>Shows:</b> your squad (orange) against players you've imported (the accent colour), position by position: first a table, "
-             "<b>Listed players by position</b> (how many there are, their middle and best score, your best there, how many "
-             "beat him and the cheapest of those; click a row to pick the position), then one graph at a time, picked in "
-             "<b>Graph</b>, with how to read it underneath.<br>"
-             "<b>Controls:</b> <b>compare with</b> = whom to compare with: your <b>Latest player list</b>, <b>All scouted "
-             "players</b>. <b>position</b> picks the position for the "
-             "score vs wage and rating charts. Hover a dot to see who it is.<br>"
-             "<b>Charts:</b> <b>Role score</b>, <b>Technical</b>, <b>Mental</b>, <b>Physical</b> and <b>Goalkeeping by position</b> "
-             "(a group's value = its attributes averaged with that position's weights, so it counts what matters there): for each position the accent-coloured "
-             "range is the players you compare with (the line from lowest to highest, the shaded box their middle half, the "
-             "white bar and number their middle, a tick for each player); your players are the orange diamonds, and the "
-             "number at the right is your best minus their middle (green = you're ahead). <b>Score vs wage</b>: four "
-             "quadrants split at their middle; top left = <b>better and cheaper</b> (good value), bottom right = <b>worse "
-             "and dearer</b>. When imported players have a Rating, <b>Score vs average rating</b>: does a higher score mean better matches?"},
+     "text": "Each position: your best against the players on your lists (<b>compare with</b>: your latest list or all). "
+             "The table shows how many beat yours and the cheapest of those; the <b>Next step</b> says where to look. "
+             "Then one graph at a time (<b>Graph</b>): score by position, Technical / Mental / Physical, score vs wage, your "
+             "squad's age and wage. Hover a mark for the player."},
     {"key": "staff_research", "title": "Research › Staff",
-     "text": "<b>Shows:</b> the same for staff, job by job: <b>Listed staff by job</b> (how many, their middle and best, who of "
-             "yours covers the job, how many beat him and the youngest of those), then a graph: <b>Job score by job</b>, "
-             "<b>score vs age</b> at the picked job (the staff on your lists; FM's club staff screen has no ages for yours), and "
-             "<b>by personality</b>. Listed staff count at every job they're scored at; yours are one person per job, as on Your staff."},
-    {"key": "elsewhere", "title": "Scouted players",
-     "text": "<b>Shows:</b> everyone you've imported who isn't at your club, scored the same way as your squad, with club, "
-             "wage and value (the top of FM's range).<br>"
-             "<b>Use it to:</b> compare transfer targets with your own players, and follow players over the seasons. With "
-             "very many imported (over 8,000), it shows the best 8,000 by score and says how many are left off."},
+     "text": "The same for staff, job by job, against the one of yours who covers each job. Graphs: job score by job, "
+             "score vs age, and by personality."},
+    {"key": "elsewhere", "title": "All players",
+     "text": "Everyone you've imported from other clubs, scored like your squad. Over 8,000 imported: the best 8,000 show."},
     {"key": "last", "title": "Latest player list",
-     "text": "<b>Shows:</b> only the players from the file you imported last (a search or shortlist).<br>"
-             "<b>Use it to:</b> judge one search at a time. Sort by <b>Score</b> or <b>vs Age</b>, filter, e.g. "
-             "<b>best=ST age&lt;=23</b>, and compare with your starters on <b>Squad</b>: anyone clearly higher at a weak "
-             "position is worth scouting."},
+     "text": "Only your newest search or shortlist: judge one search at a time. Sort by Score or vs Age, or search "
+             "e.g. <b>best=ST age&lt;=23</b>."},
     {"key": "compare", "title": "Compare players",
-     "text": "<b>Shows:</b> two players side by side: club, age, wage, best position and score, vs Age; a radar of the "
-             "attributes that count most at the position you pick in <b>compare at</b>; the Technical, Mental, Physical "
-             "(and Goalkeeping) values there; every position score; every attribute by group, the higher side marked; and "
-             "each one's score over time.<br>"
-             "<b>Pick them:</b> click the compare icon by a player's name in any list (Squad, Scouted, Latest list…), "
-             "press <b>x</b> on his row, or click <b>+ Compare</b> in his profile; the picks show at the bottom left on every "
-             "page. Or type a name in an empty slot here. Two at most: remove one to pick another.<br>"
-             "<b>Compare at:</b> <b>Auto</b> follows their best position (the first one's when they differ); pick any "
-             "position to see them both there, e.g. two strikers as AML/AMR.<br>"
-             "<b>Change them:</b> click a name to type another, <b>×</b> empties a slot, <b>⇄</b> swaps the sides. "
-             "<b>vs my best</b> on an imported player puts your best at that position on the other side."},
-    {"key": "staff", "title": "All staff",
-     "text": "<b>Shows:</b> every staff member you've imported, scored for each job (FM's words like Good = 13, Very Good = 16): "
-             "<b>Mgr</b> manager, <b>AM</b> assistant manager, <b>HoYD</b> head of youth development, coaches "
-             "(<b>AttTct</b>/<b>AttTec</b> attacking tactical/technical, <b>DefTct</b>/<b>DefTec</b> defending, "
-             "<b>PosTct</b>/<b>PosTec</b> possession, <b>GKC</b> goalkeeping, <b>FitC</b> fitness, <b>SetC</b> set pieces), "
-             "<b>DoF</b> director of football, <b>Scout</b>, <b>PA</b> performance analyst, <b>Physio</b>, <b>SpSci</b> sports scientist.<br>"
-             "<b>How:</b> read across a row: the highest number is the job he suits best. Sort by a job to find the best for it."},
-    {"key": "last_staff", "title": "Latest staff list",
-     "text": "Only the staff from your latest staff import: judge one staff search at a time, the way the Latest player list works."},
+     "text": "Two players side by side at the position in <b>compare at</b>: radar, groups, every position and "
+             "attribute, score over time. Pick them with the compare icon by a name, <b>x</b> on a row, or + Compare in a "
+             "profile. <b>vs my best</b> puts your best there on the other side; <b>⇄</b> swaps, <b>×</b> empties."},
     {"key": "team_staff", "title": "Your staff",
-     "text": "<b>Shows:</b> your own club's staff, scored for every job, and <b>Your best at each job</b>: one person per job, "
-             "best fits first (like a formation's eleven: someone who'd top three jobs covers only his best of them; the "
-             "manager's job is yours), with your best at it when that's someone covering another job, against the best on "
-             "your staff lists.<br><b>How to import:</b> in FM open your club's <b>Staff</b> screen, <b>Filter</b> → tick <b>All</b> "
-             "(Senior Squad, U21, U18), turn on <b>Menu → Auto-import</b>, then press F8 on each tab: <b>Coaching</b>, "
-             "<b>Medical</b>, <b>Mental</b>, <b>Scouting</b>. They add up to one staff; the ticks on the page show which are in. "
-             "Coaching jobs are scored once the Mental tab is in too.<br>"
-             "<b>Staff plan</b> (under Your best at each job): what to do about your staff, most urgent first: jobs with nobody free "
-             "(Act now), staff on your lists at least 1 better than yours (Hire), and weak spots (Improve).<br><b>Also:</b> a "
-             "searched staff member's profile says which jobs he'd do better than who covers them now (<b>For you</b>)."},
+     "text": "<b>Import:</b> in FM open your club's <b>Staff</b> screen, <b>Filter → All</b>, turn on Auto-import, then F8 "
+             "on <b>Coaching</b>, <b>Medical</b>, <b>Mental</b> and <b>Scouting</b>; the ticks show what's in.<br>"
+             "<b>Your best at each job</b>: one person per job, best fits first (the manager's job is yours), against the best "
+             "on your lists. The <b>Staff plan</b> under it says what to do: Act now, Hire, Improve."},
+    {"key": "staff", "title": "All staff",
+     "text": "Every staff member imported, scored for each job: the highest number in a row is his best job. Hover a short "
+             "heading (AttTct, PosTec…) for the full job name."},
+    {"key": "last_staff", "title": "Latest staff list",
+     "text": "Only your newest staff search, like the Latest player list."},
     {"key": "staff_compare", "title": "Compare staff",
-     "text": "<b>Shows:</b> two staff side by side, every job and attribute. <b>Pick them:</b> the compare icon by a name in "
-             "any staff list, <b>x</b> on a row, or <b>+ Compare</b> in a profile; or type a name. <b>×</b> empties a side, "
-             "<b>Reset</b> both."},
+     "text": "Two staff side by side: every job, then every attribute. Pick them like players; <b>vs my best</b> puts "
+             "your best at his best job on the other side."},
     {"key": "attributes", "title": "Attributes",
-     "text": "<b>Shows:</b> one weight per attribute, 1–20 like FM's attributes, for every position at once (keepers too), and "
-             "what it comes to at each position: weight × FM's CA cost there, as the attribute's share of that position's "
-             "score.<br>"
-             "<b>Change them:</b> type a new weight (blank = doesn't count), then <b>Save</b>. It's one table for the whole app: "
-             "every save scores with it (the open save is rescored at once, the others when you open them). <b>Undo changes</b> "
-             "drops what you haven't saved; <b>Reset to default</b> puts the default weights back in the page (then Save).<br>"
-             "<b>Share them:</b> <b>Export attributes…</b> writes the attribute weights as one list for "
-             "Notepad: Pace 20, Acceleration 16, … (1–20; decimals with a dot, 12.25). Change it and <b>Import attributes…</b> "
-             "reads it back, then Save."},
-    {"key": "", "title": "Searching and filtering",
-     "text": "Type in the <b>Search</b> box at the top of a table (<b>/</b> or <b>f</b> jumps there, <b>Esc</b> clears it):"
-             "<ul><li>a name or club: <b>kalu</b>, <b>levski</b></li>"
-             "<li>a condition on any column: <b>age&lt;=21</b>, <b>best=CD</b>, <b>best!=GK</b>, <b>vs&gt;=90</b>, "
-             "<b>score&gt;=12</b>, <b>foot=left</b>, <b>club:levski</b> (contains), <b>wage&lt;=10k</b>, <b>value&lt;=500k</b></li>"
-             "<li>loans: <b>loan-in</b>, <b>loan-out</b>, <b>trial</b>; staff: <b>job:coach</b>, <b>PosTct&gt;=12</b></li>"
-             "<li>several at once, with spaces: <b>age&lt;=23 best=ST vs&gt;=90</b></li></ul>"
-             "The count next to the box shows how many match. Click a column heading to sort (again to reverse)."},
-    {"key": "", "title": "Saves, folders and mistakes",
-     "text": "<ul><li><b>Menu</b> (under the logo, key <b>M</b>): this save; <b>Recent exports</b> (the newest in FM27 "
-             "Exporter's folder, new or imported, one click to import; ▾ shows the last five, ▴ folds them up); "
-             "<b>Import file…</b> (key <b>I</b>; or drop a file on the window); <b>Open the exports folder</b>; "
-             "<b>Saves…</b> (everything about saves: switch to one, start one for a new game or club, delete one, "
-             "<b>Back up this save…</b> as one zip, <b>Restore a backup…</b>; a deleted save can be restored there for "
-             "14 days, or removed for good at once with Delete now, clicked twice); <b>Theme…</b> (five colour themes); "
-             "<b>Check for updates</b> (asks GitHub for the latest version number, nothing of yours is sent, and says in "
-             "the corner whether you're up to date, with a link); <b>About</b>.</li>"
-             "<li>Your data is in <b>Documents\\ElevenIndex</b>: settings (config.toml), each save's data and pages. Updating the "
-             "app keeps it all.</li>"
-             "<li><b>Imported the wrong file?</b> Close the app, delete its files from <b>saves\\&lt;your save&gt;\\obs</b> (their "
-             "names start with the date), and start the app again.</li>"
-             "<li><b>Something went wrong?</b> <b>app.log</b> in the data folder says what happened.</li>"
-             "<li>Your own formation, pinned players and other details live in your save's <b>save.toml</b> (see the README).</li></ul>"},
-    {"key": "", "title": "Tips for the best results",
-     "text": "<ul><li><b>Add FM's Position column</b> to your squad and search views: Best, the Lineup and Formations then use "
-             "the positions FM says each player plays, instead of guessing from attributes.</li>"
-             "<li><b>Export your squad every half-season</b>: that's what fills <b>Development</b> and each player's profile.</li>"
-             "<li><b>Scout before you judge</b>: scouted ranges (e.g. 10–14) count as their middle, so a fully scouted player's "
-             "score is more reliable.</li>"
-             "<li>Use the <b>Search - Outfield Players View</b> for searches, so everyone gets a score at every position.</li></ul>"},
-    {"key": "", "title": "Keyboard shortcuts",
-     "text": "<ul><li><b>1</b>–<b>4</b>, <b>a</b>, <b>g</b>: go to a page (the numbers in the menu): <b>1</b> Squad opens on "
-             "Lineup, <b>2</b> Research on Players, <b>3</b> Players on Latest list and <b>4</b> Staff on Your staff; press it again for the next sub-tab.</li>"
-             "<li><b>Arrow keys</b>: move around a table; <b>Enter</b>: the player's profile; <b>s</b>: sort by the current column.</li>"
-             "<li><b>/</b> or <b>f</b>: the Search box; <b>Esc</b>: clear it, or close a profile.</li>"
-             "<li><b>c</b>: copy the player's name, to paste into FM's search; <b>x</b>: add him to <b>Compare</b> (Players › Compare, or Staff › Compare on the staff pages).</li>"
-             "<li><b>?</b>: the list of every shortcut.</li></ul>"},
+     "text": "One weight per attribute (1–20), used at every position: weight × FM's cost there. Type new ones and "
+             "<b>Save</b>; every save uses them. <b>Export</b> / <b>Import</b> share them as a list; <b>Reset to default</b> "
+             "brings back the defaults."},
+    {"key": "", "title": "Searching",
+     "text": "Type in the <b>Search</b> box (<b>/</b> jumps there, <b>Esc</b> clears it): a name or club, or conditions "
+             "with spaces between them: <b>age&lt;=21</b> <b>best=CD</b> <b>vs&gt;=90</b> <b>score&gt;=12</b> "
+             "<b>foot=left</b> <b>wage&lt;=10k</b> <b>loan-in</b>; staff: <b>job:coach</b> <b>PosTct&gt;=12</b>. "
+             "Click a heading to sort."},
+    {"key": "", "title": "Menu and saves",
+     "text": "<ul><li><b>Menu</b> (key <b>M</b>): recent exports, Import file…, Auto-import, Saves… (switch, new, "
+             "delete, back up, restore), Theme…, Check for updates, About.</li>"
+             "<li>Your data is in <b>Documents\\ElevenIndex</b>; updating the app keeps it.</li>"
+             "<li><b>Wrong file imported?</b> Close the app, delete it from <b>saves\\&lt;save&gt;\\obs</b> (or "
+             "<b>staff</b>), start again.</li>"
+             "<li>Something odd? <b>app.log</b> in that folder says what happened.</li></ul>"},
+    {"key": "", "title": "Tips",
+     "text": "<ul><li>Add FM's <b>Position</b> column to your views: scores then stick to where FM says each one plays.</li>"
+             "<li>Export your squad every half-season.</li>"
+             "<li>Scout fully before judging: ranges (10–14) count as their middle.</li></ul>"},
+    {"key": "", "title": "Keys",
+     "text": "<ul><li><b>1</b>–<b>4</b>, <b>a</b>, <b>g</b>: the menu; press a number again for the next sub-tab.</li>"
+             "<li><b>Arrows</b> move, <b>Enter</b> opens a profile, <b>s</b> sorts, <b>c</b> copies a name, <b>x</b> adds to Compare.</li>"
+             "<li><b>?</b>: every shortcut.</li></ul>"},
 ]
 
 

@@ -365,7 +365,12 @@ __THEME__
   .wfill { display: block; height: 8px; background: var(--blue); border-radius: 4px; }
 
   /* ---- Guide ---- */
-  .tile.guide .gtext { color: var(--fg); line-height: 1.65; }
+  /* the Guide: tiles packed into columns (no gaps beside short ones), in menu order down each column */
+  #main.guidecols { display: block; columns: 3 380px; column-gap: 10px; }
+  #main.guidecols .tile.guide { break-inside: avoid; margin: 0 0 10px; }
+  .tile.guide .gtext { color: var(--fg); line-height: 1.6; }
+  .tile.guide .gsub { margin: 10px 0 2px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--accent); font: 700 13px var(--body); }
+  .tile.guide .ttitle + .gsub { margin-top: 0; padding-top: 0; border-top: 0; }
   .tile.guide ol, .tile.guide ul { margin: 2px 0 6px; padding-left: 20px; }
   .tile.guide li { margin: 3px 0; }
   .tile.guide b { color: var(--cyan); font-weight: 600; }
@@ -1602,7 +1607,7 @@ function renderCompare() {
       ${attrTiles}`;
   } else {
     body = `<div class="tile wide"><div class="sub">Pick ${A || B ? "one more player" : "two players"}: type a name above, click the compare icon by a player's name in any
-      list (Squad, Scouted, Latest list…; or press <b>x</b>), or <b>+ Compare</b> in a player's profile.</div></div>`;
+      list (Squad, All players, Latest list…; or press <b>x</b>), or <b>+ Compare</b> in a player's profile.</div></div>`;
   }
   main.innerHTML = head + body;
   // the controls
@@ -1632,12 +1637,20 @@ function renderCompare() {
 function renderGuide() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main");
-  main.className = "tiles";
-  main.innerHTML = DATA.map(g => {
-    const where = g.key && SITE.where[g.key];
-    const head = where ? `<a href="${g.key}.html" style="color:inherit;text-decoration:none">${esc(where)}</a>` : g.title;
-    return `<div class="tile guide"><div class="ttitle">${head}</div><div class="gtext">${g.text}</div></div>`;
-  }).join("");
+  main.className = "tiles guidecols";
+  // a menu group's pages ("1 · Squad › Lineup", "1 · Squad › Formations"…) share one box, each page a sub-heading in it
+  const boxes = [];
+  for (const g of DATA) {
+    const where = g.key && SITE.where[g.key], [group, page] = where && where.includes(" › ") ? where.split(" › ") : [null, null];
+    const last = boxes[boxes.length - 1];
+    if (group && last && last.group === group) last.items.push({ g, page });
+    else boxes.push({ group, items: [{ g, page: group ? page : null }], where });
+  }
+  const link = (key, text) => `<a href="${key}.html" style="color:inherit;text-decoration:none">${esc(text)}</a>`;
+  main.innerHTML = boxes.map(b => b.group
+    ? `<div class="tile guide"><div class="ttitle">${esc(b.group)}</div>${b.items.map(({ g, page }) =>
+        `<div class="gsub">${link(g.key, page)}</div><div class="gtext">${g.text}</div>`).join("")}</div>`
+    : `<div class="tile guide"><div class="ttitle">${b.where ? link(b.items[0].g.key, b.where) : b.items[0].g.title}</div><div class="gtext">${b.items[0].g.text}</div></div>`).join("");
 }
 // ---- clicks, copying and the first draw ----
 document.getElementById("head").addEventListener("click", e => {

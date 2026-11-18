@@ -49,7 +49,7 @@ page has a line about its list at the strip's right (`with_info`).
 | 1 | development | Squad › Development | two squad snapshots compared |
 | 2 | charts | Research › Players | per position, the listed players against your best; then one graph at a time |
 | 2 | staff_research | Research › Staff | charts.html's staff mode (`staff_research`): per job, the listed staff against who covers it (`staff_cover`, one person per job) |
-| 3 | elsewhere | Players › Scouted | everyone imported who isn't at the club |
+| 3 | elsewhere | Players › All players | everyone imported who isn't at the club |
 | 3 | last | Players › Latest list | the latest player import only |
 | 3 | compare | Players › Compare | two players side by side (`compare_page`; two picks in localStorage, by the icon by a name, x or + Compare) |
 | 4 | team_staff | Staff › Your staff | your club's staff (its 4 tabs, ticked as they come in), your best at each job, and the Staff plan under it (`staffPlanHtml`) |

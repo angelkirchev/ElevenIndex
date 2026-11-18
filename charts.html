@@ -146,7 +146,7 @@ function groupValue(p, pos, group) {
 }
 
 // whom yours are compared with: the latest import, everyone imported, or your own squad by age
-const LATEST = STAFF ? "Latest staff list" : "Latest player list", EVERYONE = STAFF ? "All scouted staff" : "All scouted players";
+const LATEST = STAFF ? "Latest staff list" : "Latest player list", EVERYONE = STAFF ? "All staff" : "All players";
 const CHOICES = [
   ...(PLAYERS.some(p => !p.squad && p.last) ? [LATEST] : []),
   ...(PLAYERS.some(p => !p.squad) ? [EVERYONE] : []),
