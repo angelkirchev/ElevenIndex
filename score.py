@@ -54,24 +54,24 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.16.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.17.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 CREATOR, CREATOR_URL = "Angelski", "https://community.sports-interactive.com/profile/428404-angelski/"  # About: the maker, on the official FM forum
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "compare", "staff",
-         "last_staff", "team_staff", "staff_compare", "attributes", "guide"]
+         "last_staff", "team_staff", "staff_compare", "staff_research", "attributes", "guide"]
 # Each page's full name (the window title, the Guide)
-PAGE_LABELS = {"squad": "Lineup", "formations": "Formations", "development": "Development", "elsewhere": "All players", "last": "Last player import",
-               "charts": "Research", "compare": "Compare players", "staff": "All staff", "last_staff": "Last staff import", "team_staff": "Team staff", "staff_compare": "Compare staff",
+PAGE_LABELS = {"squad": "Lineup", "formations": "Formations", "development": "Development", "elsewhere": "Scouted players", "last": "Latest player list",
+               "charts": "Research", "compare": "Compare players", "staff": "All staff", "last_staff": "Latest staff list", "team_staff": "Your staff", "staff_compare": "Compare staff", "staff_research": "Staff research",
                "analysis": "Analysis", "attributes": "Attributes", "guide": "Guide"}
 # The top menu: (key, page) or (key, group name, its pages, the page it opens on), None = a divider. A group's pages are
-# sub-tabs under the bar; its key opens the group on its first page (Lineup, Last import…), and pressed again moves to the next.
-MENU = [("1", "Squad", ["squad", "formations", "analysis", "development"], "squad"), ("2", "charts"),
+# sub-tabs under the bar; its key opens the group on its first page (Lineup, Latest list…), and pressed again moves to the next.
+MENU = [("1", "Squad", ["squad", "formations", "analysis", "development"], "squad"), ("2", "Research", ["charts", "staff_research"], "charts"),
         ("3", "Players", ["elsewhere", "last", "compare"], "last"),
         ("4", "Staff", ["team_staff", "staff", "last_staff", "staff_compare"], "team_staff"),
         None, ("a", "attributes"), ("g", "guide")]
 SUB_LABELS = {"squad": "Lineup", "formations": "Formations", "analysis": "Analysis", "development": "Development",
-              "elsewhere": "All players", "last": "Last import", "compare": "Compare",
-              "staff": "All staff", "last_staff": "Last import", "team_staff": "Team staff", "staff_compare": "Compare"}
+              "elsewhere": "Scouted", "last": "Latest list", "compare": "Compare",
+              "staff": "All staff", "last_staff": "Latest list", "team_staff": "Your staff", "staff_compare": "Compare", "charts": "Players", "staff_research": "Staff"}
 META = {"Name", "Club", "Age", "Position", "Left Foot", "Preferred Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating",
         "Division"}  # every other column is an attribute
 STAFF_META = {"Name", "Club", "Age", "Job", "Personality"}  # a staff file's other columns are attributes
@@ -453,6 +453,19 @@ def latest_search(people, sources):
     return {name for name, person in people.items() if person["files"] & batch}
 
 
+def latest_staff_search(staff):
+    """The names in the newest staff search import (a search-… staff file): Research › Staff compares with it when the
+    latest staff import was your own club's staff screen."""
+    def when(f):
+        m = re.search(r"-(\d\d-\d\d-\d\d)$", Path(f).stem)
+        return f[:10], m.group(1) if m else ""
+    searches = {f for person in staff.values() for f in person["files"] if "_search-" in f}
+    if not searches:
+        return set()
+    newest = max(searches, key=when)
+    return {name for name, person in staff.items() if newest in person["files"]}
+
+
 def age_benchmark(w):
     """age -> the score expected at that age (ages outside the table count as its youngest or oldest)."""
     table = {int(age): value for age, value in w["age_benchmark"].items()}
@@ -527,6 +540,19 @@ def charts(rows, squad, w, cfg, last=frozenset()):
                         "attrs": {a: attrs[a] for a in shown if a in attrs}})
     return {"positions": list(weights), "players": players, "tops": tops, "managed": cfg["managed_club"],
             "division": cfg.get("division"), "weights": weights, "groups": ATTRIBUTE_GROUPS}
+
+
+def staff_research(staff_rows, club, roles, names, last=frozenset()):
+    """Research › Staff: the Research page's data with jobs for positions (charts.html's staff mode): every staff member,
+    yours flagged, with his job scores; each job's cover (one person per job, staff_cover) as "your best" there."""
+    mine = [r for r in staff_rows if r["club"] == club]
+    cover = staff_cover(mine, roles)
+    people = [{"name": r["name"], "club": r["club"], "age": r.get("age"), "job": r.get("job"), "personality": r.get("personality"),
+               "squad": r["club"] == club, "last": r["name"] in last, "best": r.get("best"),
+               "scores": {k: round(r[k], 2) for k in roles if r.get(k) is not None}, "attrs": {}} for r in staff_rows]
+    return {"kind": "staff", "positions": list(roles), "names": {k: names.get(k, k) for k in roles}, "players": people,
+            "cover": {k: r["name"] for k, r in cover.items()}, "you": YOU_ROLE, "managed": club,
+            "tops": {}, "weights": {}, "groups": {}}
 
 
 def compare_page(rows, squad, w, cfg):
@@ -911,16 +937,40 @@ def keep_best(rows, cap=SHOW_MAX):
     return best, f" · showing the best {cap:,} (scores from {floor:.1f}); {len(rows) - cap:,} below are left off to keep it quick"
 
 
+YOU_ROLE = "Mgr"  # the manager's job is yours: nobody of your staff is put there in the one-each cover
+
+
+def staff_cover(mine, roles):
+    """Your staff, one person per job (like a formation's XI): the best person-job pair first, each person and job once,
+    the manager's job left to you. {role: person row} for the jobs someone covers."""
+    pairs = sorted(((r[role], i, role) for i, r in enumerate(mine) for role in roles if role != YOU_ROLE and r.get(role) is not None),
+                   reverse=True)
+    cover, used = {}, set()
+    for score, i, role in pairs:
+        if role not in cover and i not in used:
+            cover[role] = mine[i]
+            used.add(i)
+    return cover
+
+
 def staff_jobs(staff_rows, club, roles, names):
-    """Each job: [{role, name, yours: [[name, score, job], 2 best], lists: [name, club, score, age] best elsewhere}]."""
+    """Each job: {role, name, you (the manager's job), cover: [name, score, job] (one person per job, staff_cover),
+    yours: [[name, score, job], 2 best, whatever else they cover], lists: [name, club, score, age] best elsewhere}."""
     mine = [r for r in staff_rows if r["club"] == club]
     rest = [r for r in staff_rows if r["club"] != club]
+    cover = staff_cover(mine, roles)
     def top(rows, role, n):
         return sorted((r for r in rows if r.get(role) is not None), key=lambda r: r[role], reverse=True)[:n]
-    return [{"role": role, "name": names.get(role, role),
-             "yours": [[r["name"], round(r[role], 2), r.get("job")] for r in top(mine, role, 2)],
-             "lists": next(([r["name"], r["club"], round(r[role], 2), r.get("age")] for r in top(rest, role, 1)), None)}
-            for role in roles]
+    def short(r, role):
+        return [r["name"], r["club"], round(r[role], 2), r.get("age")]
+    out = []
+    for role in roles:
+        c = cover.get(role)
+        out.append({"role": role, "name": names.get(role, role), "you": role == YOU_ROLE,
+                    "cover": [c["name"], round(c[role], 2), c.get("job")] if c else None,
+                    "yours": [[r["name"], round(r[role], 2), r.get("job")] for r in top(mine, role, 2)],
+                    "lists": next((short(r, role) for r in top(rest, role, 1)), None)})
+    return out
 
 
 def staff_cols(roles, names=None):
@@ -1149,6 +1199,7 @@ def build(save, config):
         "last_staff": " · ".join(filter(None, [f"{len(last_staff)} staff", import_label(staff_batch)])) + " (your latest staff import)",
         "team_staff": f"{sum(r['club'] == managed for r in staff_rows)} staff at {managed} · your club's staff screen, its 4 tabs",
         "staff_compare": "two staff side by side: every job, then their attributes",
+        "staff_research": "per job, the staff on your lists against the one who covers it",
     }
     return cfg, with_info({
         "squad": (players_table, squad, {"lineup": lineup}),
@@ -1166,6 +1217,8 @@ def build(save, config):
         "team_staff": (staff_cols(roles, w.get("staff_names", {})), [r for r in staff_rows if r["club"] == managed],
                        {"lineup": team_info}),
         "staff_compare": ([], team_info),
+        "staff_research": ([], staff_research(staff_rows, managed, roles, w.get("staff_names", {}),
+                                         {r["name"] for r in last_staff if r["club"] != managed} or latest_staff_search(staff))),
         "attributes": ([], attributes_page(cfg, w, rows, save_dir)),
         "guide": ([], GUIDE),
     }, info)
@@ -1217,7 +1270,7 @@ def nav_where():
 
 NAV_SCRIPT = """<script>(() => {  // the menu's groups: sub-tabs under the bar, and the keys
   const PAGE = %s, NAV = %s;
-  window.fmNavTarget = key => {  // a key's page: a group's next sub-tab when you're in it, else its Last import
+  window.fmNavTarget = key => {  // a key's page: a group's next sub-tab when you're in it, else its home page
     const t = NAV[key];
     if (!t || typeof t === "string") return t || null;
     const i = t.pages.indexOf(PAGE);
@@ -1226,6 +1279,8 @@ NAV_SCRIPT = """<script>(() => {  // the menu's groups: sub-tabs under the bar, 
   document.addEventListener("DOMContentLoaded", () => {
     const bar = document.querySelector(".bar"), info = document.getElementById("fm-info");
     let strip = document.getElementById("fm-subnav-src");
+    const own = document.querySelector(".subnav.rctl");  // Research's own strip (its choices): the sub-tabs go at its left
+    if (strip && own) { const tabs = document.createElement("span"); tabs.className = "rtabs"; tabs.append(...strip.children); own.prepend(tabs); strip.remove(); strip = null; }
     if (strip) { strip.id = "fm-subnav"; strip.hidden = false; bar.after(strip); }
     if (info && info.dataset.on) {  // the page's line about its list, at the strip's right (a strip of its own without sub-tabs)
       if (!strip) { strip = document.createElement("nav"); strip.className = "subnav"; strip.id = "fm-subnav"; bar.after(strip); }
@@ -1308,7 +1363,8 @@ def write_pages(save, config, cfg, pages):
     site = json.dumps({"where": nav_where(), "currency": config.get("currency", "£"),
                        "gameDate": max(stamps, default=None),  # the newest date: the profile's "years ago"
                        "club": cfg.get("managed_club", ""), "squadBest": squad_best,
-                       "staffBest": {j["role"]: j["yours"][0][:2] for j in (pages.get("staff_compare", ([], {}))[1] or {}).get("jobs", []) if j["yours"]},
+                       "staffBest": {j["role"]: j["cover"][:2] for j in (pages.get("staff_compare", ([], {}))[1] or {}).get("jobs", []) if j["cover"]},
+                       "staffYou": YOU_ROLE,
                        "ageBench": {str(k): v for k, v in w.get("age_benchmark", {}).items()}}, ensure_ascii=False)
     weights = json.dumps({"GK": w["gk"], **w["outfield"], **w.get("staff", {})}, ensure_ascii=False)  # the profile's ordering
     fills = {"__FONTS__": font_css(), "__THEME__": (APP / "theme.css").read_text(encoding="utf-8"), "__SITE__": site, "__WEIGHTS__": weights,
@@ -1316,7 +1372,7 @@ def write_pages(save, config, cfg, pages):
     templates = {name: (APP / name).read_text(encoding="utf-8") for name in ("template.html", "charts.html")}
     for page, (columns, data, *extra) in pages.items():
         extra = extra[0] if extra else {}
-        text = templates["charts.html" if page == "charts" else "template.html"]
+        text = templates["charts.html" if page in ("charts", "staff_research") else "template.html"]
         for marker, value in {**fills, "__NAV__": menu(page), "__PROMO__": promo_html(), "__PAGE__": page,
                               "__TITLE__": f"{fills['__HOME__']} · {PAGE_LABELS[page]}", "__COLS__": json.dumps(columns),
                               "__LINEUP__": as_script(extra.get("lineup")), "__INFO__": as_script(extra.get("info")),
@@ -1345,10 +1401,10 @@ GUIDE = [
      "text": "<ul><li><b>Your squad</b> (the file name starts with First Team or Squad): your players, on <b>Squad</b>, "
              "<b>Analysis</b> and <b>Development</b>. Every squad import is kept as a dated snapshot, so export it again every "
              "half-season to track progress. Players missing from a newer squad export count as gone.</li>"
-             "<li><b>A player search or shortlist</b>: a list of its own, on <b>Players › Last import</b>, and added to "
-             "<b>Players › All players</b>. Re-importing the same file updates that list.</li>"
+             "<li><b>A player search or shortlist</b>: a list of its own, on <b>Players › Latest list</b>, and added to "
+             "<b>Players › Scouted</b>. Re-importing the same file updates that list.</li>"
              "<li><b>A staff search</b> (the <b>Search - Staff View</b>) or your club's staff screen: on <b>Staff › "
-             "Last import</b> and <b>Staff › All staff</b>.</li>"
+             "Latest list</b> and <b>Staff › All staff</b>.</li>"
              "<li>Players with a <b>Rating</b> (FM shows one for those who've played this season) add the score vs "
              "rating chart to <b>Research</b>.</li></ul>"
              "After each import a message in the corner says how many were imported, and who was skipped (not enough "
@@ -1449,12 +1505,12 @@ GUIDE = [
              "<b>How:</b> pick the snapshots in <b>from</b> and <b>to</b> (the latest two by default). It needs at least two "
              "squad imports: export your squad every half-season or so.<br>"
              "<b>Use it to:</b> see whether training and game time are working, and who's stalling."},
-    {"key": "charts", "title": "Research",
+    {"key": "charts", "title": "Research › Players",
      "text": "<b>Shows:</b> your squad (orange) against players you've imported (the accent colour), position by position: first a table, "
              "<b>Listed players by position</b> (how many there are, their middle and best score, your best there, how many "
              "beat him and the cheapest of those; click a row to pick the position), then one graph at a time, picked in "
              "<b>Graph</b>, with how to read it underneath.<br>"
-             "<b>Controls:</b> <b>compare with</b> = whom to compare with: your <b>Last player import</b>, <b>All imported "
+             "<b>Controls:</b> <b>compare with</b> = whom to compare with: your <b>Latest player list</b>, <b>All scouted "
              "players</b>. <b>position</b> picks the position for the "
              "score vs wage and rating charts. Hover a dot to see who it is.<br>"
              "<b>Charts:</b> <b>Role score</b>, <b>Technical</b>, <b>Mental</b>, <b>Physical</b> and <b>Goalkeeping by position</b> "
@@ -1464,12 +1520,17 @@ GUIDE = [
              "number at the right is your best minus their middle (green = you're ahead). <b>Score vs wage</b>: four "
              "quadrants split at their middle; top left = <b>better and cheaper</b> (good value), bottom right = <b>worse "
              "and dearer</b>. When imported players have a Rating, <b>Score vs average rating</b>: does a higher score mean better matches?"},
-    {"key": "elsewhere", "title": "All players",
+    {"key": "staff_research", "title": "Research › Staff",
+     "text": "<b>Shows:</b> the same for staff, job by job: <b>Listed staff by job</b> (how many, their middle and best, who of "
+             "yours covers the job, how many beat him and the youngest of those), then a graph: <b>Job score by job</b>, "
+             "<b>score vs age</b> at the picked job (the staff on your lists; FM's club staff screen has no ages for yours), and "
+             "<b>by personality</b>. Listed staff count at every job they're scored at; yours are one person per job, as on Your staff."},
+    {"key": "elsewhere", "title": "Scouted players",
      "text": "<b>Shows:</b> everyone you've imported who isn't at your club, scored the same way as your squad, with club, "
              "wage and value (the top of FM's range).<br>"
              "<b>Use it to:</b> compare transfer targets with your own players, and follow players over the seasons. With "
              "very many imported (over 8,000), it shows the best 8,000 by score and says how many are left off."},
-    {"key": "last", "title": "Last player import",
+    {"key": "last", "title": "Latest player list",
      "text": "<b>Shows:</b> only the players from the file you imported last (a search or shortlist).<br>"
              "<b>Use it to:</b> judge one search at a time. Sort by <b>Score</b> or <b>vs Age</b>, filter, e.g. "
              "<b>best=ST age&lt;=23</b>, and compare with your starters on <b>Squad</b>: anyone clearly higher at a weak "
@@ -1479,7 +1540,7 @@ GUIDE = [
              "attributes that count most at the position you pick in <b>compare at</b>; the Technical, Mental, Physical "
              "(and Goalkeeping) values there; every position score; every attribute by group, the higher side marked; and "
              "each one's score over time.<br>"
-             "<b>Pick them:</b> click the compare icon by a player's name in any list (Squad, All players, Last import…), "
+             "<b>Pick them:</b> click the compare icon by a player's name in any list (Squad, Scouted, Latest list…), "
              "press <b>x</b> on his row, or click <b>+ Compare</b> in his profile; the picks show at the bottom left on every "
              "page. Or type a name in an empty slot here. Two at most: remove one to pick another.<br>"
              "<b>Compare at:</b> <b>Auto</b> follows their best position (the first one's when they differ); pick any "
@@ -1493,17 +1554,19 @@ GUIDE = [
              "<b>PosTct</b>/<b>PosTec</b> possession, <b>GKC</b> goalkeeping, <b>FitC</b> fitness, <b>SetC</b> set pieces), "
              "<b>DoF</b> director of football, <b>Scout</b>, <b>PA</b> performance analyst, <b>Physio</b>, <b>SpSci</b> sports scientist.<br>"
              "<b>How:</b> read across a row: the highest number is the job he suits best. Sort by a job to find the best for it."},
-    {"key": "last_staff", "title": "Last staff import",
-     "text": "Only the staff from your latest staff import: judge one staff search at a time, the way Last player import works."},
-    {"key": "team_staff", "title": "Team staff",
-     "text": "<b>Shows:</b> your own club's staff, scored for every job, and your best at each job against the best on your "
-             "staff lists.<br><b>How to import:</b> in FM open your club's <b>Staff</b> screen, <b>Filter</b> → tick <b>All</b> "
+    {"key": "last_staff", "title": "Latest staff list",
+     "text": "Only the staff from your latest staff import: judge one staff search at a time, the way the Latest player list works."},
+    {"key": "team_staff", "title": "Your staff",
+     "text": "<b>Shows:</b> your own club's staff, scored for every job, and <b>Your best at each job</b>: one person per job, "
+             "best fits first (like a formation's eleven: someone who'd top three jobs covers only his best of them; the "
+             "manager's job is yours), with your best at it when that's someone covering another job, against the best on "
+             "your staff lists.<br><b>How to import:</b> in FM open your club's <b>Staff</b> screen, <b>Filter</b> → tick <b>All</b> "
              "(Senior Squad, U21, U18), turn on <b>Menu → Auto-import</b>, then press F8 on each tab: <b>Coaching</b>, "
              "<b>Medical</b>, <b>Mental</b>, <b>Scouting</b>. They add up to one staff; the ticks on the page show which are in. "
              "Coaching jobs are scored once the Mental tab is in too.<br>"
-             "<b>Staff plan</b> (under Your best at each job): what to do about your staff, most urgent first: jobs with nobody "
+             "<b>Staff plan</b> (under Your best at each job): what to do about your staff, most urgent first: jobs with nobody free "
              "(Act now), staff on your lists at least 1 better than yours (Hire), and weak spots (Improve).<br><b>Also:</b> a "
-             "searched staff member's profile says where he'd be your best (<b>For you</b>)."},
+             "searched staff member's profile says which jobs he'd do better than who covers them now (<b>For you</b>)."},
     {"key": "staff_compare", "title": "Compare staff",
      "text": "<b>Shows:</b> two staff side by side, every job and attribute. <b>Pick them:</b> the compare icon by a name in "
              "any staff list, <b>x</b> on a row, or <b>+ Compare</b> in a profile; or type a name. <b>×</b> empties a side, "
@@ -1550,7 +1613,7 @@ GUIDE = [
              "<li>Use the <b>Search - Outfield Players View</b> for searches, so everyone gets a score at every position.</li></ul>"},
     {"key": "", "title": "Keyboard shortcuts",
      "text": "<ul><li><b>1</b>–<b>4</b>, <b>a</b>, <b>g</b>: go to a page (the numbers in the menu): <b>1</b> Squad opens on "
-             "Lineup, <b>3</b> Players and <b>4</b> Staff on Last import; press it again for the next sub-tab.</li>"
+             "Lineup, <b>2</b> Research on Players, <b>3</b> Players on Latest list and <b>4</b> Staff on Your staff; press it again for the next sub-tab.</li>"
              "<li><b>Arrow keys</b>: move around a table; <b>Enter</b>: the player's profile; <b>s</b>: sort by the current column.</li>"
              "<li><b>/</b> or <b>f</b>: the Search box; <b>Esc</b>: clear it, or close a profile.</li>"
              "<li><b>c</b>: copy the player's name, to paste into FM's search; <b>x</b>: add him to <b>Compare</b> (Players › Compare, or Staff › Compare on the staff pages).</li>"

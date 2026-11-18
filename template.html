@@ -389,7 +389,7 @@ __THEME__
   <table>
     <colgroup><col style="width:190px"><col></colgroup>
     <tr><th colspan="2">Moving between pages</th></tr>
-    <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>the pages in the menu: Squad, Research, Players, Staff. <kbd>1</kbd> opens on Lineup, <kbd>3</kbd> and <kbd>4</kbd> on Last import; press again for the next sub-tab</td></tr>
+    <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>the pages in the menu: Squad, Research, Players, Staff. <kbd>1</kbd> opens on Lineup, <kbd>2</kbd> on Research › Players, <kbd>3</kbd> on Latest list, <kbd>4</kbd> on Your staff; press again for the next sub-tab</td></tr>
     <tr><td><kbd>A</kbd> <kbd>G</kbd></td><td>Attributes (the attribute weights) and the Guide</td></tr>
     <tr><td><kbd>?</kbd></td><td>open or close this list</td></tr>
     <tr><th colspan="2">In a table</th></tr>
@@ -445,9 +445,10 @@ const fmtDate = d => String(d).replace(/T(\d\d)(\d\d)$/, " $1:$2");
 const MEMORY = `fm:__SAVE__:${PAGE}`;
 let sort = { key: COLS.some(c => c.key === "vsAge") ? "vsAge" : COLS.find(c => c.num && c.fmt)?.key, dir: -1 };
 let cur = { r: 0, c: 0 }, view = [];
-// big lists: draw the first rows only, more as you scroll (search and sort still cover everyone)
-const PAGE_ROWS = 300;
-let shown = PAGE_ROWS;
+// long lists: the first three screens of rows, then "Show more" adds one screen a click (search and sort still cover everyone)
+const SCREEN_ROWS = Math.max(12, Math.floor((innerHeight - 130) / 27));  // a row is about 27px
+const FIRST_ROWS = 3 * SCREEN_ROWS;
+let shown = FIRST_ROWS;
 try {
   const kept = JSON.parse(localStorage.getItem(MEMORY) || "{}");
   if (COLS.some(c => c.key === kept.sortKey)) sort = { key: kept.sortKey, dir: kept.dir };
@@ -525,7 +526,7 @@ function render() {
   input.classList.toggle("bad", !ok);
   const before = view.length;
   view = DATA.filter(r => tests.every(test => test(r))).sort(byColumn);
-  if (view.length !== before) shown = PAGE_ROWS;  // a new search: start from the top again
+  if (view.length !== before) shown = FIRST_ROWS;  // a new search: start from the top again
   cur = { ...cur, r: clamp(cur.r, 0, view.length - 1), c: clamp(cur.c, 0, COLS.length - 1) };
   document.getElementById("count").textContent = view.length < DATA.length ? `showing ${view.length}` : "";  // while searching
   document.getElementById("head").innerHTML = COLS.map((c, ci) => {
@@ -533,17 +534,15 @@ function render() {
     const full = c.title && c.title !== c.label ? ` data-full="${esc(c.title)}"` : "";  // a short label's full name (Staff: the jobs)
     return `<th data-key="${c.key}" class="${marks.filter(Boolean).join(" ")}"${full}>${c.label}</th>`;
   }).join("");
-  if (cur.r >= shown) shown = Math.ceil((cur.r + 1) / PAGE_ROWS) * PAGE_ROWS;  // the cursor went past: draw down to it
+  if (cur.r >= shown) shown = cur.r + SCREEN_ROWS;  // the cursor (arrow keys) went past: draw down to it, and a screen more
   const upto = Math.min(view.length, shown);
   document.getElementById("body").innerHTML = view.slice(0, upto).map((r, ri) => `<tr class="${ri === cur.r ? "currow" : ""}">` +
     COLS.map((c, ci) => cellHtml(r, c, [ri === cur.r && ci === cur.c && "cur", c.key === sort.key && "sortcol"].filter(Boolean).join(" "))).join("") +
     "</tr>").join("") + (upto < view.length ? `<tr class="morerow"><td colspan="${COLS.length}">Showing ${upto.toLocaleString()} of ${
-      view.length.toLocaleString()} · <a>Show ${Math.min(PAGE_ROWS, view.length - upto)} more</a> (or scroll down; search to narrow it)</td></tr>` : "");
+      view.length.toLocaleString()} · <a>Show ${Math.min(SCREEN_ROWS, view.length - upto)} more</a> (search to narrow it)</td></tr>` : "");
   const more = document.querySelector("#body tr.morerow");
   if (more) {
-    const grow = () => { shown += PAGE_ROWS; render(); };
-    more.querySelector("a").onclick = grow;
-    new IntersectionObserver((es, ob) => { if (es.some(x => x.isIntersecting)) { ob.disconnect(); grow(); } }, { rootMargin: "400px" }).observe(more);
+    more.querySelector("a").onclick = () => { shown += SCREEN_ROWS; render(); };
   }
   if (render.done) document.querySelector("td.cur")?.scrollIntoView({ block: "nearest", inline: "nearest" });  // not when the page opens
   render.done = true;
@@ -808,16 +807,16 @@ function profileAttributes(r, s, groups, isStaff, at, tab) {
   const select = `<select class="aposSel">${groups.map(g => `<option value="${g}"${g === at ? " selected" : ""}>${esc(g)}</option>`).join("")}</select>`;
   return `<div class="dhead">Key and preferable attributes at ${select}</div><div class="acols">${cols.map(c => `<div>${c}</div>`).join("")}</div>${legend}`;
 }
-// a staff member from your lists: the jobs where he'd be your best (SITE.staffBest), and over whom
+// a staff member from your lists: the jobs where he'd beat the one who covers it now (SITE.staffBest: one person per job), and by how much
 function staffForYou(r, jobs) {
   const best = SITE.staffBest || {};
   if (!SITE.club || r.club === SITE.club || !Object.keys(best).length) return "";
   const gains = jobs.filter(([k, v]) => best[k] && v > best[k][1] + 0.05).map(([k, v]) => ({ k, v, who: best[k][0], d: v - best[k][1] }))
     .sort((a, b) => b.d - a.d);
-  const none = jobs.filter(([k]) => !best[k]).map(([k]) => k);
-  if (!gains.length && !none.length) return `<div class="fit"><b>For you:</b> he wouldn't be your best at any job.</div>`;
+  const none = jobs.filter(([k]) => !best[k] && k !== SITE.staffYou).map(([k]) => k);
+  if (!gains.length && !none.length) return `<div class="fit"><b>For you:</b> he wouldn't beat the one covering any job.</div>`;
   const parts = gains.slice(0, 3).map(g => `<b>${esc(colLabel(g.k))}</b> over ${esc(g.who.split(" ").pop())} (<b>+${g.d.toFixed(1)}</b>)`);
-  return `<div class="fit up"><b>For you:</b> ${parts.length ? `he'd be your best at ${parts.join(", ")}` : ""}${parts.length && none.length ? "; " : ""}${
+  return `<div class="fit up"><b>For you:</b> ${parts.length ? `he'd beat who covers ${parts.join(", ")}` : ""}${parts.length && none.length ? "; " : ""}${
     none.length ? `you have nobody scored at ${none.slice(0, 3).map(k => esc(colLabel(k))).join(", ")}` : ""}.</div>`;
 }
 function staffOverview(r, s, groups) {
@@ -1603,7 +1602,7 @@ function renderCompare() {
       ${attrTiles}`;
   } else {
     body = `<div class="tile wide"><div class="sub">Pick ${A || B ? "one more player" : "two players"}: type a name above, click the compare icon by a player's name in any
-      list (Squad, All players, Last import…; or press <b>x</b>), or <b>+ Compare</b> in a player's profile.</div></div>`;
+      list (Squad, Scouted, Latest list…; or press <b>x</b>), or <b>+ Compare</b> in a player's profile.</div></div>`;
   }
   main.innerHTML = head + body;
   // the controls
@@ -1705,23 +1704,25 @@ document.addEventListener("copy", e => {
 input.addEventListener("input", () => { cur.r = 0; render(); });
 for (const overlay of [help, detail]) overlay.addEventListener("click", e => { if (e.target === overlay) overlay.classList.remove("show"); });
 if (PAGE.endsWith("staff")) input.title = "Type a name, or filters like job:coach PosTct>=12 personality:prof";
-// Staff › Team staff's Staff plan, under Your best at each job: d = { club, tabs, jobs } (staff_jobs in score.py):
+// Staff › Your staff's Staff plan, under Your best at each job: d = { club, tabs, jobs } (staff_jobs in score.py):
 // what to do about your staff, most urgent first
 function staffPlanHtml(d) {
   const items = [];
-  for (const j of d.jobs || []) {
-    const y = j.yours[0], l = j.lists, last = n => esc(n.split(" ").pop());
-    if (!y) items.push({ cls: "act", job: j, text: l ? `Nobody of yours scored here: <b>${esc(l[0])}</b> (${esc(l[1] || "free agent")}) is the best on your lists, ${l[2].toFixed(1)}.` : "Nobody of yours scored here, and nobody on your lists either: run a staff search for it." });
+  const coverOf = Object.fromEntries((d.jobs || []).filter(j => j.cover).map(j => [j.cover[0], j.name]));
+  for (const j of (d.jobs || []).filter(j => !j.you)) {  // the manager's job is yours
+    const y = j.cover, b = j.yours[0], l = j.lists, last = n => esc(n.split(" ").pop());
+    const busy = !y && b ? `${last(b[0])} (${b[1].toFixed(1)}) is your best here but covers ${esc(coverOf[b[0]] || "another job")}. ` : "";
+    if (!y) items.push({ cls: "act", job: j, text: busy + (l ? `Nobody free: <b>${esc(l[0])}</b> (${esc(l[1] || "free agent")}) is the best on your lists, ${l[2].toFixed(1)}.` : "Nobody free here, and nobody on your lists either: run a staff search for it.") });
     else if (l && l[2] - y[1] >= 1) items.push({ cls: "warn", job: j, text: `Hire <b>${esc(l[0])}</b> (${esc(l[1] || "free agent")}, ${l[2].toFixed(1)}): <b>+${(l[2] - y[1]).toFixed(1)}</b> on ${last(y[0])} (${y[1].toFixed(1)}).` });
     else if (y[1] < 11) items.push({ cls: "plan", job: j, text: `${last(y[0])} is weak here (${y[1].toFixed(1)}): ${l ? `the best on your lists is ${l[2].toFixed(1)}; search for better.` : "run a staff search for this job."}` });
   }
   const URG = { act: 0, warn: 1, plan: 2 }, LABEL = { act: "Act now", warn: "Hire", plan: "Improve" };
   items.sort((a, b) => URG[a.cls] - URG[b.cls]);
-  const fine = (d.jobs || []).length - items.length, nTeam = (d.jobs || []).some(j => j.yours.length);
+  const fine = (d.jobs || []).filter(j => !j.you).length - items.length, nTeam = (d.jobs || []).some(j => j.yours.length);
   const done = Object.values(d.tabs || {}).filter(Boolean).length;
-  return `<div class="ttitle">Staff plan <span class="sub">your staff at ${esc(d.club)} against the best on your staff lists, most urgent first</span></div>
+  return `<div class="ttitle">Staff plan <span class="sub">one person per job: who covers it against the best on your staff lists, most urgent first</span></div>
     ${!nTeam ? `<div class="advice">Import your own staff first: the steps above (4 tabs, one F8 each).</div>` :
-      `<div class="advice">${items.length ? `${items.filter(x => x.cls === "act").length} jobs with nobody, ${items.filter(x => x.cls === "warn").length} worth a hire, ${items.filter(x => x.cls === "plan").length} weak; ${fine} covered well.` : `Every job is covered well against your lists.`}${done < 4 ? ` Only ${done} of 4 staff tabs are in: export the rest for the full picture.` : ""}</div>
+      `<div class="advice">${items.length ? `${items.filter(x => x.cls === "act").length} jobs with nobody free, ${items.filter(x => x.cls === "warn").length} worth a hire, ${items.filter(x => x.cls === "plan").length} weak; ${fine} covered well.` : `Every job is covered well against your lists.`}${done < 4 ? ` Only ${done} of 4 staff tabs are in: export the rest for the full picture.` : ""}</div>
       <ol class="plan">${items.map(x => `<li><span class="ptag ${x.cls}">${LABEL[x.cls]}</span><b class="ppos" title="${esc(x.job.name)}">${esc(x.job.name)}</b><span class="rec">${x.text}</span></li>`).join("")}</ol>`}`;
 }
 // a name picker's list: the first 60 names matching what's typed (all of them would be slow with thousands)
@@ -1734,7 +1735,7 @@ function nameOptions(people, typed) {
   return out.map(p => `<option value="${esc(p.name)}" label="${esc(`${p.club || "free agent"}${p.age != null ? ` · ${p.age}y` : ""}${
     p.best ? ` · ${p.best} ${p.score != null ? p.score.toFixed(1) : ""}` : p.job ? ` · ${p.job}` : ""}`)}"></option>`).join("");
 }
-// Staff › Compare: the same data as Team staff (d.everyone, d.jobs), laid out like Players › Compare: two cards (picked with
+// Staff › Compare: the same data as Your staff (d.everyone, d.jobs), laid out like Players › Compare: two cards (picked with
 // the icon by a name in a staff list, x, + Compare, or typed), a verdict, then every job and every attribute side by side
 function renderStaffCompare() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
@@ -1790,7 +1791,7 @@ function renderStaffCompare() {
     body = `<div class="tile"><div class="ttitle">Every job <span class="sub"><span class="ka">■</span> ${esc(A.name)} · <span class="kb">■</span> ${esc(B.name)}</span></div>${jobsTable}</div>${attrTiles}`;
   } else {
     body = `<div class="tile wide"><div class="sub">Pick ${A || B ? "one more" : "two staff members"}: type a name above, click the compare icon by a name in any
-      staff list (Team staff, All staff, Last import; or press <b>x</b>), or <b>+ Compare</b> in a staff profile.</div></div>`;
+      staff list (Your staff, All staff, Latest list; or press <b>x</b>), or <b>+ Compare</b> in a staff profile.</div></div>`;
   }
   main.innerHTML = head + body;
   const set = (i, name) => { const p = comparePicks(); p[i] = name; cmpEdit[i] = false; setComparePicks(p); renderStaffCompare(); };
@@ -1834,12 +1835,12 @@ function foldLong() {
   });
 }
 new MutationObserver(foldLong).observe(document.getElementById("main"), { childList: true, subtree: true });
-// Staff › Team staff: how to export your club's staff (4 tabs, one F8 each) and which tabs are in already
+// Staff › Your staff: how to export your club's staff (4 tabs, one F8 each) and which tabs are in already
 if (PAGE === "team_staff" && LINEUP) {
   const T = LINEUP, done = Object.values(T.tabs).filter(Boolean).length, all = Object.keys(T.tabs).length;
   const card = document.createElement("div");
   card.className = "tile teamcard";
-  card.innerHTML = `<div class="ttitle">Team staff <span class="sub">${esc(T.club)}'s own staff, from FM's club staff screen</span></div>
+  card.innerHTML = `<div class="ttitle">Your staff <span class="sub">${esc(T.club)}'s own staff, from FM's club staff screen</span></div>
     <div class="tsteps"><ol>
       <li>In FM, open your club's <b>Staff</b> screen, then <b>Filter</b> → tick <b>All</b> (Senior Squad, U21, U18).</li>
       <li>Turn on <b>Menu → Auto-import</b> here.</li>
@@ -1853,14 +1854,17 @@ if (PAGE === "team_staff" && LINEUP) {
   if (T.jobs && T.jobs.length) {
     const jobsTile = document.createElement("div");
     jobsTile.className = "tile teamcard";
-    const row = j => { const y = j.yours[0], n = j.yours[1], l = j.lists, d = y && l ? l[2] - y[1] : null;
+    const coverOf = Object.fromEntries(T.jobs.filter(j => j.cover).map(j => [j.cover[0], j.name]));
+    const row = j => { const y = j.cover, b = j.yours[0], l = j.lists, d = y && l ? l[2] - y[1] : null;
+      if (j.you) return `<tr><td title="${esc(j.name)}"><b>${esc(j.name)}</b></td><td><span class="sub">you</span></td>
+        <td class="dim">${b ? `${esc(b[0])} ${b[1].toFixed(1)}` : "–"}</td><td>${l ? `${esc(l[0])} <span class="sub">${esc(l[1] || "free agent")}</span> <b class="${stier(l[2])}">${l[2].toFixed(1)}</b>` : `<span class="dim">–</span>`}</td><td class="num dim">–</td></tr>`;
       return `<tr><td title="${esc(j.name)}"><b>${esc(j.name)}</b></td>
-        <td>${y ? `${esc(y[0])} <b class="${stier(y[1])}">${y[1].toFixed(1)}</b>` : `<span class="t0">nobody</span>`}</td>
-        <td class="dim">${n ? `${esc(n[0])} ${n[1].toFixed(1)}` : "–"}</td>
+        <td>${y ? `${esc(y[0])} <b class="${stier(y[1])}">${y[1].toFixed(1)}</b>` : `<span class="t0">nobody free</span>`}</td>
+        <td class="dim">${b && (!y || b[0] !== y[0]) ? `${esc(b[0])} ${b[1].toFixed(1)} <span class="sub">· covers ${esc(coverOf[b[0]] || "–")}</span>` : b ? "same" : "–"}</td>
         <td>${l ? `${esc(l[0])} <span class="sub">${esc(l[1] || "free agent")}</span> <b class="${stier(l[2])}">${l[2].toFixed(1)}</b>` : `<span class="dim">–</span>`}</td>
         <td class="num ${d == null ? "dim" : d > 0.05 ? "t0" : "t4"}">${d == null ? "–" : (d > 0 ? "+" : "−") + Math.abs(d).toFixed(1)}</td></tr>`; };
-    jobsTile.innerHTML = `<div class="ttitle">Your best at each job <span class="sub">your staff, and the best on your staff lists (± = how much better they are; red = worth a look)</span></div>
-      <table><thead><tr><th>Job</th><th>Your best</th><th>Next</th><th>Best on your lists</th><th class="num">±</th></tr></thead><tbody>${T.jobs.map(row).join("")}</tbody></table>`;
+    jobsTile.innerHTML = `<div class="ttitle">Your best at each job <span class="sub">one person per job, best fits first (like a formation's eleven); ± = how much better the best on your lists is; red = worth a look</span></div>
+      <table><thead><tr><th>Job</th><th>Covered by</th><th>Your best at it</th><th>Best on your lists</th><th class="num">±</th></tr></thead><tbody>${T.jobs.map(row).join("")}</tbody></table>`;
     document.getElementById("main").before(jobsTile);
     const plan = document.createElement("div");
     plan.className = "tile teamcard";

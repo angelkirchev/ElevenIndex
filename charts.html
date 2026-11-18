@@ -12,6 +12,8 @@ __THEME__
   .ctl { display: flex; gap: 3px; align-items: center; margin: 6px 0; }
   .ctl .name { margin-right: 4px; color: var(--sub-ink); font-weight: 600; }  /* in the strip under the bar */
   .subnav.rctl { flex-wrap: wrap; align-items: center; gap: 4px 18px; padding: 3px 14px 3px 64px; }
+  .rtabs { display: flex; align-self: stretch; margin: -3px 6px -3px 0; padding-right: 14px; border-right: 1px solid #ffffff22; }
+  .rtabs a { display: flex; align-items: center; }
   .ctl button { padding: 3px 9px; color: var(--fg); font: 600 12px var(--body); background: var(--bg); border: 1px solid var(--line);
                 border-radius: 5px; cursor: pointer; }
   .ctl button:hover:not(.on) { background: var(--hover); }
@@ -126,6 +128,9 @@ __THEME__
 // ---- the data: every player (yours flagged squad), each position's most important attributes ----
 const MARKET = __DATA__, SITE = __SITE__;
 const POSITIONS = MARKET.positions, PLAYERS = MARKET.players, CLUB = MARKET.managed;
+// Research › Staff (staff_research in score.py) draws on this page too: jobs for positions, the one who covers a job
+// (one person per job) as your best there, and no wages, ratings or attribute groups
+const STAFF = MARKET.kind === "staff", JOB = pos => STAFF ? MARKET.names[pos] || pos : pos;
 const topAttributes = pos => MARKET.tops[pos] || [];
 // a player's Technical / Mental / Physical / Goalkeeping value at a position: the group's attributes averaged with the
 // position's weights (as on the Attributes page); null when the group has no weight there or under half of it is known
@@ -141,7 +146,7 @@ function groupValue(p, pos, group) {
 }
 
 // whom yours are compared with: the latest import, everyone imported, or your own squad by age
-const LATEST = "Last player import", EVERYONE = "All imported players";
+const LATEST = STAFF ? "Latest staff list" : "Latest player list", EVERYONE = STAFF ? "All scouted staff" : "All scouted players";
 const CHOICES = [
   ...(PLAYERS.some(p => !p.squad && p.last) ? [LATEST] : []),
   ...(PLAYERS.some(p => !p.squad) ? [EVERYONE] : []),
@@ -149,8 +154,8 @@ const CHOICES = [
 const shortName = d => d.replace(/^Sky Bet /, "");
 
 // ---- what's chosen, kept between visits ----
-const KEPT = "fm:__SAVE__:charts";
-const choice = { pos: POSITIONS.find(p => p !== "GK") || POSITIONS[0], against: CHOICES[0], chart: "score" };
+const KEPT = "fm:__SAVE__:__PAGE__";
+const choice = { pos: POSITIONS.find(p => p !== "GK" && p !== MARKET.you) || POSITIONS[0], against: CHOICES[0], chart: "score" };
 try {
   const old = JSON.parse(localStorage.getItem(KEPT) || "{}");  // an older version called these speed and division
   Object.assign(choice, { pos: old.pos ?? choice.pos, against: old.against ?? old.division ?? choice.against,
@@ -166,7 +171,11 @@ function choose(key, value) {
 }
 const compared = p => !p.squad && (choice.against === EVERYONE || choice.against === LATEST && p.last);
 const shown = () => PLAYERS.filter(p => p.squad || compared(p));  // in age mode: your squad only
-const atBest = (p, pos) => p.best === pos && p.scores[pos] != null;  // each player counts at his best position
+// each player counts at his best position; staff at every job they're scored at (any of them could be moved there)
+const atBest = (p, pos) => (STAFF || p.best === pos) && p.scores[pos] != null;
+// your one at a position: staff, whoever covers the job (none at the manager's: that's you); players, your best there
+const coverOf = (pos, us, value) => STAFF ? (pos === MARKET.you ? null : us.find(p => p.name === MARKET.cover[pos]) || null)
+  : us.reduce((a, b) => value(b, pos) > value(a, pos) ? b : a);
 
 // ---- small helpers ----
 const wageText = v => SITE.currency + (v >= 1e6 ? `${+(v / 1e6).toFixed(2)}M` : v >= 1e3 ? `${+(v / 1e3).toFixed(2)}K` : v);
@@ -251,13 +260,18 @@ function point(p, e) {
   document.querySelectorAll(".mark.lit").forEach(m => m.classList.remove("lit"));
   if (!p) { tip.style.display = "none"; return; }
   document.querySelectorAll(`.mark[data-name="${CSS.escape(p.name)}"]`).forEach(m => { m.classList.add("lit"); m.parentNode.appendChild(m); });
-  const scores = Object.entries(p.scores).map(([pos, v]) =>
+  const scores = Object.entries(p.scores).sort((a, b) => STAFF ? b[1] - a[1] : 0).slice(0, STAFF ? 6 : 99).map(([pos, v]) =>
     `<span class="${pos === p.best ? "top" : ""}">${pos} <b>${v.toFixed(1)}</b></span>`).join("");
+  if (STAFF) {
+    tip.innerHTML = `<div class="who">${p.name}</div><div class="faint">${p.club || "free agent"} · ${p.age ?? "–"} · ${p.job || "–"}${p.personality ? ` · ${p.personality}` : ""}` +
+      ` · <span class="best">best as ${JOB(p.best)}</span></div><div class="scores">${scores}</div>`;
+  } else {
   const attrs = topAttributes(choice.pos).slice(0, 4).map(a => `${a.toLowerCase()} ${p.attrs[a] ?? "–"}`).join(" · ");
   tip.innerHTML = `<div class="who">${p.name}</div><div class="faint">${p.club} · ${p.age} · ${p.wage == null ? "–" : `${wageText(p.wage)} p/w`}` +
     ` · <span class="best">best as ${p.best}</span></div>` +
     `<div class="scores">${scores}</div>` +
     `<div>${p.rating == null ? "" : `rating ${p.rating.toFixed(2)}${p.minutes ? ` <span class="faint">in ${p.minutes} mins</span>` : ""} · `}${attrs}</div>`;
+  }
   tip.style.display = "block";
   const w = tip.offsetWidth, h = tip.offsetHeight, x = e.clientX + 14, y = e.clientY + 14;
   tip.style.left = `${Math.min(x, innerWidth - w - 8)}px`;
@@ -302,9 +316,10 @@ function byPosition(boxId, value, title, counts, step, labelMiddle, floor, only)
   const endText = (y, text, cls) => { svgEl("text", { x: width - 4, y: y + 4, "text-anchor": "end", class: cls }, svg).textContent = text; };
   lines.forEach(({ pos, people }, i) => {
     const y0 = top + i * row, laneThem = y0 + 22, laneUs = y0 + 47, mid0 = y0 + row / 2;
-    const them = people.filter(p => !p.squad), us = people.filter(p => p.squad);
+    const them = people.filter(p => !p.squad), us = STAFF && pos === MARKET.you ? [] : people.filter(p => p.squad);
     const name = svgEl("text", { x: 12, y: mid0 + 4, class: `pos${pos === choice.pos ? " on" : ""}` }, svg);
     name.textContent = pos;
+    if (STAFF) svgEl("title", {}, name).textContent = JOB(pos);
     name.addEventListener("click", () => choose("pos", pos));
     let mid = null;
     if (them.length) {
@@ -315,10 +330,10 @@ function byPosition(boxId, value, title, counts, step, labelMiddle, floor, only)
       svgEl("rect", { x: q1, y: laneThem - 7, width: Math.max(2, q3 - q1), height: 14, rx: 4, class: "middle-half" }, svg);
       svgEl("rect", { x: x(mid) - 1.5, y: laneThem - 10, width: 3, height: 20, rx: 1.5, class: "middle" }, svg);
       if (labelMiddle) svgEl("text", { x: x(mid), y: laneThem - 13, "text-anchor": "middle", class: "middle-value" }, svg).textContent = mid.toFixed(1);
-      them.forEach(p => marker(svg, p, x(value(p, pos)), laneThem + 10, true));
+      if (them.length <= 600) them.forEach(p => marker(svg, p, x(value(p, pos)), laneThem + 10, true));  // a tick each, while that stays quick
     }
-    if (us.length) {
-      const best = us.reduce((a, b) => value(b, pos) > value(a, pos) ? b : a);
+    const best = us.length ? coverOf(pos, us, value) : null;
+    if (best) {
       us.filter(p => p !== best).forEach(p => marker(svg, p, x(value(p, pos)), laneUs).classList.add("faint"));
       const bx = x(value(best, pos)), m = marker(svg, best, bx, laneUs);
       m.classList.add("best");
@@ -327,10 +342,35 @@ function byPosition(boxId, value, title, counts, step, labelMiddle, floor, only)
       label.textContent = `${best.name.split(" ").pop()} ${value(best, pos).toFixed(1)}`;
       if (bx + 10 + label.getComputedTextLength() > width - right) { label.setAttribute("x", bx - 10); label.setAttribute("text-anchor", "end"); }
     }
-    if (mid != null && us.length) {
-      const lead = Math.max(...us.map(p => value(p, pos))) - mid;
+    if (mid != null && best) {
+      const lead = value(best, pos) - mid;
       endText(mid0, `${lead >= 0 ? "+" : "−"}${Math.abs(lead).toFixed(1)}`, `lead ${lead >= 0 ? "up" : "down"}`);
     } else endText(mid0, them.length ? String(them.length) : "–", "count");
+  });
+}
+
+// ---- Research › Staff: the listed staff at the chosen job, one band per personality ----
+function byPersonality(pos) {
+  const box = document.getElementById("chartBox");
+  box.innerHTML = "";
+  const people = shown().filter(p => !p.squad && p.scores[pos] != null && p.personality);
+  const groups = Object.entries(people.reduce((g, p) => ((g[p.personality] ||= []).push(p), g), {}))
+    .map(([k, ps]) => ({ k, ps, mid: middleOf(ps.map(p => p.scores[pos])) })).sort((a, b) => b.mid - a.mid).slice(0, 14);
+  if (!groups.length) { box.innerHTML = `<div class="note">No listed staff with a personality at ${JOB(pos)}.</div>`; return; }
+  const width = box.clientWidth, row = 34, top = 22, left = 150, right = 56, height = top + groups.length * row + 34;
+  const [lo, hi] = padded(people.map(p => p.scores[pos]), 0.04), x = straightScale([lo, hi], [left, width - right]);
+  const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height }, box), bottom = top + groups.length * row;
+  groups.forEach((g, i) => svgEl("rect", { x: left - 8, y: top + i * row, width: width - left - right + 16, height: row, class: i % 2 ? "band odd" : "band" }, svg));
+  ticks(svg, x, true, bottom + 4, bottom - top + 4, `${pos} score`);
+  groups.forEach((g, i) => {
+    const y = top + i * row + row / 2, s = g.ps.map(p => p.scores[pos]).sort((a, b) => a - b);
+    svgEl("text", { x: 8, y: y + 4, class: "pos" }, svg).textContent = g.k;
+    svgEl("line", { x1: x(s[0]), x2: x(s[s.length - 1]), y1: y, y2: y, class: "spread" }, svg);
+    const q1 = x(quantile(s, 0.25)), q3 = x(quantile(s, 0.75));
+    svgEl("rect", { x: q1, y: y - 6, width: Math.max(2, q3 - q1), height: 12, rx: 4, class: "middle-half" }, svg);
+    svgEl("rect", { x: x(g.mid) - 1.5, y: y - 9, width: 3, height: 18, rx: 1.5, class: "middle" }, svg);
+    g.ps.forEach(p => marker(svg, p, x(p.scores[pos]), y + 9, true));
+    svgEl("text", { x: width - 4, y: y + 4, "text-anchor": "end", class: "count" }, svg).textContent = String(g.ps.length);
   });
 }
 
@@ -343,7 +383,7 @@ function plot({ x: getX, y: getY, xTitle, yTitle, wages, zones, spreadX, who }) 
   const r = correlation(them.filter(compared).map(p => [wages ? Math.log(getX(p)) : getX(p), getY(p)]));
   const note = document.createElement("div");
   note.className = "note";
-  note.innerHTML = (who ? `${us.length} of your players, each at his best position` : `${them.length} ${shortName(choice.against)}${us.length ? ` + ${us.length} ${CLUB}` : ""} at ${choice.pos}`) +
+  note.innerHTML = (who && !STAFF ? `${us.length} of your players, each at his best position` : `${them.length} ${shortName(choice.against)}${us.length ? ` + ${us.length} ${CLUB}` : ""} at ${JOB(choice.pos)}`) +
     `${r == null ? "" : ` · r = <b>${r.toFixed(2)}</b>`}`;
   box.appendChild(note);
   if (!people.length) return;
@@ -386,10 +426,12 @@ function fillSelect(id, options, current, key) {
 function draw() {
   fillSelect("against", CHOICES.map(c => [c, shortName(c)]), choice.against, "against");
   const bar = document.getElementById("positions");
+  if (STAFF) bar.querySelector(".name").textContent = "job";
   bar.querySelectorAll("button").forEach(b => b.remove());
   for (const pos of POSITIONS) {
     const b = document.createElement("button");
     b.textContent = pos;
+    if (STAFF) b.title = JOB(pos);
     b.className = pos === choice.pos ? "on" : "";
     b.onclick = () => choose("pos", pos);
     bar.appendChild(b);
@@ -411,7 +453,23 @@ function draw() {
       `scouted = no value. The bar in the accent colour is ${them}: the line runs from the worst to the best, the box holds the middle half, and ` +
       `the white mark and number are the middle player. ${us} are on the lower lane, your best at each position big and named; the number at the far right is your best minus their ` +
       `middle (<span class="good">green</span> = you're ahead).` });
-  const charts = {
+  const staffCharts = {
+    score: { name: "Job score by job", sub: "How good your staff are at each job, against the staff on your lists",
+      draw: () => byPosition("chartBox", (p, at) => p.scores[at], "job score", atBest, undefined, true, 5),
+      how: `Each row is a job (hover its name for the full one). The bar in the accent colour is ${them}: the line runs from the worst to the best, the box holds the middle half, ` +
+        `and the white mark and number are the middle one. <span class="us">◆ your staff</span> are on the lower lane, the one who covers the job (one person per job) big and named. ` +
+        `The number at the far right is him minus their middle (<span class="good">green</span> = you're ahead). Click a job to pick it.` },
+    age: { name: `${JOB(pos)}: score vs age`, sub: `Every staff member on your lists at ${JOB(pos)}: who's good and still young`,
+      draw: () => plot({ x: p => p.age, y: scoreOf, xTitle: "age", yTitle: `${pos} score`, who: p => !p.squad && compared(p) && p.scores[pos] != null,
+                         zones: ["better and younger", "worse and older"], spreadX: 0.6 }),
+      how: `<b>Higher = better</b>, <b>further left = younger</b>. The dashed lines are the middle of them. <span class="good">Top left</span>: better and younger than most, ` +
+        `worth a look for a long stay. Your own staff aren't on it: FM's club staff screen doesn't export their age. Pick the job at the top; hover a mark for the person.` },
+    personality: { name: `${JOB(pos)}: by personality`, sub: `The staff on your lists at ${JOB(pos)}, grouped by personality: which kinds score best`,
+      draw: () => byPersonality(pos),
+      how: `Each row is a personality, best first by its middle score. The line runs from the worst to the best with it, the box holds the middle half, ` +
+        `the white mark and number are the middle one, and the number at the right is how many. Hover a mark for the person.` },
+  };
+  const charts = STAFF ? staffCharts : {
     score: { name: "Role score by position", sub: "How good your players are at each position, against the others",
       draw: () => byPosition("chartBox", (p, at) => p.scores[at], "role score", atBest, undefined, true, 10),
       how: `Each row is a position. The bar in the accent colour is ${them}: the line runs from the worst to the best, the box holds the middle half, ` +
@@ -449,13 +507,13 @@ function draw() {
     } : {}),
   };
   if (!charts[choice.chart]) choice.chart = "score";
-  fillSelect("chart", Object.entries(charts).map(([k, c]) => [k, c.name]).concat(rated ? [] : [["", "Score vs average rating (once imported players have a Rating)"]]),
+  fillSelect("chart", Object.entries(charts).map(([k, c]) => [k, c.name]).concat(rated || STAFF ? [] : [["", "Score vs average rating (once imported players have a Rating)"]]),
              choice.chart, "chart");
   document.querySelector('#chart option[value=""]')?.setAttribute("disabled", "");
   const c = charts[choice.chart];
   document.getElementById("chartTitle").textContent = c.name;
   document.getElementById("chartSub").textContent = c.sub;
-  document.getElementById("chartHow").innerHTML = c.how + (rated ? "" : ` <br>The score vs average rating chart appears once imported players have a Rating ` +
+  document.getElementById("chartHow").innerHTML = c.how + (rated || STAFF ? "" : ` <br>The score vs average rating chart appears once imported players have a Rating ` +
     `(FM shows one for players who've played this season).`);
   document.getElementById("chartBox").innerHTML = "";
   c.draw();
@@ -463,6 +521,7 @@ function draw() {
 
 // ---- the analysis on top: per position, the listed players against yours ----
 function summary(people) {
+  if (STAFF) return staffSummary(people);
   const fmtWage = w => w == null ? "–" : `${wageText(w)} p/w`;
   const last = n => n.split(" ").pop();
   const rows = POSITIONS.map(pos => {
@@ -513,10 +572,51 @@ function summary(people) {
       the listed players better than your best. Click a row to pick that position for the charts.</div>`;
   box.querySelectorAll("tr[data-pos]").forEach(tr => tr.onclick = () => choose("pos", tr.dataset.pos));
 }
+// Research › Staff's table: per job, the listed staff against the one who covers it (one person per job)
+function staffSummary(people) {
+  const last = n => n.split(" ").pop(), sign = v => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`;
+  const rows = POSITIONS.map(pos => {
+    const them = people.filter(p => !p.squad && p.scores[pos] != null).sort((a, b) => b.scores[pos] - a.scores[pos]);
+    const mine = coverOf(pos, people.filter(p => p.squad), null), theirs = them[0];
+    const mid = them.length ? middleOf(them.map(p => p.scores[pos])) : null;
+    const better = mine ? them.filter(p => p.scores[pos] > mine.scores[pos]) : pos === MARKET.you ? [] : them;
+    const young = better.filter(p => p.age != null).sort((a, b) => a.age - b.age)[0];
+    return { pos, them, mine, theirs, mid, better, young, gap: mine && theirs ? theirs.scores[pos] - mine.scores[pos] : null };
+  });
+  const listed = people.filter(p => !p.squad).length, upgrades = rows.filter(r => r.better.length && r.mine);
+  const biggest = rows.filter(r => r.gap != null && r.gap > 0).sort((a, b) => b.gap - a.gap)[0];
+  const empty = rows.filter(r => !r.mine && r.pos !== MARKET.you).map(r => JOB(r.pos));
+  const lead = !listed ? `No listed staff to compare with yet: import a staff search.` :
+    `<b>${listed}</b> listed staff (${shortName(choice.against)}), each at every job he's scored at, against the one of yours who covers it (one person per job). ` +
+    (upgrades.length ? `Someone listed beats yours at <b>${upgrades.length}</b> job${upgrades.length > 1 ? "s" : ""}. ` : `No one listed beats who covers any job. `) +
+    (biggest ? `Biggest gap: <span class="bad">${JOB(biggest.pos)}</span>, ${biggest.theirs.name} is <b>${sign(biggest.gap)}</b> on ${biggest.mine.name}. ` : "") +
+    (empty.length ? `<span class="faint">Nobody of yours free for ${empty.join(", ")}.</span>` : "") +
+    (biggest ? `<br><b>Next step:</b> at <b>${JOB(biggest.pos)}</b>, ${(biggest.young || biggest.theirs).name} (${(biggest.young || biggest.theirs).scores[biggest.pos].toFixed(1)}${(biggest.young || biggest.theirs).age ? `, ${(biggest.young || biggest.theirs).age}` : ""}) ` +
+      `is ${biggest.young ? "the youngest" : "the best"} who beats ${last(biggest.mine.name)}: worth an approach.` : "");
+  const body = rows.map(r => `<tr data-pos="${r.pos}" class="${r.pos === choice.pos ? "on" : ""}">
+      <td class="pos-cell" title="${JOB(r.pos)}">${JOB(r.pos)}</td>
+      <td class="num">${r.them.length || "–"}</td>
+      <td class="num">${r.mid == null ? "–" : r.mid.toFixed(1)}</td>
+      <td>${r.theirs ? `${r.theirs.name} <b>${r.theirs.scores[r.pos].toFixed(1)}</b> <span class="faint">${r.theirs.age ?? "–"} · ${r.theirs.club || "free agent"}</span>` : "–"}</td>
+      <td class="us">${r.mine ? `${r.mine.name} <b>${r.mine.scores[r.pos].toFixed(1)}</b>` : `<span class="faint">${r.pos === MARKET.you ? "you" : "nobody free"}</span>`}</td>
+      <td class="num ${r.gap == null ? "" : r.gap > 0 ? "down" : "up"}" title="their best minus yours">${r.gap == null ? "–" : sign(-r.gap)}</td>
+      <td class="num">${r.them.length && r.pos !== MARKET.you ? r.better.length : "–"}</td>
+      <td>${r.young ? `${r.young.name} <b>${r.young.scores[r.pos].toFixed(1)}</b> <span class="faint">${r.young.age}</span>` : "–"}</td>
+    </tr>`).join("");
+  const box = document.getElementById("summary");
+  box.innerHTML = `<div class="ttitle">Listed staff by job</div>
+    <div class="lead-line">${lead}</div>
+    <div class="wrapx"><table class="market"><thead><tr><th>Job</th><th class="num">Listed</th><th class="num">Middle</th><th>Their best</th>
+      <th>Covered by</th><th class="num">You ±</th><th class="num">Better than yours</th><th>Youngest of those</th></tr></thead><tbody>${body}</tbody></table></div>
+    <div class="subtitle" style="margin:8px 0 0">Listed staff count at every job they're scored at; <b>Covered by</b> is the one of yours on that job when each person
+      takes one job, best fits first (as on Your staff; the manager's job is yours). <b>Middle</b>: the middle listed score; <b>You ±</b>: yours minus their best
+      (<span style="color:var(--green)">green</span> = you're ahead); <b>Youngest of those</b>: the youngest listed who beats yours. Click a row to pick that job for the graphs.</div>`;
+  box.querySelectorAll("tr[data-pos]").forEach(tr => tr.onclick = () => choose("pos", tr.dataset.pos));
+}
 document.addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === "SELECT") return;
   const page = window.fmNavTarget && fmNavTarget(e.key);  // the menu's keys (a group's: its next sub-tab)
-  if (page && page !== "charts") location.href = `${page}.html`;
+  if (page && page !== "__PAGE__") location.href = `${page}.html`;
   if (e.key === "ArrowLeft" || e.key === "ArrowRight") {  // the previous or next position, round the end
     const n = POSITIONS.length, i = POSITIONS.indexOf(choice.pos) + (e.key === "ArrowRight" ? 1 : -1);
     choose("pos", POSITIONS[(i + n) % n]);

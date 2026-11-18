@@ -134,8 +134,8 @@ class App:
                      f" Your staff: {', '.join(tab + ' ✓' for tab, ok in t['tabs'].items() if ok)}; still to export: {', '.join(left)}.")
         self.notice = (text, False)  # shown by on_load after the reload
         self.mark_imported(path)
-        # where the import shows: your squad on Squad › Lineup, a player search on Players › Last import, your club's
-        # staff on Staff › Team staff, other staff on Staff › Last import
+        # where the import shows: your squad on Squad › Lineup, a player search on Players › Latest list, your club's
+        # staff on Staff › Your staff, other staff on Staff › Latest list
         page = "team_staff.html" if club_staff else "last_staff.html" if kind == "staff" else "squad.html" if source is None else "last.html"
         url = (out / page).resolve().as_uri()
         try:

@@ -36,8 +36,8 @@ and `ELEVENINDEX_HOME` when set (tests). Data: `config.toml`, `saves/`, `out/`, 
 
 ## Pages
 
-The top menu is `MENU` in score.py: keys 1-4, then A and G. **Squad** (1), **Players** (3) and **Staff** (4) are groups
-whose pages show as sub-tabs under the bar (`SUB_LABELS`); a group's key opens it on its first page (Lineup, Last import, Team staff)
+The top menu is `MENU` in score.py: keys 1-4, then A and G. **Squad** (1), **Research** (2), **Players** (3) and **Staff** (4) are groups
+whose pages show as sub-tabs under the bar (`SUB_LABELS`); a group's key opens it on its first page (Lineup, Research › Players, Latest list, Your staff)
 and, pressed again, the next sub-tab (`NAV_SCRIPT`, `fmNavTarget`). `PAGE_LABELS` holds each page's full name. Each list
 page has a line about its list at the strip's right (`with_info`).
 
@@ -47,13 +47,14 @@ page has a line about its list at the strip's right (`with_info`).
 | 1 | formations | Squad › Formations | the 20 shapes ranked (`formations`); one on a pitch with its XI, backups and numbers |
 | 1 | analysis | Squad › Analysis | the squad position by position, ranked by score (or an attribute), against imported players |
 | 1 | development | Squad › Development | two squad snapshots compared |
-| 2 | charts | Research | per position, the listed players against your best; then one graph at a time |
-| 3 | elsewhere | Players › All players | everyone imported who isn't at the club |
-| 3 | last | Players › Last import | the latest player import only |
+| 2 | charts | Research › Players | per position, the listed players against your best; then one graph at a time |
+| 2 | staff_research | Research › Staff | charts.html's staff mode (`staff_research`): per job, the listed staff against who covers it (`staff_cover`, one person per job) |
+| 3 | elsewhere | Players › Scouted | everyone imported who isn't at the club |
+| 3 | last | Players › Latest list | the latest player import only |
 | 3 | compare | Players › Compare | two players side by side (`compare_page`; two picks in localStorage, by the icon by a name, x or + Compare) |
-| 4 | team_staff | Staff › Team staff | your club's staff (its 4 tabs, ticked as they come in), your best at each job, and the Staff plan under it (`staffPlanHtml`) |
+| 4 | team_staff | Staff › Your staff | your club's staff (its 4 tabs, ticked as they come in), your best at each job, and the Staff plan under it (`staffPlanHtml`) |
 | 4 | staff | Staff › All staff | every staff member, scored for each job |
-| 4 | last_staff | Staff › Last import | the latest staff import only |
+| 4 | last_staff | Staff › Latest list | the latest staff import only |
 | 4 | staff_compare | Staff › Compare | two staff side by side (`staffCompare`; picks in localStorage, `SCMP_STORE`, by the same icon, x or + Compare on the staff pages) |
 | a | attributes | Attributes | the attribute weights (1-20), editable, exported and imported as a list |
 | g | guide | Guide | how to use everything (`GUIDE`; Menu → About shows `settings_tile`) |
