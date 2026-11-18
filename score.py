@@ -54,7 +54,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.17.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.18.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 CREATOR, CREATOR_URL = "Angelski", "https://community.sports-interactive.com/profile/428404-angelski/"  # About: the maker, on the official FM forum
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "compare", "staff",
@@ -537,7 +537,7 @@ def charts(rows, squad, w, cfg, last=frozenset()):
                         # where he plays, as the Lineup sees it: FM's positions when exported, else his best and its neighbours
                         **({"plays": r.get("plays") or NEAR.get(r["best"], [r["best"]])} if id(r) in mine else {}),
                         "scores": {g: r[g] for g in weights if r.get(g) is not None},
-                        "attrs": {a: attrs[a] for a in shown if a in attrs}})
+                        "attrs": {a: v for a, v in attrs.items() if a in shown}})
     return {"positions": list(weights), "players": players, "tops": tops, "managed": cfg["managed_club"],
             "division": cfg.get("division"), "weights": weights, "groups": ATTRIBUTE_GROUPS}
 
@@ -572,6 +572,11 @@ def compare_page(rows, squad, w, cfg):
 
 def fm_positions(text):
     """FM's position text ("D/WB (R), M (RC)", "AM (RL), ST (C)", "GK") -> the weights' position groups, in order."""
+    return list(_fm_positions(text or ""))
+
+
+@functools.lru_cache(maxsize=None)
+def _fm_positions(text):  # a few hundred distinct texts among tens of thousands of players: each worked out once
     groups = []
     for part in (text or "").split(","):
         m = re.match(r"\s*([A-Z/]+)\s*(?:\(([RLC]+)\))?", part)
@@ -585,7 +590,7 @@ def fm_positions(text):
                      "M": ["MC"] * ("C" in sides) + ["ML/MR"] * wide,
                      "AM": ["AMC"] * ("C" in sides) + ["AML/AMR"] * wide}.get(role, [])
             groups += [g for g in found if g not in groups]
-    return groups
+    return tuple(groups)
 
 
 WIDE_ROLES = {"D": "DL/DR", "WB": "WBL/WBR", "M": "ML/MR", "AM": "AML/AMR"}
@@ -595,6 +600,11 @@ WIDE_GROUPS = set(WIDE_ROLES.values())
 def fm_sides(text):
     """FM's position text -> the sides he plays at the wide positions: "D/WB (R), AM (RL)" -> {"DL/DR": "R",
     "WBL/WBR": "R", "AML/AMR": "LR"}. Empty without the Position column (the foot decides then)."""
+    return dict(_fm_sides(text or ""))
+
+
+@functools.lru_cache(maxsize=None)
+def _fm_sides(text):
     out = {}
     for part in (text or "").split(","):
         m = re.match(r"\s*([A-Z/]+)\s*(?:\(([RLC]+)\))?", part)
@@ -603,35 +613,46 @@ def fm_sides(text):
             if role in WIDE_ROLES:
                 g = WIDE_ROLES[role]
                 out[g] = "".join(sorted(set(out.get(g, "") + sides)))
-    return out
+    return tuple(out.items())
 
 
 
 
 
-# Common FM formations, as the weights' position groups (a wide pair counts twice: one left, one right). Roles and duties
-# don't show in the scores, so shapes with the same positions (5-2-3 Wide and 5-2-2-1) rank the same.
+# Formations, as the weights' position groups (a wide pair counts twice: one left, one right).
+# The formations, by back line: back four, back three, back five. "Forwards" are strikers, "wingers" AM (L/R); D (L/R)
+# full-backs, WB wing-backs, M (L/R) wide midfield, M (C) centre-mids, AM (C) tens, DM holders; 3-4-3-0 has no striker.
+# 3-5-2 and 5-3-2 have the same positions (wing-backs, a midfield three), so they rank the same.
 FORMATIONS = [
-    ("4-2-3-1", "Double pivot, a ten, wingers pressing high", {"DL/DR": 2, "CD": 2, "MC": 2, "AML/AMR": 2, "AMC": 1, "ST": 1}),
-    ("4-3-3 DM Wide", "A holder, two box-to-box eights, wingers", {"DL/DR": 2, "CD": 2, "DM": 1, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("4-3-3", "Flat midfield three, a front three of strikers", {"DL/DR": 2, "CD": 2, "MC": 3, "ST": 3}),
-    ("4-2-3-1 DM Wide", "Two holders, a ten, two wide forwards", {"DL/DR": 2, "CD": 2, "DM": 2, "AMC": 1, "AML/AMR": 2, "ST": 1}),
-    ("3-4-3", "Back three, wide midfielders, three strikers", {"CD": 3, "ML/MR": 2, "MC": 2, "ST": 3}),
-    ("3-4-2-1", "Two holders, two runners, wing backs for width", {"CD": 3, "WBL/WBR": 2, "DM": 2, "MC": 2, "ST": 1}),
-    ("4-4-2", "Two banks of four, strike partnership", {"DL/DR": 2, "CD": 2, "ML/MR": 2, "MC": 2, "ST": 2}),
-    ("4-2-2-2", "Narrow: two tens, two strikers", {"DL/DR": 2, "CD": 2, "DM": 2, "AMC": 2, "ST": 2}),
-    ("5-2-3 Wide", "Back five, front three on the break", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "ST": 1}),
-    ("4-3-1-2", "Diamond midfield, ten behind two strikers", {"DL/DR": 2, "CD": 2, "DM": 1, "MC": 2, "AMC": 1, "ST": 2}),
-    ("5-4-1", "Deep low block, counter-attacks", {"CD": 3, "WBL/WBR": 2, "ML/MR": 2, "MC": 2, "ST": 1}),
-    ("5-2-2-1", "Back five, two tens behind a lone striker", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AMC": 2, "ST": 1}),
-    ("4-2-4", "All-out attack, two wingers and two strikers", {"DL/DR": 2, "CD": 2, "MC": 2, "AML/AMR": 2, "ST": 2}),
-    ("3-5-2", "Wide midfielders, midfield three, two strikers", {"CD": 3, "ML/MR": 2, "DM": 1, "MC": 2, "ST": 2}),
-    ("5-3-2", "Back five, midfield three, direct to two strikers", {"CD": 3, "WBL/WBR": 2, "MC": 3, "ST": 2}),
-    ("4-1-4-1", "A holder behind a midfield four, compact", {"DL/DR": 2, "CD": 2, "DM": 1, "ML/MR": 2, "MC": 2, "ST": 1}),
-    ("4-4-1-1", "Compact 4-4-2 with a deep-lying forward", {"DL/DR": 2, "CD": 2, "ML/MR": 2, "MC": 2, "AMC": 1, "ST": 1}),
-    ("3-4-1-2", "Back three, a ten feeding two strikers", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AMC": 1, "ST": 2}),
-    ("4-3-2-1", "Christmas tree: narrow, two tens", {"DL/DR": 2, "CD": 2, "MC": 3, "AMC": 2, "ST": 1}),
-    ("3-4-3-0", "Strikerless: false nine and inside forwards", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "AMC": 1}),
+    # back four
+    ("4-4-2", "A flat midfield four, two strikers", {"DL/DR": 2, "CD": 2, "ML/MR": 2, "MC": 2, "ST": 2}),
+    ("4-4-2 Diamond Narrow", "A holder, two centre-mids, a ten, two strikers", {"DL/DR": 2, "CD": 2, "DM": 1, "MC": 2, "AMC": 1, "ST": 2}),
+    ("4-4-2 Diamond Wide", "A holder, two wide midfielders, a ten, two strikers", {"DL/DR": 2, "CD": 2, "DM": 1, "ML/MR": 2, "AMC": 1, "ST": 2}),
+    ("4-4-1-1", "A flat midfield four, a ten behind a lone striker", {"DL/DR": 2, "CD": 2, "ML/MR": 2, "MC": 2, "AMC": 1, "ST": 1}),
+    ("4-3-3", "Three centre-mids behind three strikers", {"DL/DR": 2, "CD": 2, "MC": 3, "ST": 3}),
+    ("4-3-2-1", "Christmas tree: three centre-mids, two tens, a striker", {"DL/DR": 2, "CD": 2, "MC": 3, "AMC": 2, "ST": 1}),
+    ("4-3-1-2", "Three centre-mids, a ten behind two strikers", {"DL/DR": 2, "CD": 2, "MC": 3, "AMC": 1, "ST": 2}),
+    ("4-2-3-1", "Two centre-mids, wingers and a ten, a striker", {"DL/DR": 2, "CD": 2, "MC": 2, "AML/AMR": 2, "AMC": 1, "ST": 1}),
+    ("4-2-2-2", "Two deeper midfielders, two tens, two strikers", {"DL/DR": 2, "CD": 2, "MC": 2, "AMC": 2, "ST": 2}),
+    ("4-2-4", "Two centre-mids, two wingers, two strikers", {"DL/DR": 2, "CD": 2, "MC": 2, "AML/AMR": 2, "ST": 2}),
+    ("4-1-4-1", "A holder behind a flat midfield four, a striker", {"DL/DR": 2, "CD": 2, "DM": 1, "ML/MR": 2, "MC": 2, "ST": 1}),
+    ("4-1-2-3 DM Wide", "A holder, two centre-mids, two wingers, a striker", {"DL/DR": 2, "CD": 2, "DM": 1, "MC": 2, "AML/AMR": 2, "ST": 1}),
+    # back three
+    ("3-5-2", "Wing-backs, three centre-mids, two strikers", {"CD": 3, "WBL/WBR": 2, "MC": 3, "ST": 2}),
+    ("3-4-3 Wide", "A midfield four, three strikers", {"CD": 3, "ML/MR": 2, "MC": 2, "ST": 3}),
+    ("3-4-3 Diamond", "A holder, wide midfielders, a ten, three strikers", {"CD": 3, "DM": 1, "ML/MR": 2, "AMC": 1, "ST": 3}),
+    ("3-4-2-1", "Two centre-mids, two wide, two tens, a striker", {"CD": 3, "ML/MR": 2, "MC": 2, "AMC": 2, "ST": 1}),
+    ("3-4-1-2", "A midfield four, a ten behind two strikers", {"CD": 3, "ML/MR": 2, "MC": 2, "AMC": 1, "ST": 2}),
+    ("3-2-4-1", "A double pivot, wingers and two tens, a striker", {"CD": 3, "DM": 2, "AML/AMR": 2, "AMC": 2, "ST": 1}),
+    ("3-2-3-2", "A double pivot, three attacking mids, two strikers", {"CD": 3, "DM": 2, "AML/AMR": 2, "AMC": 1, "ST": 2}),
+    ("3-1-4-2", "A holder, a midfield four, two strikers", {"CD": 3, "DM": 1, "ML/MR": 2, "MC": 2, "ST": 2}),
+    ("3-4-3-0", "Strikerless: wing-backs, two centre-mids, wingers and a ten", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AML/AMR": 2, "AMC": 1}),
+    # back five
+    ("5-4-1", "Wing-backs, a midfield four, a striker", {"CD": 3, "WBL/WBR": 2, "ML/MR": 2, "MC": 2, "ST": 1}),
+    ("5-3-2", "Wing-backs, three centre-mids, two strikers", {"CD": 3, "WBL/WBR": 2, "MC": 3, "ST": 2}),
+    ("5-2-3", "Wing-backs, two centre-mids, three strikers", {"CD": 3, "WBL/WBR": 2, "MC": 2, "ST": 3}),
+    ("5-2-2-1", "Wing-backs, two centre-mids, two tens, a striker", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AMC": 2, "ST": 1}),
+    ("5-2-1-2", "Wing-backs, two centre-mids, a ten, two strikers", {"CD": 3, "WBL/WBR": 2, "MC": 2, "AMC": 1, "ST": 2}),
 ]
 FORMATION_ORDER = ["GK", "CD", "DL/DR", "WBL/WBR", "DM", "MC", "ML/MR", "AMC", "AML/AMR", "ST"]
 LINES = {"Defence": {"CD", "DL/DR", "WBL/WBR"}, "Midfield": {"DM", "MC", "ML/MR"}, "Attack": {"AMC", "AML/AMR", "ST"}}  # Formations' lines
@@ -1189,7 +1210,7 @@ def build(save, config):
     shown_others, hidden_note = keep_best(others)
     info = {
         "squad": f"{many(len(squad), 'player')} at {managed} · click a position on the pitch for everyone who plays it",
-        "formations": "20 shapes, ranked by how well your squad fits them · click one for its eleven and the numbers",
+        "formations": "26 formations (back four, three and five), ranked by how well your squad fits them · click one for its eleven and the numbers",
         "analysis": "your team position by position, against the players you've imported",
         "development": "how your players changed between two squad exports",
         "elsewhere": f"{many(len(others), 'player')} at other clubs, from everything you've imported" + hidden_note,
@@ -1379,7 +1400,10 @@ def write_pages(save, config, cfg, pages):
                               "__DATA__": as_script(data)}.items():
             text = text.replace(marker, value)
         text = text.replace('<html lang="en">', f'<html lang="en" data-theme="{theme_of(config)}">', 1)
-        (out / f"{page}.html").write_text(text, encoding="utf-8")
+        # written beside it, then swapped in: a window opening the page meanwhile never reads half a file
+        tmp = out / f"{page}.html.tmp"
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, out / f"{page}.html")
     for stale in out.glob("*.html"):
         if stale.stem not in pages:
             stale.unlink()
@@ -1433,7 +1457,7 @@ GUIDE = [
              "starts here, blue = starts elsewhere) and the best on your lists who'd beat your starter. The advice under the "
              "pitch names the weak spot. Below: your whole squad as a table."},
     {"key": "formations", "title": "Formations",
-     "text": "20 shapes ranked by how well your squad fits them: the eleven's average, a second eleven's, and the weakest "
+     "text": "26 formations with a back four, three or five, ranked by how well your squad fits them: the eleven's average, a second eleven's, and the weakest "
              "spot. Click one to see it on a pitch with backups and the numbers by line."},
     {"key": "analysis", "title": "Analysis",
      "text": "Your team position by position, strongest to weakest, against the players you've imported. "

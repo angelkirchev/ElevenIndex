@@ -15,6 +15,9 @@ and track them over time. Everything runs locally; the user's data never leaves 
   `purge_deleted` removes it), the Menu (under the logo, key M; recent exports, switch save, Back up / Restore a backup, the GitHub update check `check_update`), the exports watcher (`watch_exports`: a new export offers Import, or imports itself with Menu → Auto-import on, config.toml's `auto_import`), drag and drop (`on_drop`), Menu → Theme… (five colour themes: `THEMES` in score.py, `:root[data-theme]` in
   theme.css, config.toml's `theme`, stamped on each page's `<html>`), and the Attributes page's
   save / switch / import / export. Its title is `ElevenIndex <VERSION> — Save: <save>`.
+  On start it opens last time's pages at once and rescores behind them (`rescore_on_start`, under `self.lock`), reloading
+  the page only when the pages changed; `write_pages` writes each page to a .tmp and swaps it in, and the same data gives
+  byte-identical pages. Closing hides the window, waits for `self.lock`, then ends the process (`quit`).
 - `import_export.py`: an FM27 Exporter file (CSV or HTML) → observation CSVs in the save. Players go to
   `saves/<save>/obs/<date>_<source>_<gk|outfield>.csv`, staff to `saves/<save>/staff/<date>_<source>.csv`.
 - `score.py`: reads a save's observations, scores them, and writes `out/<save>/<page>.html` from `template.html`
@@ -44,7 +47,7 @@ page has a line about its list at the strip's right (`with_info`).
 | Key | File | Menu | What it shows |
 |---|---|---|---|
 | 1 | squad | Squad › Lineup | a pitch for a formation (`pitchSlots`); click a position for everyone who plays it and the best on your lists (`targets`); the squad table below |
-| 1 | formations | Squad › Formations | the 20 shapes ranked (`formations`); one on a pitch with its XI, backups and numbers |
+| 1 | formations | Squad › Formations | 26 formations (back four, three, five) ranked (`formations`); one on a pitch with its XI, backups and numbers |
 | 1 | analysis | Squad › Analysis | the squad position by position, ranked by score (or an attribute), against imported players |
 | 1 | development | Squad › Development | two squad snapshots compared |
 | 2 | charts | Research › Players | per position, the listed players against your best; then one graph at a time |
@@ -103,7 +106,7 @@ score.py; bump `VERSION` with each release (tag `v<VERSION>`).
   Youngsters go to one Youth list per slot, best for their age first; a new intake (a file whose source contains
   `intake`) gets an Intake column until a squad export shows it. Without FM's positions a player only goes to his best
   position or its neighbours (`NEAR`). save.toml's `grid_pins`, `grid_senior`, `grid_youth` and `grid_exclude` override.
-- **Formations** (`FORMATIONS`, `formations`, `best_xi`): for each of 20 shapes, the best XI and a second XI (greedy:
+- **Formations** (`FORMATIONS`, `formations`, `best_xi`): for each of 26 shapes (back four, three, five), the best XI and a second XI (greedy:
   best player-position pair first, each player once, where he plays), their averages and the weakest spot. Complete
   shapes first.
 - Who's at the club: the newest full squad export (not a `-u18s`/`-u21s`/`-reserves` one, `PARTIAL_SQUAD`) decides;

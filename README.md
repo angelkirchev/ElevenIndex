@@ -33,7 +33,7 @@
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/formations.png" alt="Formations"><br><sub><b>Formations</b>: 20 shapes ranked by how well your squad fits them, each with its numbers</sub></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/formations.png" alt="Formations"><br><sub><b>Formations</b>: 26 formations ranked by how well your squad fits them, each with its numbers</sub></td>
     <td width="50%" valign="top"><img src="docs/screenshots/profile.png" alt="A player's profile"><br><sub><b>Profiles</b>: what he's good for, strengths, weaknesses, what to train first</sub></td>
   </tr>
   <tr>

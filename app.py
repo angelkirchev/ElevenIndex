@@ -620,9 +620,51 @@ class App:
         return False
 
     def quit(self):
+        """Close at once: hide the window, let an import that's still writing finish (every write holds self.lock), then
+        end the process. Waiting for WebView2 to tear the window down (window.destroy) took 2-3 s for nothing; its
+        browser processes end by themselves when the app does."""
         self.quitting = True
-        threading.Timer(0.1, self.window.destroy).start()
-        threading.Timer(3, lambda: os._exit(0)).start()  # if the window won't go (a stuck browser), end the app anyway
+        def hide():
+            try:
+                self.window.hide()
+            except Exception:
+                pass
+        hider = threading.Thread(target=hide, daemon=True)
+        hider.start()
+        def end():
+            hider.join(1)  # gone from the screen first: ending the process stops the window's thread, and Windows then
+            # takes ~2 s to unload WebView2 with the window still showing
+            self.lock.acquire(timeout=15)  # an import mid-write finishes first (15 s at most)
+            os._exit(0)
+        threading.Thread(target=end, daemon=True).start()
+
+    def rescore_on_start(self, behind=False):
+        """Score the save and write its pages. behind: the window is already showing last time's pages, so reload the
+        page you're on when they changed (the same data gives the same pages: nothing reloads then)."""
+        with self.lock:  # an import waits for it
+            out = score.ROOT / "out" / self.save
+            before = {p.name: p.read_bytes() for p in out.glob("*.html")} if behind else {}
+            try:
+                cfg, pages = score.build(self.save, self.config)
+                score.write_pages(self.save, self.config, cfg, pages)
+            except (Exception, SystemExit) as e:
+                log_error("rescoring on start")
+                if not behind:
+                    self.notice = (f"Couldn't update the pages: {e}", True)
+                    return
+                self.wait_loaded()
+                self.show_notice(f"Couldn't update the pages: {e}", True)
+                return
+            changed = behind and before != {p.name: p.read_bytes() for p in out.glob("*.html")}
+        if changed:
+            self.wait_loaded()
+            self.window.evaluate_js("location.reload()")
+
+    def wait_loaded(self, timeout=15):
+        """Until the window's first page has loaded (on_load), at most timeout seconds."""
+        end = time.time() + timeout
+        while not getattr(self, "page_loaded", False) and time.time() < end:
+            time.sleep(0.05)
 
     def watch_load(self):
         """A start that never shows its page (a rare WebView2 hang: a blank, black window): after 10 s reload it once,
@@ -696,14 +738,13 @@ class App:
         if self.save is None:
             where, title = {"html": self.setup_page()}, window_title()
         else:
-            # rescore on every start, so a change of weights (or a newer version of the app) shows straight away
-            try:
-                cfg, pages = score.build(self.save, self.config)
-                score.write_pages(self.save, self.config, cfg, pages)
-            except (Exception, SystemExit) as e:
-                self.notice = (f"Couldn't update the pages: {e}", True)
-                log_error("rescoring on start")
+            # rescore on every start, so a change of weights (or a newer version of the app) shows straight away. With
+            # last time's pages there, the window opens on them at once and the rescoring runs behind it (a big save
+            # takes seconds); the page reloads if anything changed. The first time, the pages are made before it opens.
             page = score.ROOT / "out" / self.save / "squad.html"  # the app opens on Squad › Lineup
+            behind = page.exists()
+            if not behind:
+                self.rescore_on_start()
             where = {"url": page.resolve().as_uri()} if page.exists() else {"html": screen("start", self.club_name())}
             title = window_title(self.save)
         self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
@@ -712,6 +753,8 @@ class App:
         threading.Thread(target=self.watch_exports, daemon=True).start()
         threading.Thread(target=self.check_update, daemon=True).start()
         threading.Thread(target=self.watch_load, daemon=True).start()
+        if self.save is not None and behind:
+            threading.Thread(target=self.rescore_on_start, args=(True,), daemon=True).start()
         self.window.events.closed += lambda: os._exit(0)  # closing the window ends the app
         # The XI mark in the title bar and taskbar, from source too (not Python's icon). Its own app ID keeps
         # Windows from grouping the window with other Python programs on the taskbar.
@@ -1083,7 +1126,8 @@ TOOLBAR_JS = """(() => {
     "border:1px solid var(--line,#2a332f);border-radius:10px;background:var(--pop,#121815);box-shadow:0 12px 30px #000c";
   document.body.append(list);
   // main: the one used most (Import file…), in the accent, lighter than the rest
-  const item = (text, hint, run, main) => {
+  // keep: the menu stays open after the click (a switch, like Auto-import)
+  const item = (text, hint, run, main, keep) => {
     const it = document.createElement("button");
     const rest = main ? "color-mix(in srgb, var(--blue,#c5f04f) 16%, transparent)" : "transparent";
     const over = main ? "color-mix(in srgb, var(--blue,#c5f04f) 28%, transparent)" : "var(--hover,#232c29)";
@@ -1092,13 +1136,23 @@ TOOLBAR_JS = """(() => {
     it.innerHTML = text + (hint ? `<div style="color:${main ? "#cfd6d1" : "#9aa49f"};font-size:12px;font-weight:400">${hint}</div>` : "");
     it.onmouseenter = () => it.style.background = over;
     it.onmouseleave = () => it.style.background = rest;
-    it.onclick = () => { list.style.display = "none"; run(); };
+    it.onclick = e => { if (keep) { e.stopPropagation(); run(it); } else { list.style.display = "none"; run(); } };
     return it;
   };
   const line = () => { const l = document.createElement("div"); l.style.cssText = "height:1px;margin:5px 6px;background:var(--line,#2a332f)"; return l; };
   const label = t => { const l = document.createElement("div"); l.textContent = t;
     l.style.cssText = "padding:6px 12px 3px;color:#9aa49f;font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase"; return l; };
   const escH = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  // Auto-import: a switch; a click flips it in place (ON / OFF), the menu stays open
+  const autoText = on => `Auto-import <span style="margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;${on
+    ? 'color:#0f1412;background:#c5f04f">ON' : 'color:#cfd6d1;background:#2a332f">OFF'}</span>`;
+  const autoHint = on => on ? "every new export (F8 in FM) is imported by itself · click to turn off" : "import each new export (F8 in FM) by itself · click to turn on";
+  const autoItem = d => item(autoText(d.auto), autoHint(d.auto), async it => {
+    const r = await pywebview.api.set_auto_import(!d.auto);
+    if (r && r.error) return window.fmNotice(r.error, true);
+    d.auto = !d.auto;
+    it.innerHTML = autoText(d.auto) + `<div style="color:#9aa49f;font-size:12px;font-weight:400">${autoHint(d.auto)}</div>`;
+  }, false, true);
   const fill = async () => {
     const d = window.pywebview ? await pywebview.api.menu_data() : { recent: [], saves: [] };
     list.innerHTML = "";
@@ -1139,15 +1193,7 @@ TOOLBAR_JS = """(() => {
     }
     list.append(item("Import file…", "an FM27 Exporter file (F8 in FM), or drop one on the window · key I", () => window.pywebview && pywebview.api.pick_file(), true),
       item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()),
-      item(`Auto-import <span style="margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;${d.auto
-        ? 'color:#0f1412;background:#c5f04f">ON' : 'color:#cfd6d1;background:#2a332f">OFF'}</span>`,
-        d.auto ? "every new export (F8 in FM) is imported by itself · click to turn off" : "import each new export (F8 in FM) by itself · click to turn on",
-        async () => {
-          const r = await pywebview.api.set_auto_import(!d.auto);
-          if (r && r.error) return window.fmNotice(r.error, true);
-          window.fmNotice(d.auto ? "New exports will offer an Import button again." : "Every new export (F8 in FM) is now imported by itself.",
-            false, { title: d.auto ? "Auto-import off" : "Auto-import on" });
-        }), line(),
+      autoItem(d), line(),
       item("Saves…", "switch, start, delete, back up or restore a save", () => window.fmSaves()), line(),
       item("Theme…", "the app's colours", () => window.fmTheme()),
       item("Check for updates", "is there a newer ElevenIndex?", async () => {
