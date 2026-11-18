@@ -191,6 +191,6 @@ FM Scout's table. Change them on the **Attributes** page: one table for every sa
 ---
 
 <p align="center">
-  <sub>Imports use <a href="https://github.com/v1adicke/fm27-exporter">FM27 Exporter</a> · MIT licence, see <a href="LICENSE">LICENSE</a> ·
+  <sub>Imports use <a href="https://github.com/v1adicke/fm27-exporter">FM27 Exporter</a> · © 2026 Angel Kirchev, all rights reserved: free to download and use, not to copy, modify or republish (see <a href="LICENSE">LICENSE</a>) ·
   not affiliated with Sports Interactive or SEGA</sub>
 </p>

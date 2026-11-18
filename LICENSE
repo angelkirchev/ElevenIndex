@@ -1,21 +1,61 @@
-MIT License
+ElevenIndex — Proprietary Licence (All Rights Reserved)
 
-Copyright (c) 2026 Angel Kirchev
+Copyright (c) 2026 Angel Kirchev. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. OWNERSHIP
+   ElevenIndex — the program (source code and compiled .exe), its pages, templates, styles, weights, texts,
+   documentation, images, and the FM27 views and search filters distributed with it (together, "the Software") —
+   is owned exclusively by Angel Kirchev ("the Author"). Making the source code visible does not transfer or
+   license any right other than those written in section 2.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. WHAT YOU MAY DO (free of charge)
+   a. Download the official releases, only from https://github.com/angelkirchev/ElevenIndex, and use them on your
+      own computers for your own Football Manager saves.
+   b. Read the source code on that page.
+   c. Show the Software in use — screenshots, videos, streams, reviews and guides — as long as you name ElevenIndex
+      and link to the official page above, and don't present it as your own.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. WHAT YOU MAY NOT DO without the Author's prior written permission
+   a. Copy, modify, adapt, translate, or create any work based on the Software or any part of its source code.
+   b. Publish, distribute, upload, mirror, re-host, sell, rent, lease, or sublicense the Software or any copy or
+      modified version of it, in any place or form — including forks, re-uploads and mirrors on GitHub or any other
+      website, store, forum or file host.
+   c. Use the Software, or any part of it, in another program or product, or for any commercial purpose.
+   d. Decompile, disassemble, unpack or reverse-engineer the compiled program, except where the law allows it
+      regardless of this licence.
+   e. Remove, hide or change this licence, the copyright notice, the Author's name, or the in-app credits.
+   f. Use the name "ElevenIndex", the mark "XI INDEX" or the XI logo for any other or modified program, or in a way
+      that suggests the Author made or approves something he did not.
+
+   Forking the repository on GitHub, where GitHub's own terms allow it, gives no right to change, publish or
+   distribute the copy.
+
+4. EARLIER VERSIONS
+   Versions up to and including 1.15.3 were released under the MIT License, which still applies to copies of those
+   versions. This licence applies to every later version and to all code, text and files added or changed after
+   version 1.15.3.
+
+5. CONTRIBUTIONS
+   Suggestions, issues, ideas, code or other material you send the Author about the Software may be used,
+   changed and published by the Author freely, without payment or credit, and become part of the Software under
+   this licence.
+
+6. ENFORCEMENT
+   Any use beyond section 2 infringes the Author's copyright. The Author may send takedown notices (including under
+   the U.S. Digital Millennium Copyright Act, through GitHub and other hosts) against infringing copies, and seek
+   any other remedy the law gives.
+
+7. TERMINATION
+   If you break this licence, your permission to use the Software ends at once and automatically. You must then
+   stop using it and delete every copy you have.
+
+8. NO WARRANTY, NO LIABILITY
+   The Software is provided "as is", without warranty of any kind, express or implied. In no event shall the Author
+   be liable for any claim, damages or other liability, however arising, from the Software or its use.
+
+9. GENERAL
+   If any part of this licence is found unenforceable, the rest stays in force. No failure or delay by the Author in
+   enforcing a right waives it. Only a written statement by the Author can grant permission beyond this licence.
+
+Permission requests: open an issue at https://github.com/angelkirchev/ElevenIndex, or contact the Author through the
+official Football Manager forum: https://community.sports-interactive.com/profile/428404-angelski/
