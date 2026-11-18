@@ -645,25 +645,48 @@ class App:
 
     def on_closing(self):
         """The window's X: stop the close and ask on the page (CLOSE_JS); its Close button calls quit(). When the page
-        can't show the question (broken, still loading), the app just closes."""
+        can't show the question (broken, still loading, or not answering within 2 s), the app just closes."""
         if getattr(self, "quitting", False):
             return True
+        answer = []
         def ask():
             try:
-                shown = self.window.evaluate_js(CLOSE_JS) == "shown"
+                answer.append(self.window.evaluate_js(CLOSE_JS) == "shown")
             except Exception:
-                shown = False
-            if not shown:
+                answer.append(False)
+        def wait():
+            asker = threading.Thread(target=ask, daemon=True)
+            asker.start()
+            asker.join(2)  # a page that doesn't answer (a blank or stuck window) mustn't keep the app open
+            if not (answer and answer[0]):
                 self.quit()
-        threading.Thread(target=ask, daemon=True).start()
+        threading.Thread(target=wait, daemon=True).start()
         return False
 
     def quit(self):
         self.quitting = True
         threading.Timer(0.1, self.window.destroy).start()
+        threading.Timer(3, lambda: os._exit(0)).start()  # if the window won't go (a stuck browser), end the app anyway
+
+    def watch_load(self):
+        """A start that never shows its page (a rare WebView2 hang: a blank, black window): after 10 s reload it once,
+        and note it in app.log."""
+        time.sleep(10)
+        if getattr(self, "page_loaded", False) or getattr(self, "quitting", False):
+            return
+        log_error("the page hadn't loaded 10 s after start: reloading it")
+        try:
+            page = score.ROOT / "out" / self.save / "squad.html" if self.save else None
+            if page is not None and page.exists():
+                self.window.load_url(page.resolve().as_uri())
+            else:
+                self.window.load_html(self.setup_page() if self.save is None else screen("start", self.club_name()))
+        except Exception:
+            log_error("reloading the page")
 
     def on_load(self):
         """Every page, after each reload: add the toolbar, and show a pending notice."""
+        self.page_loaded = True
         if self.save is None:  # the setup page
             return
         self.window.evaluate_js(TOOLBAR_JS)
@@ -732,6 +755,7 @@ class App:
         self.window.events.closing += self.on_closing  # closing asks first, in the app's own style
         threading.Thread(target=self.watch_exports, daemon=True).start()
         threading.Thread(target=self.check_update, daemon=True).start()
+        threading.Thread(target=self.watch_load, daemon=True).start()
         self.window.events.closed += lambda: os._exit(0)  # closing the window ends the app
         # The XI mark in the title bar and taskbar, from source too (not Python's icon). Its own app ID keeps
         # Windows from grouping the window with other Python programs on the taskbar.
