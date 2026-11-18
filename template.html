@@ -130,9 +130,15 @@ __THEME__
   th.wt { padding-right: 12px; border-right: 1px solid var(--line); }
 
   /* ---- overlays: a player's profile, and the shortcuts list ---- */
-  #help, #detail { position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center; background: #050506cc; }
+  /* pop-ups hang from a fixed top: switching a profile's tabs only moves the bottom edge, never the top */
+  #help, #detail { position: fixed; inset: 0; z-index: 10; display: none; align-items: flex-start; justify-content: center; padding-top: 24px; background: #050506cc; }
   #help.show, #detail.show { display: flex; }
-  #detail .tile { width: min(1400px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow: auto; }
+  #detail .tile { width: min(1400px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; }
+  #help .tile { max-height: calc(100vh - 48px); overflow: auto; }
+  /* the × at a pop-up's top right: stays there while its content scrolls */
+  .pclose { position: sticky; top: 0; float: right; z-index: 2; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+            margin: -4px -6px 0 8px; padding: 0; color: var(--dim); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
+  .pclose:hover { color: #141414; background: var(--blue); border-color: var(--blue); }
   #detail table + .ttitle { margin-top: 14px; }
   #detail .chg { margin-left: 4px; font-size: 11px; }
   /* the profile's tabs */
@@ -388,8 +394,8 @@ __THEME__
 </div>
 <div id="squadtop" hidden><div class="tile" id="lineup"></div><div class="tile" id="formations"></div></div>
 <div class="tile" id="main"><table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table></div>
-<div id="detail"><div class="tile" id="detailbody"></div></div>
-<div id="help"><div class="tile">
+<div id="detail"><div class="tile"><button class="pclose" title="Close (Esc)"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><div id="detailbody"></div></div></div>
+<div id="help"><div class="tile"><button class="pclose" title="Close (Esc)"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   <div class="ttitle">Keyboard shortcuts</div>
   <table>
     <colgroup><col style="width:190px"><col></colgroup>
@@ -1715,7 +1721,10 @@ document.addEventListener("copy", e => {
   count.timer = setTimeout(() => { count.classList.remove("copied"); render(); }, 1200);
 });
 input.addEventListener("input", () => { cur.r = 0; render(); });
-for (const overlay of [help, detail]) overlay.addEventListener("click", e => { if (e.target === overlay) overlay.classList.remove("show"); });
+for (const overlay of [help, detail]) {
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.classList.remove("show"); });
+  overlay.querySelector(".pclose").onclick = () => overlay.classList.remove("show");
+}
 if (PAGE.endsWith("staff")) input.title = "Type a name, or filters like job:coach PosTct>=12 personality:prof";
 // Staff › Your staff's Staff plan, under Your best at each job: d = { club, tabs, jobs } (staff_jobs in score.py):
 // what to do about your staff, most urgent first

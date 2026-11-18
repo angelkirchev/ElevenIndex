@@ -1248,18 +1248,30 @@ TOOLBAR_JS = """(() => {
   const css = (el, s) => (el.style.cssText = s, el);
   const make = (tag, text) => { const e = document.createElement(tag); if (text) e.textContent = text; return e; };
   const field = "padding:7px;border:1px solid #2a332f;border-radius:6px;background:#161c19;color:#f2efe7;font:inherit;width:100%;box-sizing:border-box";
+  // a panel's × (Saves, Theme, About): its top right corner, over the box (which is position:relative)
+  window.fmPanelX = shade => {
+    const x = css(make("button"), "position:absolute;top:10px;right:10px;display:flex;align-items:center;justify-content:center;width:30px;height:30px;" +
+      "padding:0;border:1px solid #2a332f;border-radius:7px;background:transparent;color:#9aa49f;cursor:pointer");
+    x.innerHTML = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';  // a drawn cross: a text × sits off-centre in most fonts
+    x.title = "Close (Esc)";
+    x.onmouseenter = () => { x.style.background = "var(--blue,#c5f04f)"; x.style.color = "#141414"; };
+    x.onmouseleave = () => { x.style.background = "transparent"; x.style.color = "#9aa49f"; };
+    x.onclick = () => shade.remove();
+    return x;
+  };
   window.fmSaves = async () => {
     document.getElementById("fm-saves")?.remove();
     const saves = await pywebview.api.saves();
-    const shade = css(make("div"), "position:fixed;inset:0;z-index:10000;background:#000a;display:flex;align-items:center;justify-content:center;font:14px Inter,'Segoe UI',system-ui,sans-serif");
+    const shade = css(make("div"), "position:fixed;inset:0;z-index:10000;background:#000a;display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;font:14px Inter,'Segoe UI',system-ui,sans-serif");
     shade.id = "fm-saves";
     shade.onclick = e => { if (e.target === shade) shade.remove(); };
     shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
-    const box = css(make("div"), "background:#121815;color:#f2efe7;border:1px solid #2a332f;border-radius:10px;padding:20px 22px;width:500px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000");
+    const box = css(make("div"), "position:relative;background:#121815;color:#f2efe7;border:1px solid #2a332f;border-radius:10px;padding:20px 22px;width:500px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000");
     const error = css(make("div"), "color:#f87171;min-height:1.2em;margin-top:8px");
     const run = async (call) => { error.textContent = "Working…"; const r = await call(); if (r && r.error) error.textContent = r.error; else shade.remove(); };
 
     box.append(css(make("h3", "Your saves"), "margin:0 0 10px;font-size:16px"));
+    box.append(window.fmPanelX(shade));
     for (const s of saves) {
       const line = css(make("div"), "display:flex;gap:6px;align-items:stretch;margin:4px 0");
       const row = css(make("button"), "flex:1;display:flex;justify-content:space-between;gap:12px;min-width:0;padding:9px 12px;border-radius:6px;cursor:pointer;font:inherit;text-align:left;" +
@@ -1368,13 +1380,14 @@ TOOLBAR_JS = """(() => {
   window.fmTheme = async () => {
     document.getElementById("fm-theme")?.remove();
     const r = await pywebview.api.themes();
-    const shade = css(make("div"), "position:fixed;inset:0;z-index:10000;background:#000a;display:flex;align-items:center;justify-content:center;font:14px Inter,'Segoe UI',system-ui,sans-serif");
+    const shade = css(make("div"), "position:fixed;inset:0;z-index:10000;background:#000a;display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;font:14px Inter,'Segoe UI',system-ui,sans-serif");
     shade.id = "fm-theme";
     shade.tabIndex = -1;
     shade.onclick = e => { if (e.target === shade) shade.remove(); };
     shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
-    const box = css(make("div"), "background:var(--pop,#121815);color:#f2efe7;border:1px solid var(--line,#2a332f);border-radius:10px;padding:20px 22px;width:360px;max-width:90vw;box-shadow:0 8px 30px #000");
+    const box = css(make("div"), "position:relative;background:var(--pop,#121815);color:#f2efe7;border:1px solid var(--line,#2a332f);border-radius:10px;padding:20px 22px;width:360px;max-width:90vw;box-shadow:0 8px 30px #000");
     box.append(css(make("h3", "Theme"), "margin:0 0 12px;font-size:16px"));
+    box.append(window.fmPanelX(shade));
     const error = css(make("div"), "color:#f87171;min-height:1.2em;margin-top:6px");
     let current = r.current;
     const rows = r.themes.map(t => {
@@ -1404,13 +1417,14 @@ TOOLBAR_JS = """(() => {
     document.getElementById("fm-about")?.remove();
     const r = await pywebview.api.about();
     if (!r || r.error) { window.fmNotice((r && r.error) || "Couldn't show About.", true); return; }
-    const shade = css(make("div"), "position:fixed;inset:0;z-index:10000;background:#000a;display:flex;align-items:center;justify-content:center;font:14px Inter,'Segoe UI',system-ui,sans-serif");
+    const shade = css(make("div"), "position:fixed;inset:0;z-index:10000;background:#000a;display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;font:14px Inter,'Segoe UI',system-ui,sans-serif");
     shade.id = "fm-about";
     shade.onclick = e => { if (e.target === shade) shade.remove(); };
     shade.tabIndex = -1;
     shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
-    const box = css(make("div"), "background:#121815;color:#f2efe7;border:1px solid #2a332f;border-radius:10px;padding:20px 22px;width:620px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000;line-height:1.55");
+    const box = css(make("div"), "position:relative;background:#121815;color:#f2efe7;border:1px solid #2a332f;border-radius:10px;padding:20px 22px;width:620px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000;line-height:1.55");
     box.append(css(make("h3", r.result.title), "margin:0 0 10px;font-size:16px"));
+    box.append(window.fmPanelX(shade));
     const body = make("div");
     body.innerHTML = r.result.html;
     body.querySelectorAll("table").forEach(t => t.style.cssText = "width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:10px");
