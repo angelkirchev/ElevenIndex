@@ -53,8 +53,8 @@ __THEME__
   .mlegend .lb { box-shadow: inset 0 0 0 2px #c5f04f; } .mlegend .lf { box-shadow: inset 0 0 0 1px #8bd3f7; }
   tr.catrow td { padding-top: 7px; color: var(--blue); font: 600 12px var(--body); letter-spacing: .06em; text-transform: uppercase;
     background: color-mix(in srgb, var(--fg) 6%, transparent); }
-  .devcats { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 18px; margin-top: 6px; font-size: 13px; }
-  .devcats > div { padding: 6px 10px; background: var(--row); border-radius: 6px; }
+  .devpivot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 1000px) { .devpivot { grid-template-columns: minmax(0, 1fr); } }
   #main.tiles.dense { grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); }
   /* Positions ranked: the table, and beside it the same positions as bars (your average, your best, imported) */
   .rkwrap { display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 28px; align-items: start; }
@@ -221,6 +221,9 @@ __THEME__
   table.plist td, table.plist th { padding: 4px 8px; }
   .ytag { padding: 0 5px; color: var(--cyan); font-size: 10px; border: 1px solid var(--line); border-radius: 4px; }
   .ytag.offtag { color: var(--orange); }
+  /* the Lineup list's "In <shape>" column: at this position (lime) or used at another one (blue) */
+  .rhere { color: #c5f04f; font-weight: 600; } .relse { color: #8bd3f7; opacity: .85; }
+  .rlegend { margin: -2px 0 6px; font-size: 12px; color: var(--dim); } .rlegend span { font-weight: 600; }
   table.plist tr:has(.offtag) td { opacity: .55; }
   .pslot .offside { color: var(--orange); }
   /* Formations page */
@@ -644,10 +647,10 @@ function fitForYou(r, s, fm) {
     ? `<div class="fit up"><b>For you:</b> he'd start at <b>${esc(o.pos)}</b> over ${esc(last)} (<b>+${g}</b>).${options[1] && options[1].gap >= 0.05 ? ` Also better than your best at ${esc(options[1].pos)} (+${options[1].gap.toFixed(1)}).` : ""}</div>`
     : `<div class="fit"><b>For you:</b> a backup at <b>${esc(o.pos)}</b>, ${g} below ${esc(last)}; he wouldn't start anywhere in your best eleven.</div>`;
 }
-// a youngster (21 or under): his score at 24 if he keeps his pace for his age (vs Age × what's expected at 24)
+// a player under 24 (the age curve's top): his score at 24 if he keeps his pace for his age (vs Age × what's expected at 24)
 function at24(s) {
   const bench = SITE.ageBench || {}, top = Math.max(...Object.keys(bench).map(Number));
-  return s.age != null && s.age <= 21 && s.vsAge != null && bench[top] ? s.vsAge * bench[top] : null;
+  return s.age != null && s.age < top && s.vsAge != null && bench[top] ? s.vsAge * bench[top] : null;  // every player under 24
 }
 function playerOverview(r, s, groups, snaps, scored) {
   const a = s.attrs, best = s.best, w = WEIGHTS[best] || {};
@@ -995,14 +998,16 @@ function renderLineup() {
   const slot = slots.find(s => s.key === chosen), pos = slot.pos;
   const role = r => {
     const a = f.players.find(p => p.name === r.name), b = f.second.find(p => p.name === r.name);
-    if (a) return a.pos === pos ? `<b>Starter</b>` : `Starter at ${a.pos}`;
-    if (b) return b.pos === pos ? "Backup" : `Backup at ${b.pos}`;
+    // here (this position: lime) or elsewhere in the eleven (another position: blue), so they don't read as all ST
+    if (a) return a.pos === pos ? `<span class="rhere"><b>Starter</b></span>` : `<span class="relse">Starter at ${a.pos}</span>`;
+    if (b) return b.pos === pos ? `<span class="rhere">Backup</span>` : `<span class="relse">Backup at ${b.pos}</span>`;
     return `<span class="dim">–</span>`;
   };
   const list = options(pos).sort((a, b) => onSide(b, slot) - onSide(a, slot) || b[pos] - a[pos]);  // a wide slot: that side first
   const starter = slot.xi ? slot.xi.v : null;
   const targets = (d.targets[pos] || []).filter(t => starter == null || t.v > starter).slice(0, 5);
   document.getElementById("formations").innerHTML = `<div class="ttitle">${esc(slot.label)} <span class="sub">${list.length} of yours play ${esc(pos)}${slot.xi ? ` · starter ${esc(slot.xi.name)}` : ""}</span></div>
+    <div class="rlegend"><span class="rhere">Starter / Backup</span> here at ${esc(pos)} · <span class="relse">Starter / Backup at …</span> used at another position in ${esc(f.name)}</div>
     ${slot.side ? `<div class="sub">${slot.side === "L" ? "Left" : "Right"} side: those who play it first (FM's position when your export has it, else the foot); the rest are greyed out.</div>` : ""}
     ${list.length ? `<table class="plist"><thead><tr><th class="num">#</th><th>Player</th><th>In ${esc(f.name)}</th><th>FM position</th>${slot.side ? "<th>Foot</th>" : ""}<th class="num">Age</th>
       <th class="num">${esc(pos)}</th><th class="num">vs Age</th><th class="num">Wage</th></tr></thead><tbody>${list.map((r, i) => `<tr>
@@ -1284,12 +1289,39 @@ function renderDevelopment() {
       cs.slice(0, 3).map(c => `${esc(c.k)} <span class="${c.d > 0 ? "t4" : "t0"}">${c.d > 0 ? "+" : "−"}${Math.abs(c.d)}</span>`).join(", ")}${
       cs.length > 3 ? ` +${cs.length - 3}` : ""}</span></td>`;
   };
-  const catSummary = catsUsed.map(g => {
+  // where training worked: by area (each player at his best position now) and by attribute group, side by side
+  const AREAS = { GK: ["GK"], Defence: ["CD", "DL/DR", "WBL/WBR"], Midfield: ["DM", "MC", "ML/MR"], Attack: ["AMC", "AML/AMR", "ST"] };
+  const signed = (v, d = 1) => `<span class="${v > 0.05 ? "t4" : v < -0.05 ? "t0" : "dim"}">${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(d)}</span>`;
+  const areaRows = Object.entries(AREAS).map(([area, poss]) => {
+    const ps = both.filter(p => poss.includes(p.b.best));
+    if (!ps.length) return `<tr><td><b>${area}</b></td><td class="num dim">0</td><td class="num dim">–</td><td class="num dim">–</td><td class="num dim">–</td><td class="dim">–</td></tr>`;
+    const a = ps.reduce((t, p) => t + p.ds, 0) / ps.length, best = [...ps].sort((x, y) => y.ds - x.ds)[0];
+    return `<tr><td><b>${area}</b></td><td class="num">${ps.length}</td><td class="num"><b>${signed(a, 2)}</b></td>
+      <td class="num t4">${ps.filter(p => p.ds > 0.05).length}</td><td class="num t0">${ps.filter(p => p.ds < -0.05).length}</td>
+      <td class="text">${best.ds > 0.05 ? `${name(best)} ${signed(best.ds)}` : `<span class="dim">–</span>`}</td></tr>`;
+  });
+  const groupRows = CAT_ORDER.map(g => {
     const ts = tot.filter(([k]) => ATTR_GROUPS[g].includes(k)), net = ts.reduce((t, [, v]) => t + v, 0);
-    const up = ts.filter(t => t[1] > 0).slice(0, 3), down = ts.filter(t => t[1] < 0).reverse().slice(0, 2);
-    return `<div><b>${g}</b> <b class="${net > 0 ? "t4" : net < 0 ? "t0" : "dim"}">${net > 0 ? "+" : net < 0 ? "−" : "±"}${Math.abs(net)}</b>
-      <span class="sub">${[...up.map(([k, v]) => `${esc(k)} <span class="t4">+${v}</span>`), ...down.map(([k, v]) => `${esc(k)} <span class="t0">−${Math.abs(v)}</span>`)].join(", ")}</span></div>`;
-  }).join("");
+    const n = both.filter(p => Object.keys(p.b.attrs).some(k => ATTR_GROUPS[g].includes(k))).length;
+    const ups = both.reduce((t, p) => t + p.up.filter(c => ATTR_GROUPS[g].includes(c.k)).length, 0);
+    const downs = both.reduce((t, p) => t + p.down.filter(c => ATTR_GROUPS[g].includes(c.k)).length, 0);
+    const most = ts.filter(t => t[1] > 0).slice(0, 2).map(([k, v]) => `${esc(k)} <span class="t4">+${v}</span>`).join(", ");
+    return `<tr><td><b>${g}</b></td><td class="num"><b>${signed(net, 0)}</b></td><td class="num">${n ? signed(net / n, 2) : "–"}</td>
+      <td class="num t4">${ups}</td><td class="num t0">${downs}</td><td class="text">${most || `<span class="dim">–</span>`}</td></tr>`;
+  });
+  const bestArea = Object.keys(AREAS).map((area, i) => [area, both.filter(p => AREAS[area].includes(p.b.best))])
+    .filter(([, ps]) => ps.length).map(([area, ps]) => [area, ps.reduce((t, p) => t + p.ds, 0) / ps.length]).sort((x, y) => y[1] - x[1]);
+  const perPlayer = CAT_ORDER.map(g => { const n = both.filter(p => Object.keys(p.b.attrs).some(k => ATTR_GROUPS[g].includes(k))).length;
+    return [g, n ? tot.filter(([k]) => ATTR_GROUPS[g].includes(k)).reduce((t, [, v]) => t + v, 0) / n : null]; }).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
+  const pivotNote = bestArea.length && perPlayer.length ? `Training worked best in <b>${bestArea[0][0]}</b> (${signed(bestArea[0][1], 2)} a player)${bestArea.length > 1 ?
+    ` and least in <b>${bestArea[bestArea.length - 1][0]}</b> (${signed(bestArea[bestArea.length - 1][1], 2)})` : ""}; by attributes, <b>${perPlayer[0][0]}</b> grew most (${signed(perPlayer[0][1], 2)} a player)${perPlayer.length > 1 ?
+    `, <b>${perPlayer[perPlayer.length - 1][0]}</b> least (${signed(perPlayer[perPlayer.length - 1][1], 2)})` : ""}.` : "";
+  const pivot = `<div class="tile wide"><div class="ttitle">Where training worked <span class="sub">by area (each player at his best position) and by attribute group</span></div>
+    ${pivotNote ? `<div class="advice">${pivotNote}</div>` : ""}
+    <div class="devpivot"><table><thead><tr><th>Area</th><th class="num">Players</th><th class="num">Avg ±</th><th class="num">Improved</th><th class="num">Declined</th><th>Biggest riser</th></tr></thead>
+      <tbody>${areaRows.join("")}</tbody></table>
+    <table><thead><tr><th>Attribute group</th><th class="num">Net ±</th><th class="num">Per player</th><th class="num">Up</th><th class="num">Down</th><th>Rose most</th></tr></thead>
+      <tbody>${groupRows.join("")}</tbody></table></div></div>`;
   const opt = (sel, keep) => S.map(s => `<option value="${esc(s)}"${s === sel ? " selected" : ""}>${esc(fmtDate(s))}</option>`).join("");
   const top = (title, ps) => `<div class="tile"><div class="ttitle">${title}</div>${ps.length ? `<table><tbody>${ps.map(p =>
     `<tr><td>${name(p)}</td><td class="num dim">${p.b.age}y</td><td class="text">${esc(p.b.best)}</td>
@@ -1305,9 +1337,8 @@ function renderDevelopment() {
       <div><b>${joined.length}</b><span>joined${joined.length ? ": " + joined.map(p => esc(p.name.split(" ").pop())).join(", ") : ""}</span></div>
       <div><b>${left.length}</b><span>left${left.length ? ": " + left.map(p => esc(p.name.split(" ").pop())).join(", ") : ""}</span></div>
     </div>
-    <div class="advice">${devAdvice(both)}</div>
-    <div class="sub">Squad attributes by category, summed over the players compared:</div>
-    <div class="devcats">${catSummary || `<div class="sub">No attribute changed.</div>`}</div></div>
+    <div class="advice">${devAdvice(both)}</div></div>
+  ${pivot}
   ${top("Biggest risers", both.filter(p => p.ds > 0.05).slice(0, 5))}
   ${top("Biggest fallers", both.filter(p => p.ds < -0.05).reverse().slice(0, 5))}
   <div class="tile wide"><div class="ttitle">Every player <span class="sub">score at their best position, then and now</span></div>

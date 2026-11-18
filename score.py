@@ -54,7 +54,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.14.3"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.15.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 CREATOR, CREATOR_URL = "Angelski", "https://community.sports-interactive.com/profile/428404-angelski/"  # About: the maker, on the official FM forum
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
@@ -1363,7 +1363,7 @@ GUIDE = [
              "spot), by the top 3 Formations (why they fit), on Research (<b>Next step</b>), Development (who's growing, who's "
              "slowing) and Compare (who's better now, younger, cheaper).</li>"
              "<li><b>A scouted player's profile</b>: <b>For you</b> = where he'd start in your team and over whom; <b>At 24 "
-             "(estimate)</b> for youngsters; a radar of what counts most at his position.</li>"
+             "(estimate)</b> for every player under 24 (his vs Age kept to 24: an estimate, not FM's potential); a radar of what counts most at his position.</li>"
              "<li><b>Analysis › Squad plan</b>: every position's recommendations as one list, most urgent first (Act now, "
              "Strengthen, Plan ahead, Bring on), with a line on where to start. <b>Research</b> graphs <b>Your squad: age vs "
              "score</b> and <b>wage vs score</b>.</li></ul>"},
