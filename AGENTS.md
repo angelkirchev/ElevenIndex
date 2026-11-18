@@ -12,7 +12,7 @@ and track them over time. Everything runs locally; the user's data never leaves 
 
 - `app.py`: the window (pywebview). Import file… → `import_export.import_file` → `score.build` + `score.write_pages` →
   shows the page. Also the first-run setup screen, the new-save and error screens (`screen()`; a missing page opens the error one), the Saves panel (switch, new, delete: a deleted save waits in `saves/_deleted` for 14 days, restorable, then
-  `purge_deleted` removes it), the Menu (under the logo, key M; recent exports, switch save, Back up / Restore a backup, the GitHub update check `check_update`), the exports watcher (`watch_exports`: a new export offers Import), drag and drop (`on_drop`), Menu → Theme… (five colour themes: `THEMES` in score.py, `:root[data-theme]` in
+  `purge_deleted` removes it), the Menu (under the logo, key M; recent exports, switch save, Back up / Restore a backup, the GitHub update check `check_update`), the exports watcher (`watch_exports`: a new export offers Import, or imports itself with Menu → Auto-import on, config.toml's `auto_import`), drag and drop (`on_drop`), Menu → Theme… (five colour themes: `THEMES` in score.py, `:root[data-theme]` in
   theme.css, config.toml's `theme`, stamped on each page's `<html>`), Clear old lists, and the Attributes page's
   save / switch / import / export. Its title is `ElevenIndex <VERSION> — Save: <save>`.
 - `import_export.py`: an FM27 Exporter file (CSV or HTML) → observation CSVs in the save. Players go to

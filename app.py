@@ -245,12 +245,12 @@ class App:
 
     def delete_save(self, name):
         """Take a save off the list: its folder moves to saves/_deleted (Saves… can restore it for 14 days), its
-        pages go (they're rebuilt from the data). Not the save that's open."""
+        pages go (they're rebuilt from the data). The open save too: then the app moves to another save, or, with
+        none left, to the setup page."""
         folder = score.ROOT / "saves" / name
         if not self._plain_name(name) or not (folder / "save.toml").is_file():
             raise ValueError(f"There's no save called {name}.")
-        if name == self.save:
-            raise ValueError("That save is open: switch to another one first.")
+        was_open = name == self.save
         with self.lock:
             bin_ = score.ROOT / "saves" / "_deleted"
             bin_.mkdir(exist_ok=True)
@@ -261,6 +261,17 @@ class App:
             (target / self.DELETED_MARK).write_text(str(int(time.time())), encoding="utf-8")
             shutil.rmtree(score.ROOT / "out" / name, ignore_errors=True)
             self.commit(f"{name}: deleted (moved to _deleted)")
+        if not was_open:
+            return
+        others = [s["name"] for s in self.saves()]
+        note = f"{name} is deleted. You can restore it from Saves… for 14 days."
+        if others:  # the one with the newest data
+            newest = max(others, key=lambda n: max((f.name[:10] for f in (score.ROOT / "saves" / n / "obs").glob("*.csv")), default=""))
+            self.switch_save(newest, notice=f"{note} Now on {newest}.", title="Save deleted")
+        else:  # none left: the setup page, as on the first start
+            self.save, self.save_dir = None, None
+            self.window.set_title(window_title())
+            self.show_soon(html=self.setup_page())
 
     def deleted_saves(self):
         """Saves… 's Deleted list: [{folder, name, club, deleted, gone}], newest first. Clears out the old ones first."""
@@ -353,7 +364,7 @@ class App:
         recent = [{"name": f.stem, "path": str(f), "imported": f.stem in done,
                    "when": time.strftime("%d %b %H:%M", time.localtime(f.stat().st_mtime))} for f in self.export_files()[:5]]
         return {"current": self.club_name() or self.save, "save": self.save, "saves": self.saves(), "recent": recent,
-                "update": getattr(self, "update", None)}
+                "update": getattr(self, "update", None), "auto": self.auto_import()}
 
     def import_path(self, path):
         """Import an export picked in the menu, offered by the watcher or dropped on the window."""
@@ -362,8 +373,17 @@ class App:
             raise ValueError(f"Not an FM27 Exporter file: {f.name}")
         threading.Thread(target=self.import_now, args=(f,), daemon=True).start()
 
+    def auto_import(self):
+        return bool(self.config.get("auto_import", False))
+
+    def set_auto_import(self, on):
+        """Menu → Auto-import: on, every new export (F8 in FM) is imported as soon as it's saved. config.toml keeps it."""
+        score.set_setting("auto_import", bool(on))
+        self.config["auto_import"] = bool(on)
+
     def watch_exports(self):
-        """Every few seconds: a new export in the folder (F8 in FM) gets a notice with an Import button."""
+        """Every few seconds: a new export in the folder (F8 in FM) is imported straight away when Auto-import is on,
+        else it gets a notice with an Import button."""
         seen = {f.stem for f in self.export_files()}
         while True:
             time.sleep(3)
@@ -377,6 +397,9 @@ class App:
                 for f in self.export_files():
                     if f.stem not in seen:
                         seen.add(f.stem)
+                        if self.auto_import():
+                            self.import_now(f)  # one after another: each import waits for the one before
+                            continue
                         self.window.evaluate_js(f"window.fmNewExport && fmNewExport({json.dumps(f.stem)}, {json.dumps(str(f))})")
             except Exception:
                 log_error("watching the exports folder")
@@ -645,7 +668,8 @@ class App:
 
     def setup_page(self):
         data = {"exports": str(self.exports), "home": str(score.ROOT), "shortcut": bool(getattr(sys, "frozen", False))}
-        return SETUP_HTML.replace("__DATA__", json.dumps(data))
+        body = SETUP_HTML.replace("__DATA__", json.dumps(data)).replace("__PROJECT__", score.PROJECT_URL)
+        return screen("setup", body=body)
 
     def setup(self, club, division, currency, exports, name, shortcut):
         """The setup page's Start: write config.toml, create the save, and open it."""
@@ -684,7 +708,8 @@ class App:
             page = score.ROOT / "out" / self.save / "squad.html"  # the app opens on Squad › Lineup
             where = {"url": page.resolve().as_uri()} if page.exists() else {"html": screen("start", self.club_name())}
             title = window_title(self.save)
-        self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
+        self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900,
+                                            confirm_close=True, **where)  # closing asks first (localization below)
         self.window.events.loaded += self.on_load
         threading.Thread(target=self.watch_exports, daemon=True).start()
         threading.Thread(target=self.check_update, daemon=True).start()
@@ -698,7 +723,8 @@ class App:
             except (AttributeError, OSError):
                 pass
         icon = score.APP / "docs" / "ElevenIndex.ico"
-        webview.start(icon=str(icon) if icon.exists() else None)  # no menu bar: the page's Menu button has it all
+        webview.start(icon=str(icon) if icon.exists() else None,  # no menu bar: the page's Menu button has it all
+                      localization={"global.quitConfirmation": "Close ElevenIndex? Your saves and imports are kept."})
 
 
 def log_error(what):
@@ -755,6 +781,9 @@ class MainApi:
 
     def themes(self):
         return self._app.themes()
+
+    def set_auto_import(self, on):
+        return self._call(self._app.set_auto_import, on)
 
     def set_theme(self, name):
         return self._call(self._app.set_theme, name)
@@ -844,23 +873,38 @@ class MainApi:
             return {"error": str(e)}
 
 
-SETUP_HTML = """<!doctype html><html><head><meta charset="utf-8"><style>
-body { font: 15px Inter, 'Segoe UI', system-ui, sans-serif; background: #121815; color: #f2efe7; margin: 0; display: flex; justify-content: center; }
-.box { width: 560px; max-width: 92vw; margin: 48px 0; }
-h1 { font-size: 22px; margin: 0 0 6px; } .lead { color: #cfd6d1; margin: 0 0 22px; line-height: 1.5; }
-label { display: block; margin: 14px 0 5px; } .hint { color: #9aa49f; font-size: 13px; margin-top: 4px; }
-input, select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #2a332f; border-radius: 6px;
-  background: #161c19; color: #f2efe7; font: inherit; }
-.row { display: flex; gap: 8px; } .row input { flex: 1; }
-button { padding: 8px 16px; border: 0; border-radius: 6px; font: 600 14px Inter, 'Segoe UI', system-ui, sans-serif; cursor: pointer;
-  background: #2a332f; color: #f2efe7; }
-button.go { background: #a9d93b; color: #0f1412; padding: 10px 22px; font-size: 15px; margin-top: 22px; }
-.check { display: flex; gap: 8px; align-items: center; margin-top: 16px; } .check input { width: auto; }
-.error { color: #f87171; min-height: 1.3em; margin-top: 12px; } .home { color: #9aa49f; font-size: 13px; margin-top: 26px; }
-</style></head><body><div class="box">
-<h1>Welcome to ElevenIndex</h1>
-<p class="lead">A few details about your Football Manager save, and you're ready. You can add more saves later with
-<b>Menu → Saves</b> (under the logo).</p>
+# The first-run setup page: the same pitch, logo and banner as screen(), a welcome title, the form on the right and
+# what the app needs from FM in the bottom-left card.
+SETUP_HTML = """<style>
+.setup { position: absolute; right: 40px; top: 50%; transform: translateY(-42%); width: 440px; max-width: calc(100% - 80px);
+  padding: 20px 22px 18px; background: #121815f0; border: 1px solid #2a332f; border-radius: 12px; box-shadow: 0 10px 30px #0009; }
+.setup h2 { margin: 0 0 4px; font: 600 18px/1 'Bahnschrift SemiCondensed', 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  letter-spacing: .04em; text-transform: uppercase; color: #c5f04f; }
+.setup label { display: block; margin: 12px 0 5px; color: #e6e9e7; font-size: 14px; font-weight: 600; }
+.setup .hint { color: #9aa49f; font-size: 12.5px; margin-top: 4px; line-height: 1.45; }
+.setup input, .setup select { width: 100%; padding: 8px 10px; border: 1px solid #2f3a35; border-radius: 6px;
+  background: #1a221e; color: #f2efe7; font: inherit; }
+.setup input:focus, .setup select:focus { outline: none; border-color: #c5f04f; }
+.setup .row { display: flex; gap: 8px; } .setup .row input { flex: 1; min-width: 0; }
+.setup button { padding: 8px 14px; border: 0; border-radius: 6px; font: 600 14px Inter, 'Segoe UI', system-ui, sans-serif;
+  cursor: pointer; background: #2a332f; color: #f2efe7; }
+.setup button.go { width: 100%; margin-top: 18px; padding: 11px; background: #c5f04f; color: #0f1412; font-size: 15px; }
+.setup button.go:disabled { opacity: .6; cursor: default; }
+.setup .check { display: flex; gap: 8px; align-items: center; margin-top: 14px; font-size: 14px; }
+.setup .check input { width: auto; accent-color: #c5f04f; } .setup .check label { margin: 0; font-weight: 400; }
+.setup .error { color: #f87171; min-height: 1.2em; margin-top: 8px; font-size: 13px; }
+.setup .home { color: #7d8883; font-size: 12px; overflow-wrap: anywhere; }
+.card a { color: #8bd3f7; text-decoration: none; } .card a:hover { text-decoration: underline; }
+@media (max-width: 1080px), (max-height: 740px) {  /* a small window: one column that scrolls */
+  body { overflow: auto; padding: 150px 0 30px; }
+  .title, .card, .setup { position: static; transform: none; margin: 0 40px 20px; max-width: 560px; width: auto; }
+}
+</style>
+<div class="title"><span class="tag">Welcome</span>
+<h1>Welcome to ElevenIndex</h1><p>Every player scored at every position, every staff member for every job, and your best
+eleven: from the lists you export in Football Manager 27. All on your computer.</p></div>
+<div class="setup"><h2>Your save</h2>
+<div class="hint">A few details and you're ready. More saves later: Menu → <b>Saves…</b></div>
 <label for="club">Club you manage</label>
 <input id="club" placeholder="e.g. Man Utd" autofocus>
 <div class="hint">Exactly as FM writes it in its player lists: "Man Utd", not "Manchester United".</div>
@@ -869,14 +913,21 @@ button.go { background: #a9d93b; color: #0f1412; padding: 10px 22px; font-size: 
 <label for="exports">FM27 Exporter's folder</label>
 <div class="row"><input id="exports"><button id="browse">Browse…</button></div>
 <div class="hint">Where FM27 Exporter saves the lists you export with F8. It's usually found for you.</div>
-<div class="check" id="shortcut-row"><input type="checkbox" id="shortcut" checked><label for="shortcut" style="margin:0">Put a shortcut on the desktop</label></div>
+<div class="check" id="shortcut-row"><input type="checkbox" id="shortcut" checked><label for="shortcut">Put a shortcut on the desktop</label></div>
 <div class="error" id="error"></div>
 <button class="go" id="go">Start</button>
 <div class="home" id="home"></div>
-</div><script>
+</div>
+<div class="card"><h2>What it needs from FM</h2><ol>
+<li><b>BepInEx 6</b> and the <b>FM27 Exporter</b> plugin in FM's folder: they add the <span class="k">F8</span> export (how: the <a href="__PROJECT__" target="_blank" rel="noopener">project page</a>).</li>
+<li><b>Our views and filters:</b> extract <b>ElevenIndex-FM27-views-and-filters.zip</b> into Documents\\Sports Interactive\\Football Manager 27.</li>
+<li>Fill in <b>Your save</b> and press <b>Start</b>.</li>
+<li>In FM, your squad with the view <b>Squad - All Players View</b>, press <span class="k">F8</span>, then here Menu → <b>Import file…</b></li>
+</ol><div class="more"><b>Private:</b> nothing leaves your computer; your saves and pages stay in the folder shown under Start.</div></div>
+<script>
 const d = __DATA__, $ = id => document.getElementById(id);
 $("exports").value = d.exports;
-$("home").textContent = "Your saves and pages are kept in " + d.home;
+$("home").textContent = "Kept in " + d.home;
 if (!d.shortcut) $("shortcut-row").style.display = "none";
 $("browse").onclick = async () => { const f = await pywebview.api.browse_folder($("exports").value); if (f) $("exports").value = f; };
 async function go() {
@@ -887,7 +938,7 @@ async function go() {
 }
 $("go").onclick = go;
 document.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
-</script></body></html>"""
+</script>"""
 
 # The new-save and error screens (screen()): a dark pitch, the XI INDEX logo, a title, instructions in the bottom-left
 # corner (notices show bottom right).
@@ -945,11 +996,13 @@ __BODY__
 </body></html>"""
 
 
-def screen(kind, club="", detail=""):
-    """The new-save screen ("start") or the error screen ("error"), as HTML."""
+def screen(kind, club="", detail="", body=""):
+    """The new-save screen ("start"), the error screen ("error") or the first-run setup ("setup", its body given), as HTML."""
     logo = (score.APP / "logo.svg").read_text(encoding="utf-8") if (score.APP / "logo.svg").exists() else ""
     esc = lambda t: html.escape(str(t))
-    if kind == "error":
+    if kind == "setup":
+        pass
+    elif kind == "error":
         body = f"""<div class="title error"><span class="tag">Something went wrong</span>
 <h1>This page couldn't open</h1><p>Your saves and imports are safe; only the page that shows them is missing or broken.</p>
 {f'<code>{esc(detail)}</code>' if detail else ''}</div>
@@ -1059,7 +1112,16 @@ TOOLBAR_JS = """(() => {
       }
     }
     list.append(item("Import file…", "an FM27 Exporter file (F8 in FM), or drop one on the window · key I", () => window.pywebview && pywebview.api.pick_file(), true),
-      item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()), line(),
+      item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()),
+      item(`Auto-import <span style="margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;${d.auto
+        ? 'color:#0f1412;background:#c5f04f">ON' : 'color:#cfd6d1;background:#2a332f">OFF'}</span>`,
+        d.auto ? "every new export (F8 in FM) is imported by itself · click to turn off" : "import each new export (F8 in FM) by itself · click to turn on",
+        async () => {
+          const r = await pywebview.api.set_auto_import(!d.auto);
+          if (r && r.error) return window.fmNotice(r.error, true);
+          window.fmNotice(d.auto ? "New exports will offer an Import button again." : "Every new export (F8 in FM) is now imported by itself.",
+            false, { title: d.auto ? "Auto-import off" : "Auto-import on" });
+        }), line(),
       item("Saves…", "switch, start, delete, back up or restore a save", () => window.fmSaves()), line(),
       item("Theme…", "the app's colours", () => window.fmTheme()),
       item("Check for updates", "is there a newer ElevenIndex?", async () => {
@@ -1151,11 +1213,11 @@ TOOLBAR_JS = """(() => {
         "border:1px solid " + (s.current ? "#c5f04f" : "#2a332f") + ";background:" + (s.current ? "#161c19" : "transparent") + ";color:#f2efe7");
       row.append(make("span", s.club + "  (" + s.name + ")"), css(make("span", s.current ? "open now" : (s.date ? "up to " + s.date : "no players yet")), "color:#9aa49f;white-space:nowrap"));
       line.append(row);
-      if (!s.current) {
-        row.onclick = () => run(() => pywebview.api.switch_save(s.name));
+      if (!s.current) row.onclick = () => run(() => pywebview.api.switch_save(s.name));
+      {
         // Delete: the first click asks, a second within 5 s deletes (the folder goes to saves\\_deleted)
         const del = css(make("button", "Delete"), "flex:none;padding:0 12px;border:0;border-radius:6px;background:#33292e;color:#f87171;font:600 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
-        del.title = "Remove this save from the list. Its folder moves to saves\\\\_deleted, so it can be brought back.";
+        del.title = (s.current ? "This is the open save: the app moves to another one (or to the setup page if it's the last). " : "") + "Remove this save from the list. Its folder moves to saves\\\\_deleted, so it can be brought back.";
         let armed = null;
         del.onclick = async () => {
           if (!armed) {
@@ -1166,6 +1228,7 @@ TOOLBAR_JS = """(() => {
           clearTimeout(armed); armed = null;
           const r = await pywebview.api.delete_save(s.name);
           if (r && r.error) { error.textContent = r.error; del.textContent = "Delete"; return; }
+          if (s.current) { shade.remove(); return; }  // the app moves on to another save (or the setup page)
           await window.fmSaves();
           window.fmNotice(`${s.club} (${s.name}) is deleted. You can restore it from Saves… for 14 days.`, false, { title: "Save deleted" });
         };

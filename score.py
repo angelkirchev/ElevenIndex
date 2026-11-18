@@ -53,7 +53,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.13.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.14.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -435,6 +435,20 @@ def read_observations(obs_dir, aliases=None):
     return people, sources
 
 
+def latest_search(people, sources):
+    """The names in the newest search or shortlist import (its outfield and goalkeeping files): Research compares with
+    it when the latest import was your own squad."""
+    def when(f):
+        m = re.search(r"-(\d\d-\d\d-\d\d)$", sources[f]["source"])
+        return sources[f]["date"][:10], m.group(1) if m else ""
+    searches = [f for f in sources if sources[f]["source"].startswith("search-")]
+    if not searches:
+        return set()
+    newest = max(searches, key=when)
+    batch = {f for f in searches if sources[f]["source"] == sources[newest]["source"] and sources[f]["date"] == sources[newest]["date"]}
+    return {name for name, person in people.items() if person["files"] & batch}
+
+
 def age_benchmark(w):
     """age -> the score expected at that age (ages outside the table count as its youngest or oldest)."""
     table = {int(age): value for age, value in w["age_benchmark"].items()}
@@ -490,11 +504,11 @@ def player_cols(w, with_club):
 
 
 def filters(squad, w):
-    """The player search page: per position, the squad's best there (three; every keeper for GK) and a suggested FM search
+    """The player search page: per position, the squad's best there (three, keepers too) and a suggested FM search
     minimum for the attributes that carry most of the position's weight (search_attrs): their average, rounded."""
     pages = []
     for pos, weights in {"GK": w["gk"], **w["outfield"]}.items():
-        top = sorted((r for r in squad if r.get(pos) is not None), key=lambda r: r[pos], reverse=True)[:None if pos == "GK" else 3]
+        top = sorted((r for r in squad if r.get(pos) is not None), key=lambda r: r[pos], reverse=True)[:3]  # your best three, keepers too
         if not top:
             continue
         searched = search_attrs(weights)
@@ -1135,7 +1149,8 @@ def build(save, config):
         "elsewhere": (others_table, others),
         "last": (others_table, last_rows),
         "filters": ([], filters(squad, w)),
-        "charts": ([], charts(rows, squad, w, cfg, {r["name"] for r in last_rows})),
+        "charts": ([], charts(rows, squad, w, cfg, {r["name"] for r in last_rows if r["club"] != managed}
+                              or latest_search(people, sources))),
         "compare": ([], compare_page(rows, squad, w, cfg)),
         "staff": (staff_cols(roles, w.get("staff_names", {})), staff_rows),
         "last_staff": (staff_cols(roles, w.get("staff_names", {})), last_staff),

@@ -27,13 +27,56 @@ __THEME__
   .ttitle { margin-bottom: 8px; color: var(--fg); font: 700 17px/1.2 var(--head); text-transform: uppercase; letter-spacing: .02em; }
   .ttitle .sub { font: 500 12px var(--body); text-transform: none; letter-spacing: 0; }
   table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th, td { padding: 4px 10px; text-align: left; white-space: nowrap; }
+  th, td { padding: 3px 8px; text-align: left; white-space: nowrap; }
   th { color: var(--dim); font-size: 12px; font-weight: 500; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
   .tiles th { cursor: default; vertical-align: bottom; }
   .num { text-align: right; }
   th.num { text-align: right; }
   td:first-child { font-weight: 500; }
   td.text { color: var(--purple); }
+  /* compact: tables inside tiles only as wide as their content (the big lists stay full width); long text cut with …
+     (the whole text on hover); long tile tables folded to their first rows with a Show all link */
+  .ppgrid { display: grid; grid-template-columns: auto 250px minmax(0, 1fr); gap: 22px; align-items: stretch; }
+  .ppgrid > div { display: flex; flex-direction: column; }  /* the three side by side, the pitch as tall as the tables */
+  .ppgrid > div > .dhead { margin-bottom: 6px; } .ppgrid .dtable.wide { width: auto; }
+  @media (max-width: 1100px) { .ppgrid { grid-template-columns: auto 250px; } }
+  .mpitch { position: relative; flex: 1; min-height: 250px; border-radius: 8px; overflow: hidden; border: 1px solid #ffffff1f;
+    background: repeating-linear-gradient(180deg, #1f5a35 0 33px, #1c5230 33px 66px); }
+  .mpitch i { position: absolute; border: 1px solid #ffffff2a; }
+  .mpitch .mhalf { left: 0; right: 0; top: 50%; border-width: 1px 0 0; } .mpitch .mcircle { left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px; border-radius: 50%; }
+  .mpitch .mbox { left: 28%; right: 28%; height: 13%; } .mpitch .mbox.top { top: -1px; } .mpitch .mbox.bottom { bottom: -1px; }
+  .mp { position: absolute; transform: translate(-50%, -50%); min-width: 44px; padding: 2px 6px 1px; text-align: center; border-radius: 5px;
+    background: #0f1412e6; border-bottom: 2px solid currentColor; line-height: 1.15; }
+  .mp span { display: block; color: var(--dim); font: 700 9.5px var(--body); letter-spacing: .04em; } .mp b { font-size: 13px; }
+  .mp.fm { box-shadow: 0 0 0 1px #8bd3f7; } .mp.best { box-shadow: 0 0 0 2px #c5f04f; z-index: 1; }
+  .mlegend { display: flex; gap: 14px; justify-content: center; margin-top: 6px; font-size: 12px; color: var(--dim); }
+  .mlegend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 3px; }
+  .mlegend .lb { box-shadow: inset 0 0 0 2px #c5f04f; } .mlegend .lf { box-shadow: inset 0 0 0 1px #8bd3f7; }
+  tr.catrow td { padding-top: 7px; color: var(--blue); font: 600 12px var(--body); letter-spacing: .06em; text-transform: uppercase;
+    background: color-mix(in srgb, var(--fg) 6%, transparent); }
+  .devcats { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 18px; margin-top: 6px; font-size: 13px; }
+  .devcats > div { padding: 6px 10px; background: var(--row); border-radius: 6px; }
+  #main.tiles.dense { grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); }
+  /* Positions ranked: the table, and beside it the same positions as bars (your average, your best, imported) */
+  .rkwrap { display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 28px; align-items: start; }
+  .rkwrap > table { width: auto; }
+  @media (max-width: 1000px) { .rkwrap { grid-template-columns: minmax(0, 1fr); } }
+  .rkchart .dhead { height: 26px; margin: 0; display: flex; align-items: center; gap: 6px; }
+  .rkrow { display: grid; grid-template-columns: 74px minmax(0, 1fr) 40px; gap: 10px; align-items: center; height: 25.5px; }
+  .rkrow > span { font-size: 13px; color: var(--purple); } .rkrow > b { font-size: 13px; text-align: right; }
+  .rktrack { position: relative; height: 14px; background: color-mix(in srgb, var(--fg) 5%, transparent); border-radius: 3px; }
+  .rktrack .rkfill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: currentColor; opacity: .75; }
+  .rktrack .best { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
+    background: currentColor; box-shadow: 0 0 0 2px var(--bg); }
+  .rktrack .imp { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--fg); border-radius: 1px; }
+  .rklegend { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0 0 84px; font-size: 12px; color: var(--dim); }
+  .rklegend i { display: inline-block; vertical-align: -1px; margin-right: 5px; }
+  .rklegend .l1 { width: 16px; height: 10px; border-radius: 2px; background: #4ade80; opacity: .75; }
+  .rklegend .l2 { width: 9px; height: 9px; border-radius: 50%; background: #38bdf8; }
+  .rklegend .l3 { width: 2px; height: 12px; background: var(--fg); }
+  #main:not(.tiles) td.text { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+  tr.folded { display: none; } tr.foldrow td { padding: 5px 8px; text-align: center; }
+  tr.foldrow a { color: var(--blue); font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer; }
   td.dim, .sub { color: var(--dim); }
   td.wrap, .tiles td.wrap { white-space: normal; }
   tbody tr:nth-child(even) td { background-color: var(--row); }
@@ -101,6 +144,25 @@ __THEME__
   .dbar i { display: block; height: 100%; border-radius: 4px; }
   .dbar i.t4, .dbar i.t3 { background: var(--green); } .dbar i.t2 { background: var(--yellow); } .dbar i.t1, .dbar i.t0 { background: var(--red); }
   .agrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  /* the Attributes tab, like FM's: Key (green bar) and Preferable (blue bar) rows */
+  .acols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .acols2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 1000px) { .acols, .acols2 { grid-template-columns: minmax(0, 1fr); } }
+  table.atable { width: 100%; margin-bottom: 10px; }  /* otherwise like every table: same font, padding, lines and colours */
+  table.atable tr.key td { background: color-mix(in srgb, var(--green) 13%, transparent); } table.atable tr.key td:first-child { box-shadow: inset 3px 0 #4ade80; }
+  table.atable tr.pref td { background: color-mix(in srgb, #3b82f6 16%, transparent); } table.atable tr.pref td:first-child { box-shadow: inset 3px 0 #3b82f6; }
+  .alegend { display: flex; gap: 14px; justify-content: center; margin-top: 6px; font-size: 12px; color: var(--dim); }
+  .alegend .key, .alegend .pref { padding-left: 16px; position: relative; color: var(--purple); }
+  .alegend .key::before, .alegend .pref::before { content: ""; position: absolute; left: 0; top: 1px; width: 10px; height: 12px; border-radius: 2px;
+    background: color-mix(in srgb, var(--green) 30%, transparent); box-shadow: inset 3px 0 #4ade80; }
+  .alegend .pref::before { background: color-mix(in srgb, #3b82f6 35%, transparent); box-shadow: inset 3px 0 #3b82f6; }
+  .astaff { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .ajob { display: flex; justify-content: space-between; width: 100%; margin: 2px 0; padding: 7px 10px; color: var(--fg); background: var(--row);
+          border: 1px solid transparent; border-radius: 6px; font: 500 13px var(--body); text-align: left; cursor: pointer; }
+  .ajob.on { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 14%, transparent); }
+  .atabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .atabs button { padding: 6px 14px; color: var(--fg); background: var(--row); border: 1px solid var(--line); border-radius: 6px; font: 500 13px var(--body); cursor: pointer; }
+  .atabs button.on { color: #0f1412; background: var(--accent-strong); border-color: var(--blue); }
   td.wcell { width: 70px; } .wdot { display: block; height: 6px; background: var(--blue); border-radius: 3px; opacity: .8; }
   #detail .scout { max-width: 900px; margin: 2px 0 10px; padding: 8px 12px; color: var(--fg); line-height: 1.6;
                    background: var(--row); border-left: 3px solid var(--blue); border-radius: 6px; }
@@ -433,7 +495,7 @@ function cellHtml(r, c, marks) {
   if (c.fmt) return `<td ${cls(`num ${c.fmt === "f1" ? stier(v) : tier(v, RANGE[c.fmt])}`)}>${FMT[c.fmt](v)}</td>`;
   if (c.key === "name") return `<td ${cls("")}><span class="pl" title="open ${esc(v)}'s profile">${esc(v)}</span>${cmpIcon(r)}` +
     (r.loan ? `<span class="loan ${r.loan}">${loanLabel(r)}</span>` : "") + "</td>";
-  return `<td ${cls(c.num ? "num" : "text")}>${v}</td>`;
+  return `<td ${cls(c.num ? "num" : "text")}${c.num ? "" : ` title="${esc(String(v))}"`}>${v}</td>`;
 }
 function render() {
   const { tests, ok } = compileSearch(input.value);
@@ -546,6 +608,17 @@ const ATTR_GROUPS = {  // FM's attribute groups (ATTRIBUTE_GROUPS in score.py)
   Goalkeeping: ["Aerial Reach", "Command of Area", "Communication", "Eccentricity", "Handling", "Kicking", "One on Ones", "Reflexes",
                 "Rushing Out (Tendency)", "Punching (Tendency)", "Throwing"],
 };
+// attributes split by category, in this order (players: Goalkeeping, Physical, Mental, Technical; staff: FM's staff
+// groups); only the categories that have some of the keys; anything else under Other
+const CAT_ORDER = ["Goalkeeping", "Physical", "Mental", "Technical"];
+function byCategory(keys, isStaff) {
+  const cats = isStaff ? ["Coaching", "Scouting", "Medical", "Mental", "Knowledge"].map(g => [g, STAFF_GROUPS[g]])
+    : CAT_ORDER.map(g => [g, ATTR_GROUPS[g]]);
+  const out = cats.map(([g, ks]) => [g, keys.filter(k => ks.includes(k))]);
+  const known = new Set(cats.flatMap(([, ks]) => ks));
+  out.push(["Other", keys.filter(k => !known.has(k))]);
+  return out.filter(([, ks]) => ks.length);
+}
 const levelWord = v => v >= 14 ? "excellent" : v >= 13 ? "very good" : v >= 12 ? "good" : v >= 11 ? "decent" : v >= 10 ? "average" : "weak";
 const colLabel = k => { const c = COLS.find(c => c.key === k); return c?.title || c?.label || k; };
 const bar = (v, lo = 6, hi = 15) => `<span class="dbar"><i class="${stier(v)}" style="width:${Math.max(4, Math.min(100, (v - lo) / (hi - lo) * 100)).toFixed(0)}%"></i></span>`;
@@ -623,26 +696,83 @@ function playerOverview(r, s, groups, snaps, scored) {
 function playerPositions(r, s, groups) {
   const fm = r.plays || [];
   const rows = groups.map(k => [k, s[k]]).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
-  return `<table class="dtable wide"><thead><tr><th>Position</th><th class="num">Score</th><th></th><th>Level</th><th>FM</th></tr></thead><tbody>${rows.map(([pos, v]) =>
+  // beside the table: his scores on a pitch, and against your best at each position (SITE.squadBest)
+  const SPOTS = { ST: [[50, 10, "ST"]], "AML/AMR": [[16, 25, "AML"], [84, 25, "AMR"]], AMC: [[50, 27, "AMC"]], "ML/MR": [[14, 45, "ML"], [86, 45, "MR"]],
+    MC: [[50, 45, "MC"]], DM: [[50, 62, "DM"]], "WBL/WBR": [[14, 62, "WBL"], [86, 62, "WBR"]], "DL/DR": [[14, 79, "DL"], [86, 79, "DR"]],
+    CD: [[50, 79, "CD"]], GK: [[50, 93, "GK"]] };
+  const pitch = `<div><div class="dhead">On the pitch</div><div class="mpitch"><i class="mhalf"></i><i class="mcircle"></i><i class="mbox top"></i><i class="mbox bottom"></i>
+    ${rows.flatMap(([pos, v]) => (SPOTS[pos] || []).map(([x, y, lab]) => `<div class="mp ${stier(v)}${pos === s.best ? " best" : ""}${fm.includes(pos) ? " fm" : ""}"
+      style="left:${x}%;top:${y}%" title="${esc(pos)}: ${v.toFixed(1)}, ${levelWord(v)}"><span>${lab}</span><b>${v.toFixed(1)}</b></div>`)).join("")}</div>
+    <div class="mlegend"><span><i class="lb"></i>best</span>${fm.length ? `<span><i class="lf"></i>FM lists it</span>` : ""}</div></div>`;
+  const yours = SITE.club && r.club === SITE.club, sb = SITE.squadBest || {};
+  const vs = rows.filter(([pos]) => sb[pos]).map(([pos, v]) => {
+    const [who, top] = sb[pos], him = who === r.name, d = v - top;
+    return `<tr><td><b>${pos}</b></td><td class="num ${stier(v)}">${v.toFixed(1)}</td><td class="text">${him ? `<span class="t4">him</span>` : esc(surnameOf(who))} <span class="${stier(top)}">${top.toFixed(1)}</span></td>
+      <td class="num ${him ? "dim" : d >= 0.05 ? "t4" : d <= -0.05 ? "t0" : "dim"}">${him ? "–" : (d >= 0 ? "+" : "−") + Math.abs(d).toFixed(1)}</td></tr>`; }).join("");
+  const starts = rows.filter(([pos, v]) => sb[pos] && (sb[pos][0] === r.name || v > sb[pos][1] + 0.05)).map(([pos]) => pos);
+  const vsTable = vs ? `<div><div class="dhead">Against your best <span class="sub">at each position</span></div>
+    <table class="dtable"><thead><tr><th>Position</th><th class="num">His</th><th>Your best</th><th class="num">±</th></tr></thead><tbody>${vs}</tbody></table>
+    <div class="sub">${starts.length ? `${yours ? "He's" : "He'd be"} your best at <b>${starts.join(", ")}</b>.` : `${yours ? "He isn't" : "He wouldn't be"} your best anywhere: ${yours ? "a backup" : "depth"} at <b>${esc(s.best || rows[0][0])}</b>.`}</div></div>` : "";
+  return `<div class="ppgrid"><div><div class="dhead">Every position <span class="sub">best score first</span></div><table class="dtable wide"><thead><tr><th>Position</th><th class="num">Score</th><th></th><th>Level</th><th>FM</th></tr></thead><tbody>${rows.map(([pos, v]) =>
     `<tr class="${pos === s.best ? "on" : ""}"><td><b>${pos}</b>${pos === s.best ? ` <span class="sub">best</span>` : ""}</td><td class="num ${stier(v)}"><b>${v.toFixed(1)}</b></td>
      <td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td><td>${fm.length ? (fm.includes(pos) ? `<span class="t4">plays it</span>` : `<span class="dim">–</span>`) : ""}</td></tr>`).join("")}</tbody></table>
-    <div class="sub">${fm.length ? "Best = his highest score among the positions FM lists for him." : "No FM positions in his exports: best = his highest score anywhere."}</div>`;
+    <div class="sub">${fm.length ? "Best = his highest score among the positions FM lists for him." : "No FM positions in his exports: best = his highest score anywhere."}</div></div>
+    ${pitch}${vsTable}</div>`;
 }
-function profileAttributes(r, s, groups, isStaff, at) {
+// The Attributes tab, laid out like FM's: players in three columns (Technical | Mental | Physical; keepers Goalkeeping |
+// Mental | Physical), alphabetical, each value in FM's colours; at the picked position the most weighted attributes are
+// Key (green bar) and the next ones Preferable (blue bar). Staff: tabs like FM's (Head Coach, Coaching, Scouting,
+// Medical) with the job list on the left; the picked job's weighted attributes are Key.
+const STAFF_GROUPS = {
+  Coaching: ["Attacking", "Defending", "Fitness", "Goalkeeping", "Possession", "Set Pieces", "Tactical", "Technical", "Working With Youngsters"],
+  Scouting: ["Analysing Data"], Medical: ["Physiotherapy", "Sports Science"],
+  Mental: ["Adaptability", "Authority", "Determination", "Motivating", "People Management"],
+  Knowledge: ["Judging Player Ability", "Judging Player Potential", "Judging Staff Ability", "Negotiating", "Tactical Knowledge"],
+};
+const STAFF_TABS = { "Head Coach": "Coaching", Coaching: "Coaching", Scouting: "Scouting", Medical: "Medical" };
+const STAFF_WORDS = [[19.25, "Elite", "s8"], [17.25, "Outstanding", "s7"], [14.5, "Very Good", "s5"], [11.75, "Good", "s4"],
+  [9.25, "Average", "s3"], [6.5, "Competent", "s2"], [3.5, "Reasonable", "dim"], [-1, "Unsuited", "s1"]];
+const staffWord = v => STAFF_WORDS.find(([min]) => v >= min) || STAFF_WORDS[STAFF_WORDS.length - 1];
+function keyTiers(w) {  // like FM: the 4 most weighted attributes are Key, the next 5 Preferable
+  const ranked = Object.keys(w).filter(k => w[k] > 0).sort((x, y) => w[y] - w[x]);
+  return k => { const i = ranked.indexOf(k); return i < 0 ? "" : i < 4 ? "key" : i < 9 ? "pref" : ""; };
+}
+function profileAttributes(r, s, groups, isStaff, at, tab) {
   const a = s.attrs, scores = groups.map(k => [k, s[k]]).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
+  const picked = !!at;  // a job picked in the list (else: opened on his best job, the group of his own job)
   at = at || (isStaff ? scores[0]?.[0] : s.best) || groups[0];
-  const w = WEIGHTS[at] || {}, top = Math.max(0.0001, ...Object.values(w));
-  const row = k => { const v = a[k]; return `<tr class="${w[k] ? "" : "minor"}"><td>${esc(k)}</td><td class="wcell" title="${w[k] ? `weight ${w[k]} at ${at}` : `doesn't count at ${at}`}"><span class="wdot" style="width:${((w[k] || 0) / top * 100).toFixed(0)}%"></span></td>
-    <td class="num ${v == null ? "dim" : attrTier(v)}"><b>${v ?? "–"}</b></td></tr>`; };
-  const select = `<select class="aposSel">${groups.map(g => `<option value="${g}"${g === at ? " selected" : ""}>${esc(isStaff ? colLabel(g) : g)}</option>`).join("")}</select>`;
-  if (isStaff) {  // staff: one list, what counts for the job first
-    const ks = Object.keys(a).sort((x, y) => (w[y] || 0) - (w[x] || 0) || x.localeCompare(y));
-    return `<div class="dhead">Weights at ${select}</div><table class="dtable">${ks.map(row).join("")}</table>`;
+  const w = WEIGHTS[at] || {}, tierOf = keyTiers(w);
+  const legend = `<div class="alegend"><span class="key">Key</span><span class="pref">Preferable</span> <span class="sub">at ${esc(isStaff ? colLabel(at) : at)}</span></div>`;
+  if (isStaff) {
+    const job = colLabel(at) || at;
+    // one group only, his job's: Medical for a physio or sports scientist, Scouting for a scout, analyst or director,
+    // Coaching for the rest (managers and coaches); his own FM job first, a job picked in the list after. With no
+    // data for it, the first group he has data for.
+    const tabs = Object.keys(STAFF_TABS).filter(t => STAFF_GROUPS[STAFF_TABS[t]].some(k => a[k] != null));
+    const fitOf = j => /Physio|Sports Sci/i.test(j) ? "Medical" : /Scout|Analyst|Director|Recruit/i.test(j) ? "Scouting" : "Coaching";
+    const fit = fitOf(picked ? job : r.job || job);
+    tab = tabs.includes(fit) ? fit : tabs[0];
+    const cell = k => { const v = a[k]; const [, word, cls] = v == null ? [0, "–", "dim"] : staffWord(v);
+      return `<tr class="${tierOf(k)}"><td>${esc(k)}</td><td class="num ${cls}">${word}</td></tr>`; };
+    const table = (title, ks) => { ks = ks.filter(k => a[k] != null);  // only what the exports showed
+      return ks.length ? `<table class="atable"><thead><tr><th>${title}</th><th class="num">Ability</th></tr></thead><tbody>${ks.map(cell).join("")}</tbody></table>` : ""; };
+    const jobs = scores.map(([k, v]) => `<button class="ajob${k === at ? " on" : ""}" data-job="${esc(k)}"><span>${esc(colLabel(k) || k)}</span><b class="${stier(v)}">${v.toFixed(1)}</b></button>`).join("");
+    return `<div class="astaff"><div class="ajobs"><div class="dhead">Jobs <span class="sub">best first; pick one</span></div>${jobs}</div>
+      <div>
+        <div class="acols2">${tab ? table(`${STAFF_TABS[tab]} Attributes`, STAFF_GROUPS[STAFF_TABS[tab]]) : ""}
+          <div>${table("Mental Attributes", STAFF_GROUPS.Mental)}${table("Knowledge", STAFF_GROUPS.Knowledge)}</div></div>${legend}</div></div>`;
   }
-  const cols = Object.entries(ATTR_GROUPS).filter(([g]) => g !== "Goalkeeping" || at === "GK" || ATTR_GROUPS.Goalkeeping.some(k => a[k] != null && s.best === "GK"))
-    .map(([g, ks]) => { const list = ks.filter(k => k in a || w[k]).sort((x, y) => (w[y] || 0) - (w[x] || 0) || x.localeCompare(y));
-      return list.length ? `<div><div class="dhead">${g}</div><table class="dtable">${list.map(row).join("")}</table></div>` : ""; }).join("");
-  return `<div class="dhead">How much each counts at ${select} <span class="sub">(the bar; dimmed = doesn't count there)</span></div><div class="agrid">${cols}</div>`;
+  const keeper = s.best === "GK" || at === "GK";
+  const listOf = g => ATTR_GROUPS[g].filter(k => k in a).sort((x, y) => x.localeCompare(y));
+  const cell = k => { const v = a[k]; return `<tr class="${tierOf(k)}"><td>${esc(k)}</td><td class="num ${v == null ? "dim" : attrTier(v)}"><b>${v ?? "–"}</b></td></tr>`; };
+  const table = (title, ks) => ks.length ? `<table class="atable"><thead><tr><th colspan="2">${title}</th></tr></thead><tbody>${ks.map(cell).join("")}</tbody></table>` : "";
+  const tech = listOf("Technical"), gkTech = ["First Touch", "Passing"];
+  const cols = keeper
+    ? [table("Goalkeeping", [...listOf("Goalkeeping"), ...tech.filter(k => gkTech.includes(k))]), table("Mental", listOf("Mental")),
+       table("Physical", listOf("Physical")) + table("Technical", tech.filter(k => !gkTech.includes(k)))]
+    : [table("Technical", tech), table("Mental", listOf("Mental")), table("Physical", listOf("Physical"))];
+  const select = `<select class="aposSel">${groups.map(g => `<option value="${g}"${g === at ? " selected" : ""}>${esc(g)}</option>`).join("")}</select>`;
+  return `<div class="dhead">Key and preferable attributes at ${select}</div><div class="acols">${cols.map(c => `<div>${c}</div>`).join("")}</div>${legend}`;
 }
 function staffOverview(r, s, groups) {
   const a = s.attrs, jobs = groups.map(k => [k, s[k]]).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
@@ -660,8 +790,10 @@ function staffOverview(r, s, groups) {
 }
 function showDetailRebind(r, s, groups, isStaff) {  // the Attributes tab's menu after it's redrawn
   const sel = document.querySelector("#detailbody .aposSel");
-  if (sel) sel.onchange = () => { document.querySelector('#detailbody .dsec[data-sec="Attributes"]').innerHTML = profileAttributes(r, s, groups, isStaff, sel.value);
-    showDetailRebind(r, s, groups, isStaff); };
+  const sec = document.querySelector('#detailbody .dsec[data-sec="Attributes"]');
+  const redraw = (at, tab) => { sec.innerHTML = profileAttributes(r, s, groups, isStaff, at, tab); showDetailRebind(r, s, groups, isStaff); };
+  if (sel) sel.onchange = () => redraw(sel.value);
+  if (sec) sec.querySelectorAll("[data-job]").forEach(b => b.onclick = () => redraw(b.dataset.job));
 }
 // A player's (or staff member's) profile: his scout report, his scores at every snapshot with their changes and the
 // total change, and every attribute over time
@@ -704,7 +836,10 @@ function showDetail(r) {
       `${scored ? `<th class="num">Score</th>` : ""}${withAge ? `<th class="num">vs Age</th>` : ""}</tr></thead><tbody>${rows}${totals}</tbody></table>
     <div class="ttitle">Attributes over time</div>
     <table><thead><tr><th>Attribute</th>${several ? `<th class="num wt" title="the total change, first snapshot to last">Change</th>` : ""}` +
-      `${snaps.map(s => `<th class="num">${fmtDate(s.date)}</th>`).join("")}</tr></thead><tbody>${order.map(attrRow).join("")}</tbody></table>`;
+      `${snaps.map(s => `<th class="num">${fmtDate(s.date)}</th>`).join("")}</tr></thead><tbody>${byCategory(order, isStaff).map(([g, ks]) => {
+        const net = ks.reduce((t, a) => { const seen = snaps.map(s => s.attrs[a]).filter(v => v != null); return t + (seen.length > 1 ? seen[seen.length - 1] - seen[0] : 0); }, 0);
+        return `<tr class="catrow"><td colspan="${1 + (several ? 1 : 0) + snaps.length}">${g}${several && net ? ` <span class="${net > 0 ? "t4" : "t0"}">${net > 0 ? "+" : "−"}${Math.abs(net)}</span>` : ""}</td></tr>` + ks.map(attrRow).join("");
+      }).join("")}</tbody></table>`;
   const sections = isStaff ? { Overview: staffOverview(r, newest, groups), Attributes: profileAttributes(r, newest, groups, isStaff), History: history }
     : { Overview: playerOverview(r, newest, groups, snaps, scored), Positions: playerPositions(r, newest, groups),
         Attributes: profileAttributes(r, newest, groups, isStaff), History: history };
@@ -909,8 +1044,9 @@ function renderFormationsPage() {
   main.className = "tiles";
   if (!fs.length) { main.innerHTML = `<div class="tile wide"><div class="sub">Import your squad first.</div></div>`; return; }
   const f = fs.find(x => x.name === stored(FORM_STORE, "")) || fs[0];
+  const idx = fs.indexOf(f);
   const list = `<div class="tile"><div class="ttitle">Formations <span class="sub">best fit first</span></div>
-    <table class="flist"><thead><tr><th class="num">#</th><th>Formation</th><th class="num">XI</th><th class="num">2nd XI</th><th>Weakest spot</th></tr></thead>
+    <table class="flist"${idx >= FOLD_AT.formations ? ' data-fold="1"' : ""}><thead><tr><th class="num">#</th><th>Formation</th><th class="num">XI</th><th class="num">2nd XI</th><th>Weakest spot</th></tr></thead>
     <tbody>${fs.map((x, i) => `<tr class="f${x.name === f.name ? " on" : ""}" data-f="${esc(x.name)}"><td class="num dim">${i + 1}</td>
       <td><b>${esc(x.name)}</b><div class="sub">${esc(x.note)}</div>${i < 3 ? `<div class="why">${formationWhy(x, fs[0])}</div>` : ""}</td>
       <td class="num ${stier(x.xi)}">${x.xi.toFixed(2)}</td><td class="num ${stier(x.depth)}">${x.depth.toFixed(2)}</td>
@@ -1020,7 +1156,7 @@ function squadWide(ps, shape) {
 function renderAnalysis() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA;
-  main.className = "tiles";
+  main.className = "tiles dense";
   const options = ["Score", "Speed", ...d.attrs];
   if (!options.includes(rankBy)) rankBy = "Score";
   const mean = vs => { vs = vs.filter(v => v != null); return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null; };
@@ -1042,13 +1178,23 @@ function renderAnalysis() {
   const ranked = [...ps].sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
   const select = `<select id="rankby">${options.map(o => `<option value="${esc(o)}"${o === rankBy ? " selected" : ""}>${
     esc(o === "Speed" ? "Speed (Pace + Acceleration)" : o === "Score" ? "Position score" : o)}</option>`).join("")}</select>`;
+  // the chart beside the table: one row per position, same order; the scale runs over the values shown
+  const shown = ranked.flatMap(g => [g.avg, g.top?.v, g.imp]).filter(v => v != null);
+  const lo = Math.max(0, Math.floor(Math.min(...shown)) - 1), hi = Math.ceil(Math.max(...shown)) + 0.5;
+  const at = v => `${Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100)).toFixed(1)}%`;
+  const chart = shown.length ? `<div class="rkchart"><div class="dhead">At a glance <span class="sub">${esc(label)}, ${lo} to ${Math.round(hi)}</span></div>
+    ${ranked.map(g => `<div class="rkrow" title="${esc(g.pos)}: your average ${avg1(g.avg)}${g.top ? `, your best ${fmt(g.top.v)} (${esc(g.top.name)})` : ""}${g.imp != null ? `, imported ${avg1(g.imp)}` : ""}">
+      <span>${esc(g.pos)}</span><div class="rktrack">${g.avg != null ? `<i class="rkfill ${cls(g.avg)}" style="width:${at(g.avg)}"></i>` : ""}${
+        g.top?.v != null ? `<i class="best ${cls(g.top.v)}" style="left:${at(g.top.v)}"></i>` : ""}${g.imp != null ? `<i class="imp" style="left:${at(g.imp)}"></i>` : ""}</div>
+      <b class="${cls(g.avg)}">${avg1(g.avg)}</b></div>`).join("")}
+    <div class="rklegend"><span><i class="l1"></i>Your average</span><span><i class="l2"></i>Your best</span><span><i class="l3"></i>Imported average</span></div></div>` : "";
   const summary = `<div class="tile wide"><div class="ttitle">Positions ranked <span class="rankby">by ${select}</span></div>
-    <table><thead><tr><th class="num">#</th><th>Position</th><th class="num">Players</th><th class="num">Your average</th><th>Your best</th>
+    <div class="rkwrap"><table><thead><tr><th class="num">#</th><th>Position</th><th class="num">Players</th><th class="num">Your average</th><th>Your best</th>
     <th class="num">Imported</th><th class="num">±</th></tr></thead><tbody>${ranked.map((g, i) => `<tr><td class="num dim">${i + 1}</td>
       <td>${esc(g.pos)}</td><td class="num">${g.players.length}</td><td class="num ${cls(g.avg)}">${avg1(g.avg)}</td>
       <td>${g.top ? `<span class="pl" data-name="${esc(g.top.name)}">${esc(g.top.name)}</span> <span class="${cls(g.top.v)}">${fmt(g.top.v)}</span>` : "–"}</td>
       <td class="num ${cls(g.imp)}" title="average of ${g.imported} imported player(s) whose best position is ${esc(g.pos)}">${avg1(g.imp)}${
-        g.imported ? ` <span class="sub">(${g.imported})</span>` : ""}</td>${diff(g.avg, g.imp)}</tr>`).join("")}</tbody></table>
+        g.imported ? ` <span class="sub">(${g.imported})</span>` : ""}</td>${diff(g.avg, g.imp)}</tr>`).join("")}</tbody></table>${chart}</div>
     <div class="sub">Players per position as on the <b>Lineup</b>. <b>Imported</b>: the average of the imported players whose best position it is,
     and <b>±</b> how your players compare with them. What to do about it: the <b>Squad plan</b> below.</div></div>`;
   const tiles = ps.map(g => `<div class="tile"><div class="ttitle">${esc(g.pos)} <span class="sub">${esc(label)} · your average
@@ -1096,7 +1242,7 @@ function devAdvice(both) {
   return [young.length ? `Youngsters (21 or under) <b>${sg(avg(young))}</b> on average` : "",
           old.length ? `players 30+ <b>${sg(avg(old))}</b>` : ""].filter(Boolean).join(", ") + ". " +
     (rise.length ? `Keep giving minutes to <b>${rise.join(", ")}</b>: they're growing fastest. ` : "") +
-    (fall.length ? `<b>${fall.join(", ")}</b> ${fall.length > 1 ? "are" : "is"} slowing down: Analysis › Recommendations has who could take over.` : "");
+    (fall.length ? `<b>${fall.join(", ")}</b> ${fall.length > 1 ? "are" : "is"} slowing down: the Squad plan on Analysis says who could take over.` : "");
 }
 function renderDevelopment() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
@@ -1129,8 +1275,22 @@ function renderDevelopment() {
   for (const p of both) for (const c of [...p.up, ...p.down]) totals[c.k] = (totals[c.k] || 0) + c.d;
   const tot = Object.entries(totals).sort((x, y) => y[1] - x[1]);
   const name = p => `<span class="pl" data-name="${esc(p.name)}">${esc(p.name)}</span>`;
-  const chips = cs => cs.slice(0, 4).map(c => `<span class="${c.d > 0 ? "t4" : "t0"}">${c.d > 0 ? "+" : "−"}${Math.abs(c.d)}</span> ${esc(c.k)}`).join(", ") +
-    (cs.length > 4 ? ` <span class="sub">+${cs.length - 4} more</span>` : "");
+  // the changes by category: the net change, then the attributes that moved (biggest first)
+  const catsUsed = CAT_ORDER.filter(g => both.some(p => [...p.up, ...p.down].some(c => ATTR_GROUPS[g].includes(c.k))));
+  const catCell = (p, g) => {
+    const cs = [...p.up, ...p.down].filter(c => ATTR_GROUPS[g].includes(c.k)).sort((x, y) => Math.abs(y.d) - Math.abs(x.d) || y.d - x.d);
+    if (!cs.length) return `<td class="wrap"><span class="dim">–</span></td>`;
+    const net = cs.reduce((t, c) => t + c.d, 0);
+    return `<td class="wrap"><b class="${net > 0 ? "t4" : net < 0 ? "t0" : "dim"}">${net > 0 ? "+" : net < 0 ? "−" : "±"}${Math.abs(net)}</b> <span class="sub">${
+      cs.slice(0, 3).map(c => `${esc(c.k)} <span class="${c.d > 0 ? "t4" : "t0"}">${c.d > 0 ? "+" : "−"}${Math.abs(c.d)}</span>`).join(", ")}${
+      cs.length > 3 ? ` +${cs.length - 3}` : ""}</span></td>`;
+  };
+  const catSummary = catsUsed.map(g => {
+    const ts = tot.filter(([k]) => ATTR_GROUPS[g].includes(k)), net = ts.reduce((t, [, v]) => t + v, 0);
+    const up = ts.filter(t => t[1] > 0).slice(0, 3), down = ts.filter(t => t[1] < 0).reverse().slice(0, 2);
+    return `<div><b>${g}</b> <b class="${net > 0 ? "t4" : net < 0 ? "t0" : "dim"}">${net > 0 ? "+" : net < 0 ? "−" : "±"}${Math.abs(net)}</b>
+      <span class="sub">${[...up.map(([k, v]) => `${esc(k)} <span class="t4">+${v}</span>`), ...down.map(([k, v]) => `${esc(k)} <span class="t0">−${Math.abs(v)}</span>`)].join(", ")}</span></div>`;
+  }).join("");
   const opt = (sel, keep) => S.map(s => `<option value="${esc(s)}"${s === sel ? " selected" : ""}>${esc(fmtDate(s))}</option>`).join("");
   const top = (title, ps) => `<div class="tile"><div class="ttitle">${title}</div>${ps.length ? `<table><tbody>${ps.map(p =>
     `<tr><td>${name(p)}</td><td class="num dim">${p.b.age}y</td><td class="text">${esc(p.b.best)}</td>
@@ -1147,18 +1307,16 @@ function renderDevelopment() {
       <div><b>${left.length}</b><span>left${left.length ? ": " + left.map(p => esc(p.name.split(" ").pop())).join(", ") : ""}</span></div>
     </div>
     <div class="advice">${devAdvice(both)}</div>
-    <div class="sub">Squad attributes, summed over the players compared: rose most ${tot.filter(t => t[1] > 0).slice(0, 5).map(([k, v]) =>
-      `<span class="t4">+${v}</span> ${esc(k)}`).join(", ") || "–"} · fell most ${tot.filter(t => t[1] < 0).reverse().slice(0, 5).map(([k, v]) =>
-      `<span class="t0">−${Math.abs(v)}</span> ${esc(k)}`).join(", ") || "–"}</div></div>
+    <div class="sub">Squad attributes by category, summed over the players compared:</div>
+    <div class="devcats">${catSummary || `<div class="sub">No attribute changed.</div>`}</div></div>
   ${top("Biggest risers", both.filter(p => p.ds > 0.05).slice(0, 5))}
   ${top("Biggest fallers", both.filter(p => p.ds < -0.05).reverse().slice(0, 5))}
   <div class="tile wide"><div class="ttitle">Every player <span class="sub">score at their best position, then and now</span></div>
     <table><thead><tr><th>Player</th><th class="num">Age</th><th>Best</th><th class="num">Score</th><th class="num">±</th>
-      <th class="num">vs Age ±</th><th>Attributes up</th><th>Attributes down</th></tr></thead><tbody>${both.map(p =>
+      <th class="num">vs Age ±</th>${catsUsed.map(g => `<th>${g}</th>`).join("")}</tr></thead><tbody>${both.map(p =>
       `<tr><td>${name(p)}</td><td class="num">${p.b.age}</td><td class="text">${esc(p.b.best)}${p.a.best !== p.b.best ? ` <span class="sub">was ${esc(p.a.best)}</span>` : ""}</td>
        <td class="num">${p.a.score.toFixed(1)} → ${p.b.score.toFixed(1)}</td><td class="num ${cls(p.ds)}">${sign(p.ds)}</td>
-       <td class="num ${cls(p.dv)}">${sign(p.dv)}%</td><td class="wrap">${p.up.length ? chips(p.up) : "<span class=\"dim\">–</span>"}</td>
-       <td class="wrap">${p.down.length ? chips(p.down) : "<span class=\"dim\">–</span>"}</td></tr>`).join("")}</tbody></table></div>`;
+       <td class="num ${cls(p.dv)}">${sign(p.dv)}%</td>${catsUsed.map(g => catCell(p, g)).join("")}</tr>`).join("")}</tbody></table></div>`;
   const keep = () => { try { localStorage.setItem(DEV_STORE, JSON.stringify([devFrom, devTo])); } catch (e) {} renderDevelopment(); };
   document.getElementById("devfrom").onchange = e => { devFrom = e.target.value; keep(); };
   document.getElementById("devto").onchange = e => { devTo = e.target.value; keep(); };
@@ -1491,8 +1649,28 @@ for (const overlay of [help, detail]) overlay.addEventListener("click", e => { i
 if (PAGE.endsWith("staff")) input.title = "Type a name, or filters like job:coach PosTct>=12 personality:prof";
 const DRAW = { filters: renderFilters, staff_filters: renderFilters, development: renderDevelopment, analysis: renderAnalysis,
                compare: renderCompare, formations: renderFormationsPage, attributes: renderAttributes, guide: renderGuide };
+// fold the long tables in tiles (Analysis, the Search pages, Development): their first rows, then "Show all (N)"
+const FOLD_AT = { formations: 8, analysis: 8, filters: 12, staff_filters: 10, development: 15 };
+function foldLong() {
+  const n = FOLD_AT[PAGE];
+  if (!n) return;
+  document.querySelectorAll("#main .tile table:not([data-fold])").forEach(t => {
+    const rows = [...t.tBodies[0]?.rows || []];
+    t.dataset.fold = "1";
+    if (rows.length <= n + 2) return;
+    rows.slice(n).forEach(r => r.classList.add("folded"));
+    const tr = t.tBodies[0].insertRow(), td = tr.insertCell();
+    tr.className = "foldrow"; td.colSpan = rows[0].cells.length;
+    td.innerHTML = `<a>Show all (${rows.length}) ▾</a>`;
+    td.firstChild.onclick = () => { const open = !t.classList.toggle("open");
+      rows.slice(n).forEach(r => r.classList.toggle("folded", open));
+      td.firstChild.textContent = open ? `Show all (${rows.length}) ▾` : "Show fewer ▴"; };
+  });
+}
+new MutationObserver(foldLong).observe(document.getElementById("main"), { childList: true, subtree: true });
 if (PAGE === "squad") renderLineup();
 (DRAW[PAGE] || render)();
+foldLong();
 compareTray();
 // The app's bridge (pywebview.api) can arrive just after the page has drawn: draw the Attributes page again then
 window.addEventListener("pywebviewready", () => { if (PAGE === "attributes") renderAttributes(); });
