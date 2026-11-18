@@ -41,7 +41,7 @@
     <td valign="top"><img src="docs/screenshots/research.png" alt="Research"><br><sub><b>Research</b>: your best at each position against everyone you've scouted</sub></td>
   </tr>
   <tr>
-    <td valign="top"><img src="docs/screenshots/analysis.png" alt="Analysis"><br><sub><b>Analysis</b>: your team position by position, with recommendations: ageing starters, backups, youngsters</sub></td>
+    <td valign="top"><img src="docs/screenshots/analysis.png" alt="Analysis"><br><sub><b>Analysis</b>: your team position by position, and a Squad plan: what to do, most urgent first</sub></td>
     <td valign="top"><img src="docs/screenshots/development.png" alt="Development"><br><sub><b>Development</b>: how your players changed between two squad exports</sub></td>
   </tr>
   <tr>
@@ -49,7 +49,8 @@
     <td valign="top"><img src="docs/screenshots/staff.png" alt="Staff"><br><sub><b>Staff</b>: every staff member scored for every job</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center" valign="top"><img src="docs/screenshots/attributes.png" width="50%" alt="Attributes"><br><sub><b>Attributes</b>: one weight per attribute (1–20) for every save, to tune the scoring your way</sub></td>
+    <td valign="top"><img src="docs/screenshots/profile-attributes.png" alt="A player's attributes, like FM's"><br><sub><b>Attributes in a profile</b>: laid out like FM's, with the Key and Preferable ones at any position</sub></td>
+    <td valign="top"><img src="docs/screenshots/attributes.png" alt="Attributes"><br><sub><b>Attribute weights</b>: one weight per attribute (1–20) for every save, to tune the scoring your way</sub></td>
   </tr>
 </table>
 
