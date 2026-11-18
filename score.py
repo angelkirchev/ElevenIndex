@@ -6,6 +6,7 @@ player at each position and every staff member for each job, and writes the page
 import argparse
 import base64
 import csv
+import functools
 import html
 import json
 import os
@@ -53,7 +54,7 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.14.1"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.14.2"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
@@ -1170,6 +1171,19 @@ def with_info(pages, info):
 
 # The menu's left end: the icon and the name; and the icon again, large and faint, in the page's corner
 _LOGO = (APP / "logo.svg").read_text(encoding="utf-8")
+
+
+@functools.lru_cache(maxsize=None)
+def font_css():
+    """fonts/fonts.css with each font file built in (a data: URL): the pages' fonts (Inter, Barlow Condensed; Latin and
+    Latin Extended), with no internet needed. A page opened from disk can't load a font file beside it, so they're inline."""
+    folder = APP / "fonts"
+    if not (folder / "fonts.css").exists():
+        return ""
+    def inline(m):
+        data = base64.b64encode((folder / m.group(1)).read_bytes()).decode("ascii")
+        return f"url(data:font/woff2;base64,{data})"
+    return re.sub(r"url\(([\w.-]+\.woff2)\)", inline, (folder / "fonts.css").read_text(encoding="utf-8"))
 BRAND = ('<span class="brand">' + re.sub(r"<!--.*?-->\s*", "", _LOGO, flags=re.S) + '<span class="bname"><span class="bword">INDEX</span><small>Rate smarter. Build better.</small></span></span>'
          '<i class="watermark" style="background-image:url(data:image/svg+xml;base64,'
          + base64.b64encode(_LOGO.encode("utf-8")).decode() + ')"></i>')
@@ -1286,7 +1300,7 @@ def write_pages(save, config, cfg, pages):
                        "club": cfg.get("managed_club", ""), "squadBest": squad_best,
                        "ageBench": {str(k): v for k, v in w.get("age_benchmark", {}).items()}}, ensure_ascii=False)
     weights = json.dumps({"GK": w["gk"], **w["outfield"], **w.get("staff", {})}, ensure_ascii=False)  # the profile's ordering
-    fills = {"__THEME__": (APP / "theme.css").read_text(encoding="utf-8"), "__SITE__": site, "__WEIGHTS__": weights,
+    fills = {"__FONTS__": font_css(), "__THEME__": (APP / "theme.css").read_text(encoding="utf-8"), "__SITE__": site, "__WEIGHTS__": weights,
              "__SAVE__": save, "__HOME__": html.escape(cfg["short_name"])}
     templates = {name: (APP / name).read_text(encoding="utf-8") for name in ("template.html", "charts.html")}
     for page, (columns, data, *extra) in pages.items():

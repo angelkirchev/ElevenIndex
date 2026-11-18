@@ -12,7 +12,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 FM_FOLDERS = ["views", "player search filters", "staff search filters"]  # in the zip, as FM names its folders
-FILES = ["template.html", "charts.html", "theme.css", "logo.svg", "docs/ElevenIndex.ico", "docs/ca_costs_fm27.csv", "weights"]  # what score.py reads from the program folder (APP)
+FILES = ["template.html", "charts.html", "theme.css", "logo.svg", "fonts", "docs/ElevenIndex.ico", "docs/ca_costs_fm27.csv", "weights"]  # what score.py reads from the program folder (APP)
 
 
 def main():

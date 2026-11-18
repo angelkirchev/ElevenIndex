@@ -18,10 +18,11 @@ and track them over time. Everything runs locally; the user's data never leaves 
 - `import_export.py`: an FM27 Exporter file (CSV or HTML) → observation CSVs in the save. Players go to
   `saves/<save>/obs/<date>_<source>_<gk|outfield>.csv`, staff to `saves/<save>/staff/<date>_<source>.csv`.
 - `score.py`: reads a save's observations, scores them, and writes `out/<save>/<page>.html` from `template.html`
-  (every page but Research) and `charts.html` (Research), with `theme.css` and `logo.svg` inlined. Standard library only.
+  (every page but Research) and `charts.html` (Research), with `theme.css`, `logo.svg` and the fonts inlined
+  (`fonts/`: Inter and Barlow Condensed, Latin + Latin Extended, OFL; `font_css`), so pages need no internet. Standard library only.
   `python score.py [--save NAME] [--open PAGE]` rebuilds a save's pages.
 - `build.py`: `dist/ElevenIndex.exe` with PyInstaller (one file, windowed, `docs/ElevenIndex.ico`), holding app.py, the two
-  templates, the theme, the logo and `weights/`, and `dist/ElevenIndex-FM27-views-and-filters.zip` (`fm_zip`: `views/`,
+  templates, the theme, the logo, `fonts/` and `weights/`, and `dist/ElevenIndex-FM27-views-and-filters.zip` (`fm_zip`: `views/`,
   `player search filters/` and `staff search filters/` in FM's own folder names, to unzip into
   `Documents\Sports Interactive\Football Manager 27`). A release publishes both as assets (`ElevenIndex.exe`,
   `ElevenIndex-FM27-views-and-filters.zip`), which README's download links point to.
