@@ -54,8 +54,9 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.14.2"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.14.3"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
+CREATOR, CREATOR_URL = "Angelski", "https://community.sports-interactive.com/profile/428404-angelski/"  # About: the maker, on the official FM forum
 PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
          "last_staff", "staff_filters", "attributes", "guide"]
 # Each page's full name (the window title, the Guide)
@@ -1049,6 +1050,8 @@ def settings_tile(config, cfg, save):
     table = "".join(f"<tr><td class=\"text\">{html.escape(k)}</td><td>{html.escape(str(v))}</td></tr>" for k, v in rows)
     table += (f'<tr><td class="text">Project page</td><td><a href="{PROJECT_URL}" target="_blank" rel="noopener">'
               f'{PROJECT_URL.removeprefix("https://")}</a> (updates, README, report a problem)</td></tr>')
+    table += (f'<tr><td class="text">Created by</td><td><b>{CREATOR}</b> · <a href="{CREATOR_URL}" target="_blank" '
+              f'rel="noopener">profile on the official FM forum</a> (Sports Interactive Community)</td></tr>')  # the last line
     return {"key": "", "title": "About and your settings",
             "text": f"<table>{table}</table>Switch, start or delete saves with <b>Menu → Saves</b> (under the logo). Everything else is in "
                     f"<b>config.toml</b> (this computer) and <b>saves\\{html.escape(save)}\\save.toml</b> (this save) in the data "
