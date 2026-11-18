@@ -13,7 +13,7 @@ and track them over time. Everything runs locally; the user's data never leaves 
 - `app.py`: the window (pywebview). Import file… → `import_export.import_file` → `score.build` + `score.write_pages` →
   shows the page. Also the first-run setup screen, the new-save and error screens (`screen()`; a missing page opens the error one), the Saves panel (switch, new, delete: a deleted save waits in `saves/_deleted` for 14 days, restorable, then
   `purge_deleted` removes it), the Menu (under the logo, key M; recent exports, switch save, Back up / Restore a backup, the GitHub update check `check_update`), the exports watcher (`watch_exports`: a new export offers Import, or imports itself with Menu → Auto-import on, config.toml's `auto_import`), drag and drop (`on_drop`), Menu → Theme… (five colour themes: `THEMES` in score.py, `:root[data-theme]` in
-  theme.css, config.toml's `theme`, stamped on each page's `<html>`), Clear old lists, and the Attributes page's
+  theme.css, config.toml's `theme`, stamped on each page's `<html>`), and the Attributes page's
   save / switch / import / export. Its title is `ElevenIndex <VERSION> — Save: <save>`.
 - `import_export.py`: an FM27 Exporter file (CSV or HTML) → observation CSVs in the save. Players go to
   `saves/<save>/obs/<date>_<source>_<gk|outfield>.csv`, staff to `saves/<save>/staff/<date>_<source>.csv`.
@@ -37,7 +37,7 @@ and `ELEVENINDEX_HOME` when set (tests). Data: `config.toml`, `saves/`, `out/`, 
 ## Pages
 
 The top menu is `MENU` in score.py: keys 1-4, then A and G. **Squad** (1), **Players** (3) and **Staff** (4) are groups
-whose pages show as sub-tabs under the bar (`SUB_LABELS`); a group's key opens it on its first page (Lineup, Last import)
+whose pages show as sub-tabs under the bar (`SUB_LABELS`); a group's key opens it on its first page (Lineup, Last import, Team staff)
 and, pressed again, the next sub-tab (`NAV_SCRIPT`, `fmNavTarget`). `PAGE_LABELS` holds each page's full name. Each list
 page has a line about its list at the strip's right (`with_info`).
 
@@ -50,11 +50,11 @@ page has a line about its list at the strip's right (`with_info`).
 | 2 | charts | Research | per position, the listed players against your best; then one graph at a time |
 | 3 | elsewhere | Players › All players | everyone imported who isn't at the club |
 | 3 | last | Players › Last import | the latest player import only |
-| 3 | filters | Players › Search | per position, the squad's best and suggested search minimums (Filter) |
 | 3 | compare | Players › Compare | two players side by side (`compare_page`; two picks in localStorage, by the icon by a name, x or + Compare) |
+| 4 | team_staff | Staff › Team staff | your club's staff (its 4 tabs, ticked as they come in), your best at each job, and the Staff plan under it (`staffPlanHtml`) |
 | 4 | staff | Staff › All staff | every staff member, scored for each job |
 | 4 | last_staff | Staff › Last import | the latest staff import only |
-| 4 | staff_filters | Staff › Search | per job, the best staff imported and suggested minimums |
+| 4 | staff_compare | Staff › Compare | two staff side by side (`staffCompare`; picks in localStorage, `SCMP_STORE`, by the same icon, x or + Compare on the staff pages) |
 | a | attributes | Attributes | the attribute weights (1-20), editable, exported and imported as a list |
 | g | guide | Guide | how to use everything (`GUIDE`; Menu → About shows `settings_tile`) |
 

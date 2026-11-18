@@ -51,6 +51,17 @@ __THEME__
   .mlegend { display: flex; gap: 14px; justify-content: center; margin-top: 6px; font-size: 12px; color: var(--dim); }
   .mlegend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 3px; }
   .mlegend .lb { box-shadow: inset 0 0 0 2px #c5f04f; } .mlegend .lf { box-shadow: inset 0 0 0 1px #8bd3f7; }
+  .teamcard { margin: 0 0 10px; } .tsteps { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); gap: 20px; align-items: start; }
+  .tsteps ol { margin: 4px 0 0; padding-left: 20px; } .tsteps li { margin: 4px 0; }
+  .tsteps .k { padding: 0 5px; color: #0f1412; background: #e6e9e7; border-radius: 3px; font: 700 12px/1.5 var(--body); }
+  .tticks { padding: 10px 12px; background: var(--row); border: 1px solid var(--line); border-radius: 8px; }
+  .ttick { display: inline-flex; align-items: center; gap: 6px; margin: 4px 10px 4px 0; color: var(--dim); font-weight: 600; }
+  .ttick i { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1.5px solid var(--line); border-radius: 5px; font-style: normal; font-size: 12px; }
+  .ttick.ok { color: var(--fg); } .ttick.ok i { color: #0f1412; background: #c5f04f; border-color: #c5f04f; }
+  .tnote { margin-top: 6px; font-size: 13px; color: #cfd6d1; }
+  @media (max-width: 900px) { .tsteps { grid-template-columns: minmax(0, 1fr); } }
+  tr.morerow td { padding: 10px; text-align: center; color: var(--dim); font-size: 13px; }
+  tr.morerow a { color: var(--blue); font-weight: 600; cursor: pointer; }
   tr.catrow td { padding-top: 7px; color: var(--blue); font: 600 12px var(--body); letter-spacing: .06em; text-transform: uppercase;
     background: color-mix(in srgb, var(--fg) 6%, transparent); }
   .devpivot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
@@ -181,10 +192,6 @@ __THEME__
   kbd { display: inline-block; min-width: 22px; padding: 1px 6px; text-align: center; color: var(--fg); font: 600 12px var(--body);
         background: var(--hover); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; }
 
-  /* ---- Player search and Staff search ---- */
-  .tiles td.search { color: var(--cyan); font-weight: 700; }
-  .tiles tr.minor td { opacity: .45; }
-
   /* ---- Squad: the Lineup and Formations boxes, side by side and one height ---- */
   #squadtop { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-bottom: 10px; }
   #squadtop[hidden] { display: none; }
@@ -305,7 +312,7 @@ __THEME__
   .plan { margin: 10px 0 0; padding: 0; list-style: none; counter-reset: pl; }
   .plan li { display: flex; gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid var(--line); counter-increment: pl; }
   .plan li::before { content: counter(pl); min-width: 18px; color: var(--dim); font-size: 12px; text-align: right; }
-  .plan .ppos { min-width: 70px; color: var(--fg); } .plan .rec { font-size: 13px; }
+  .plan .ppos { min-width: 70px; color: var(--fg); } .plan .ppos[title] { min-width: 190px; } .plan .rec { font-size: 13px; }
   .ptag { flex: none; min-width: 84px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-align: center; color: #0f1412 !important; }
   .ptag.act { background: #e9a066; } .ptag.warn { background: #d8c38f; } .ptag.plan { background: #9aa49f; } .ptag.young { background: var(--cyan); }
   .why { margin-top: 3px; color: var(--dim); font-size: 12px; white-space: normal; max-width: 300px; } .why b { color: var(--purple); font-weight: 600; }
@@ -409,7 +416,7 @@ const LINEUP = __LINEUP__;
 const INFO = __INFO__;  // the line about the page's list, at the right of the strip under the bar (with_info() in score.py)
 if (INFO) { document.getElementById("pinfo").textContent = INFO; document.getElementById("fm-info").dataset.on = "1"; }  // the squad page's lineup panel (grid() in score.py), else null
 // pages drawn as tiles: no table to search or move around in
-const TABLE = !["formations", "analysis", "development", "filters", "compare", "staff_filters", "attributes", "guide"].includes(PAGE);
+const TABLE = !["formations", "analysis", "development", "compare", "attributes", "guide"].includes(PAGE);
 const input = document.getElementById("filter"), help = document.getElementById("help"), detail = document.getElementById("detail");
 const loanLabel = r => r.loan === "trial" ? "trial" : `loan ${r.loan}`;  // loan in, loan out, trial
 
@@ -438,6 +445,9 @@ const fmtDate = d => String(d).replace(/T(\d\d)(\d\d)$/, " $1:$2");
 const MEMORY = `fm:__SAVE__:${PAGE}`;
 let sort = { key: COLS.some(c => c.key === "vsAge") ? "vsAge" : COLS.find(c => c.num && c.fmt)?.key, dir: -1 };
 let cur = { r: 0, c: 0 }, view = [];
+// big lists: draw the first rows only, more as you scroll (search and sort still cover everyone)
+const PAGE_ROWS = 300;
+let shown = PAGE_ROWS;
 try {
   const kept = JSON.parse(localStorage.getItem(MEMORY) || "{}");
   if (COLS.some(c => c.key === kept.sortKey)) sort = { key: kept.sortKey, dir: kept.dir };
@@ -513,7 +523,9 @@ function cellHtml(r, c, marks) {
 function render() {
   const { tests, ok } = compileSearch(input.value);
   input.classList.toggle("bad", !ok);
+  const before = view.length;
   view = DATA.filter(r => tests.every(test => test(r))).sort(byColumn);
+  if (view.length !== before) shown = PAGE_ROWS;  // a new search: start from the top again
   cur = { ...cur, r: clamp(cur.r, 0, view.length - 1), c: clamp(cur.c, 0, COLS.length - 1) };
   document.getElementById("count").textContent = view.length < DATA.length ? `showing ${view.length}` : "";  // while searching
   document.getElementById("head").innerHTML = COLS.map((c, ci) => {
@@ -521,9 +533,18 @@ function render() {
     const full = c.title && c.title !== c.label ? ` data-full="${esc(c.title)}"` : "";  // a short label's full name (Staff: the jobs)
     return `<th data-key="${c.key}" class="${marks.filter(Boolean).join(" ")}"${full}>${c.label}</th>`;
   }).join("");
-  document.getElementById("body").innerHTML = view.map((r, ri) => `<tr class="${ri === cur.r ? "currow" : ""}">` +
+  if (cur.r >= shown) shown = Math.ceil((cur.r + 1) / PAGE_ROWS) * PAGE_ROWS;  // the cursor went past: draw down to it
+  const upto = Math.min(view.length, shown);
+  document.getElementById("body").innerHTML = view.slice(0, upto).map((r, ri) => `<tr class="${ri === cur.r ? "currow" : ""}">` +
     COLS.map((c, ci) => cellHtml(r, c, [ri === cur.r && ci === cur.c && "cur", c.key === sort.key && "sortcol"].filter(Boolean).join(" "))).join("") +
-    "</tr>").join("");
+    "</tr>").join("") + (upto < view.length ? `<tr class="morerow"><td colspan="${COLS.length}">Showing ${upto.toLocaleString()} of ${
+      view.length.toLocaleString()} · <a>Show ${Math.min(PAGE_ROWS, view.length - upto)} more</a> (or scroll down; search to narrow it)</td></tr>` : "");
+  const more = document.querySelector("#body tr.morerow");
+  if (more) {
+    const grow = () => { shown += PAGE_ROWS; render(); };
+    more.querySelector("a").onclick = grow;
+    new IntersectionObserver((es, ob) => { if (es.some(x => x.isIntersecting)) { ob.disconnect(); grow(); } }, { rootMargin: "400px" }).observe(more);
+  }
   if (render.done) document.querySelector("td.cur")?.scrollIntoView({ block: "nearest", inline: "nearest" });  // not when the page opens
   render.done = true;
   placeColTip();
@@ -541,7 +562,7 @@ const MOVES = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRi
 const TABLE_KEYS = {
   s: () => sortOn(cur.c), c: () => document.execCommand("copy"), "/": () => input.focus(), f: () => input.focus(),
   Enter: () => view[cur.r] && showDetail(view[cur.r]), Escape: () => { input.value = ""; render(); },
-  x: () => { const r = view[cur.r]; if (r && !("job" in r)) { flashCount(fmCompareToggle(r.name)); render(); } },
+  x: () => { const r = view[cur.r]; if (r) { flashCount(fmCompareToggle(r.name)); render(); } },
 };
 function flashCount(text) {  // a word in the count's place for a moment (copied, added to Compare)
   const count = document.getElementById("count");
@@ -787,6 +808,18 @@ function profileAttributes(r, s, groups, isStaff, at, tab) {
   const select = `<select class="aposSel">${groups.map(g => `<option value="${g}"${g === at ? " selected" : ""}>${esc(g)}</option>`).join("")}</select>`;
   return `<div class="dhead">Key and preferable attributes at ${select}</div><div class="acols">${cols.map(c => `<div>${c}</div>`).join("")}</div>${legend}`;
 }
+// a staff member from your lists: the jobs where he'd be your best (SITE.staffBest), and over whom
+function staffForYou(r, jobs) {
+  const best = SITE.staffBest || {};
+  if (!SITE.club || r.club === SITE.club || !Object.keys(best).length) return "";
+  const gains = jobs.filter(([k, v]) => best[k] && v > best[k][1] + 0.05).map(([k, v]) => ({ k, v, who: best[k][0], d: v - best[k][1] }))
+    .sort((a, b) => b.d - a.d);
+  const none = jobs.filter(([k]) => !best[k]).map(([k]) => k);
+  if (!gains.length && !none.length) return `<div class="fit"><b>For you:</b> he wouldn't be your best at any job.</div>`;
+  const parts = gains.slice(0, 3).map(g => `<b>${esc(colLabel(g.k))}</b> over ${esc(g.who.split(" ").pop())} (<b>+${g.d.toFixed(1)}</b>)`);
+  return `<div class="fit up"><b>For you:</b> ${parts.length ? `he'd be your best at ${parts.join(", ")}` : ""}${parts.length && none.length ? "; " : ""}${
+    none.length ? `you have nobody scored at ${none.slice(0, 3).map(k => esc(colLabel(k))).join(", ")}` : ""}.</div>`;
+}
 function staffOverview(r, s, groups) {
   const a = s.attrs, jobs = groups.map(k => [k, s[k]]).filter(([, v]) => v != null).sort((x, y) => y[1] - x[1]);
   const best = jobs[0]?.[0], w = WEIGHTS[best] || {};
@@ -796,6 +829,7 @@ function staffOverview(r, s, groups) {
   const chip = k => `<span class="chip">${esc(k)} <b class="${attrTier(a[k])}">${a[k]}</b></span>`;
   return `<div class="dcards">${card("Best job", best ? `${esc(colLabel(best))} <b class="${stier(jobs[0][1])}">${jobs[0][1].toFixed(1)}</b>` : "–", best ? levelWord(jobs[0][1]) : "")}
       ${card("Preferred job", esc(r.job || "–"))}${card("Personality", esc(r.personality || "–"))}${card("Age", r.age ?? "–")}</div>
+    ${staffForYou(r, jobs)}
     <div class="dgrid"><div><div class="dhead">Every job, best first</div><table class="dtable wide">${jobs.map(([k, v]) =>
       `<tr class="${k === best ? "on" : ""}"><td>${esc(colLabel(k))}</td><td class="num ${stier(v)}"><b>${v.toFixed(1)}</b></td><td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td></tr>`).join("")}</table></div>
       <div><div class="dhead">Strengths <span class="sub">(14+)</span></div><div class="chips">${strengths.length ? strengths.map(chip).join("") : `<span class="dim">none stand out</span>`}</div>
@@ -858,8 +892,7 @@ function showDetail(r) {
         Attributes: profileAttributes(r, newest, groups, isStaff), History: history };
   if (!sections[detailTab]) detailTab = "Overview";
   document.getElementById("detailbody").innerHTML = `
-    <div class="ttitle">${r.name} <span class="sub">· ${about.filter(Boolean).join(" · ")}</span>${isStaff ? "" :
-      ` <button class="cadd"></button>`}</div>
+    <div class="ttitle">${r.name} <span class="sub">· ${about.filter(Boolean).join(" · ")}</span> <button class="cadd"></button></div>
     <div class="dtabs">${Object.keys(sections).map(t => `<button data-tab="${t}" class="${t === detailTab ? "on" : ""}">${t}</button>`).join("")}</div>
     ${Object.entries(sections).map(([t, html]) => `<div class="dsec" data-sec="${t}"${t === detailTab ? "" : " hidden"}>${html}</div>`).join("")}`;
   const body = document.getElementById("detailbody");
@@ -878,28 +911,6 @@ function showDetail(r) {
   detail.classList.add("show");
 }
 
-// Player search and Staff search pages: DATA = one entry per position or job (filters() / staff_filters() in score.py):
-// the best there, every attribute with its weight and their values, and a suggested minimum (staff: FM's words)
-function renderFilters() {
-  input.style.display = "none"; document.getElementById("count").style.display = "none";
-  const main = document.getElementById("main");
-  main.className = "tiles";
-  if (!DATA.length) {
-    const how = PAGE === "staff_filters"
-      ? "Import staff first: in FM, use the <b>Search - Staff View</b> on a staff search or your club's Staff screen, press <b>F8</b>, then <b>Menu → Import file…</b>."
-      : "Import your squad first: press <b>F8</b> on your squad screen in FM, then <b>Menu → Import file…</b>.";
-    main.innerHTML = `<div class="tile"><div class="ttitle">Nothing to show yet</div><p>${how}</p></div>`;
-    return;
-  }
-  const who = p => `<th class="num">${esc(p.name)}<br><span class="sub">${[p.club, p.age != null && `${p.age}y`, p.score.toFixed(1)].filter(Boolean).join(" · ")}</span></th>`;
-  const line = row => `<tr class="${row.min == null ? "minor" : ""}"><td>${row.attr}</td>` +
-    row.values.map((v, i) => `<td class="num ${v == null ? "" : attrTier(v)}">${row.labels ? row.labels[i] : v ?? "–"}</td>`).join("") +
-    `<td class="num search">${row.min ?? "–"}</td></tr>`;
-  main.innerHTML = DATA.map(entry => `<div class="tile">
-    <div class="ttitle">${entry.pos}${entry.title ? ` <span class="sub">· ${entry.title}</span>` : ""}</div>
-    <table><thead><tr><th>Attribute</th>${entry.players.map(who).join("")}<th class="num search" title="the minimum to set in FM's search filter (Is At Least)">Filter</th></tr></thead>
-    <tbody>${entry.rows.map(line).join("")}</tbody></table></div>`).join("");
-}
 // ---- the pitch: Squad › Lineup and Squad › Formations ----
 // A formation (formations() in score.py): { name, shape: {pos: count}, players: [XI], second: [2nd XI], lines, xi, depth }
 const ROW_Y = { ST: 9, AMC: 27, "AML/AMR": 25, MC: 45, "ML/MR": 43, DM: 60, "WBL/WBR": 63, "DL/DR": 75, CD: 79, GK: 93 };
@@ -968,8 +979,7 @@ function lineupVerdict(f, weak) {
   const head = `Your eleven is <b>${levelWord(f.xi)}</b> (${f.xi.toFixed(2)}).`;
   if (!weak || f.xi - weak.v < 0.3) return `${head} No position is well below the rest: strengthen where you have no backup, or keep developing your youngsters (Analysis).`;
   return `${head} The weak spot is <b>${GROUP_NAMES[weak.pos] || weak.pos}</b> (${weak.v.toFixed(1)}, ${(f.xi - weak.v).toFixed(1)} below the eleven)` +
-    `${weak.missing ? ", with no backup" : ""}: find a ${esc(weak.pos)} with the minimums on <a href="filters.html">Players › Search</a>, ` +
-    `then see who's worth it on ${researchLink(weak.pos, "Research › " + esc(weak.pos))}.`;
+    `${weak.missing ? ", with no backup" : ""}: search FM for a ${esc(weak.pos)}, then see who's worth it on ${researchLink(weak.pos, "Research › " + esc(weak.pos))}.`;
 }
 function renderLineup() {
   const d = LINEUP;
@@ -1458,12 +1468,14 @@ function renderAttributes() {
   };
 }
 // ---- Players › Compare: two picks (kept per save), added from any list (x), a profile (+ Compare) or the page ----
-const COMPARE_STORE = "fm:__SAVE__:compare", COMPARE_AT = "fm:__SAVE__:compare-at";
+// on the staff pages the same buttons fill Staff › Compare, kept apart from the players' picks
+const COMPARE_STORE = "fm:__SAVE__:compare", COMPARE_AT = "fm:__SAVE__:compare-at", SCMP_STORE = "fm:__SAVE__:staff-compare";
+const CMP_STAFF = PAGE.includes("staff"), CMP_KEY = CMP_STAFF ? SCMP_STORE : COMPARE_STORE;
 function comparePicks() {
-  try { const v = JSON.parse(localStorage.getItem(COMPARE_STORE) || "[]"); return Array.isArray(v) ? [v[0] ?? null, v[1] ?? null] : [null, null]; }
+  try { const v = JSON.parse(localStorage.getItem(CMP_KEY) || "[]"); return Array.isArray(v) ? [v[0] ?? null, v[1] ?? null] : [null, null]; }
   catch (e) { return [null, null]; }
 }
-function setComparePicks(picks) { try { localStorage.setItem(COMPARE_STORE, JSON.stringify(picks)); } catch (e) {} compareTray(); }
+function setComparePicks(picks) { try { localStorage.setItem(CMP_KEY, JSON.stringify(picks)); } catch (e) {} compareTray(); }
 function fmCompareToggle(name) {  // in or out of Compare: two at most (remove one to pick another); says what happened
   const p = comparePicks(), i = p.indexOf(name);
   if (i >= 0) { p[i] = null; setComparePicks(p); return `${name} out of Compare`; }
@@ -1472,21 +1484,20 @@ function fmCompareToggle(name) {  // in or out of Compare: two at most (remove o
   p[free] = name; setComparePicks(p);
   return `${name} → Compare`;
 }
-function cmpIcon(r) {  // by a player's name in the lists: add to Compare, or take out; dimmed when two are picked
-  if ("job" in r) return "";
+function cmpIcon(r) {  // by a name in the lists (players or staff): add to Compare, or take out; dimmed when two are picked
   const p = comparePicks(), on = p.includes(r.name), full = !on && p.every(Boolean);
   return `<button class="cmpic${on ? " on" : ""}${full ? " full" : ""}" data-name="${esc(r.name)}" tabindex="-1" title="${
-    on ? "in Compare: click to take him out" : full ? "Compare has two players: remove one first" : "add to Compare"}">` +
+    on ? "in Compare: click to take him out" : full ? `Compare has two ${CMP_STAFF ? "staff" : "players"}: remove one first` : "add to Compare"}">` +
     `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5h9M8 2l3 3-3 3M14 11H5M8 8l-3 3 3 3"/></svg></button>`;
 }
-function compareTray() {  // the picks at the bottom left of the players' pages, with a way in
+function compareTray() {  // the picks at the bottom left of the list pages (players' or staff), with a way in
   document.getElementById("ctray")?.remove();
   const picks = comparePicks().filter(Boolean);
-  if (!picks.length || PAGE === "compare" || PAGE.includes("staff") || ["attributes", "guide"].includes(PAGE)) return;
+  if (!picks.length || ["compare", "staff_compare", "attributes", "guide"].includes(PAGE)) return;
   const tray = document.createElement("div");
   tray.id = "ctray";
   tray.innerHTML = `<span class="sub">Compare:</span> ${picks.map(n => `<b>${esc(n.split(" ").pop())}</b>`).join(" <span class='sub'>vs</span> ")}` +
-    `${picks.length < 2 ? ` <span class="sub">(pick one more)</span>` : ""} <a href="compare.html">Open ›</a> <button title="clear the picks">×</button>`;
+    `${picks.length < 2 ? ` <span class="sub">(pick one more)</span>` : ""} <a href="${CMP_STAFF ? "staff_compare" : "compare"}.html">Open ›</a> <button title="clear the picks">×</button>`;
   tray.querySelector("button").onclick = () => setComparePicks([null, null]);
   document.body.append(tray);
 }
@@ -1540,7 +1551,7 @@ function renderCompare() {
         d.positions.map(p => `<option${chosen === p ? " selected" : ""}>${p}</option>`).join("")}</select></span></div>
     <div class="cmpgrid">${card(A, 0)}<button id="cswap" title="swap the sides"${A || B ? "" : " disabled"}>⇄</button>${card(B, 1)}</div>
     ${A && B ? `<div class="advice">${compareVerdict(A, B, at, d.positions)}</div>` : ""}
-    <datalist id="cnames">${d.players.map(p => `<option value="${esc(p.name)}" label="${esc(`${p.club || "–"} · ${p.age ?? "–"}y · ${p.best} ${f1(p.score)}`)}"></option>`).join("")}</datalist></div>`;
+    <datalist id="cnames">${nameOptions(d.players, "")}</datalist></div>`;
   let body = "";
   if (A && B) {
     const better = (a, b) => a == null || b == null || a === b ? ["", ""] : a > b ? ["win", ""] : ["", "win"];
@@ -1598,6 +1609,7 @@ function renderCompare() {
   // the controls
   const set = (i, name) => { const p = comparePicks(); p[i] = name; cmpEdit[i] = false; setComparePicks(p); renderCompare(); };
   main.querySelectorAll(".cfind").forEach(f => {
+    f.addEventListener("input", () => { document.getElementById("cnames").innerHTML = nameOptions(d.players, f.value); });
     const pick = () => { const n = d.players.find(p => p.name.toLowerCase() === f.value.trim().toLowerCase()); if (n) set(+f.dataset.i, n.name); };
     f.addEventListener("change", pick);
     f.addEventListener("keydown", e => { if (e.key === "Enter") pick(); if (e.key === "Escape") { cmpEdit[+f.dataset.i] = false; renderCompare(); } });
@@ -1668,14 +1680,14 @@ document.getElementById("body").addEventListener("click", e => {
   if (icon) { if (!icon.classList.contains("full")) { fmCompareToggle(icon.dataset.name); render(); } return; }
   if (!getSelection().isCollapsed) return;  // leave a text selection alone: redrawing would lose it
   const cell = e.target.closest("td");
-  if (!cell) return;
+  if (!cell || cell.closest("tr.morerow")) return;
   cur = { r: cell.parentElement.rowIndex - 1, c: e.target.closest(".pl") ? 0 : cell.cellIndex };
   render();
   if (e.target.closest(".pl")) showDetail(view[cur.r]);  // a name opens the profile
 });
 document.getElementById("body").addEventListener("dblclick", e => {
   const row = e.target.closest("tr");
-  if (row) showDetail(view[row.rowIndex - 1]);
+  if (row && !row.classList.contains("morerow")) showDetail(view[row.rowIndex - 1]);
 });
 // Copy (c, or Ctrl+C with nothing selected): the marked row's name, without FM's "…" for a name cut short
 document.addEventListener("copy", e => {
@@ -1693,10 +1705,118 @@ document.addEventListener("copy", e => {
 input.addEventListener("input", () => { cur.r = 0; render(); });
 for (const overlay of [help, detail]) overlay.addEventListener("click", e => { if (e.target === overlay) overlay.classList.remove("show"); });
 if (PAGE.endsWith("staff")) input.title = "Type a name, or filters like job:coach PosTct>=12 personality:prof";
-const DRAW = { filters: renderFilters, staff_filters: renderFilters, development: renderDevelopment, analysis: renderAnalysis,
+// Staff › Team staff's Staff plan, under Your best at each job: d = { club, tabs, jobs } (staff_jobs in score.py):
+// what to do about your staff, most urgent first
+function staffPlanHtml(d) {
+  const items = [];
+  for (const j of d.jobs || []) {
+    const y = j.yours[0], l = j.lists, last = n => esc(n.split(" ").pop());
+    if (!y) items.push({ cls: "act", job: j, text: l ? `Nobody of yours scored here: <b>${esc(l[0])}</b> (${esc(l[1] || "free agent")}) is the best on your lists, ${l[2].toFixed(1)}.` : "Nobody of yours scored here, and nobody on your lists either: run a staff search for it." });
+    else if (l && l[2] - y[1] >= 1) items.push({ cls: "warn", job: j, text: `Hire <b>${esc(l[0])}</b> (${esc(l[1] || "free agent")}, ${l[2].toFixed(1)}): <b>+${(l[2] - y[1]).toFixed(1)}</b> on ${last(y[0])} (${y[1].toFixed(1)}).` });
+    else if (y[1] < 11) items.push({ cls: "plan", job: j, text: `${last(y[0])} is weak here (${y[1].toFixed(1)}): ${l ? `the best on your lists is ${l[2].toFixed(1)}; search for better.` : "run a staff search for this job."}` });
+  }
+  const URG = { act: 0, warn: 1, plan: 2 }, LABEL = { act: "Act now", warn: "Hire", plan: "Improve" };
+  items.sort((a, b) => URG[a.cls] - URG[b.cls]);
+  const fine = (d.jobs || []).length - items.length, nTeam = (d.jobs || []).some(j => j.yours.length);
+  const done = Object.values(d.tabs || {}).filter(Boolean).length;
+  return `<div class="ttitle">Staff plan <span class="sub">your staff at ${esc(d.club)} against the best on your staff lists, most urgent first</span></div>
+    ${!nTeam ? `<div class="advice">Import your own staff first: the steps above (4 tabs, one F8 each).</div>` :
+      `<div class="advice">${items.length ? `${items.filter(x => x.cls === "act").length} jobs with nobody, ${items.filter(x => x.cls === "warn").length} worth a hire, ${items.filter(x => x.cls === "plan").length} weak; ${fine} covered well.` : `Every job is covered well against your lists.`}${done < 4 ? ` Only ${done} of 4 staff tabs are in: export the rest for the full picture.` : ""}</div>
+      <ol class="plan">${items.map(x => `<li><span class="ptag ${x.cls}">${LABEL[x.cls]}</span><b class="ppos" title="${esc(x.job.name)}">${esc(x.job.name)}</b><span class="rec">${x.text}</span></li>`).join("")}</ol>`}`;
+}
+// a name picker's list: the first 60 names matching what's typed (all of them would be slow with thousands)
+function nameOptions(people, typed) {
+  const q = typed.trim().toLowerCase(), out = [];
+  for (const p of people) {
+    if (!q || p.name.toLowerCase().includes(q)) out.push(p);
+    if (out.length >= 60) break;
+  }
+  return out.map(p => `<option value="${esc(p.name)}" label="${esc(`${p.club || "free agent"}${p.age != null ? ` · ${p.age}y` : ""}${
+    p.best ? ` · ${p.best} ${p.score != null ? p.score.toFixed(1) : ""}` : p.job ? ` · ${p.job}` : ""}`)}"></option>`).join("");
+}
+// Staff › Compare: the same data as Team staff (d.everyone, d.jobs), laid out like Players › Compare: two cards (picked with
+// the icon by a name in a staff list, x, + Compare, or typed), a verdict, then every job and every attribute side by side
+function renderStaffCompare() {
+  input.style.display = "none"; document.getElementById("count").style.display = "none";
+  const main = document.getElementById("main"), d = DATA;
+  main.className = "tiles";
+  const people = d.everyone || [], byName = Object.fromEntries(people.map(p => [p.name, p]));
+  const picks = comparePicks().map(n => byName[n] ? n : null);
+  const [A, B] = picks.map(n => n && byName[n]);
+  const jobName = Object.fromEntries((d.jobs || []).map(j => [j.role, j.name]));
+  const bestJob = p => Object.entries(p.s).sort((x, y) => y[1] - x[1])[0] || null;  // [role, score]
+  const mine = p => p.club === d.club, surname = p => p.name.split(" ").pop();
+  const f1 = v => v == null ? "–" : v.toFixed(1);
+  const card = (p, i) => {
+    if (!p || cmpEdit[i]) return `<div class="ccard c${i} empty"><input class="cfind" data-i="${i}" list="cnames" placeholder="Type a staff member's name…">
+      <div class="sub">${p ? `Changing ${esc(p.name)}: pick someone else, or <a href="#" class="ccancel" data-i="${i}">keep him</a>.` :
+        `Or click the compare icon by a name in any staff list (or press <b>x</b>), or <b>+ Compare</b> in his profile.`}</div></div>`;
+    const bj = bestJob(p), bjName = bj ? jobName[bj[0]] || bj[0] : "";
+    return `<div class="ccard c${i}${mine(p) ? " mine" : ""}">
+      <div class="cname"><a href="#" class="cpick" data-i="${i}" title="pick someone else">${esc(p.name)}</a>
+        <button class="cx" data-i="${i}" title="empty this slot">×</button></div>
+      <div class="sub">${esc(p.club || "free agent")}${mine(p) ? " (yours)" : ""} · ${p.age ?? "–"}y · ${esc(p.job || "–")}${p.personality ? ` · ${esc(p.personality)}` : ""}</div>
+      <div class="cbig">${bj ? `<span class="sub">best job</span> ${esc(bjName)} <b class="${stier(bj[1])}">${f1(bj[1])}</b>` : `<span class="sub">no job scored yet</span>`}</div>
+      ${!mine(p) && bj ? `<button class="cbest" data-i="${i}" data-role="${esc(bj[0])}" title="your best at ${esc(bjName)} on the other side">vs my best at ${esc(bjName)}</button>` : ""}
+    </div>`;
+  };
+  const verdict = () => {
+    const shared = Object.keys(A.s).filter(r => B.s[r] != null), wa = shared.filter(r => A.s[r] > B.s[r]).length, wb = shared.filter(r => B.s[r] > A.s[r]).length;
+    const ra = (bestJob(A) || [])[0], a = ra && A.s[ra], b = ra && B.s[ra];
+    const at = ra && b != null ? (Math.abs(a - b) < 0.05 ? `At ${esc(jobName[ra] || ra)} (${esc(surname(A))}'s best job) they're level.` :
+      `At ${esc(jobName[ra] || ra)} (${esc(surname(A))}'s best job) <b>${esc(surname(a > b ? A : B))}</b> is better (+${Math.abs(a - b).toFixed(1)}).`) : "";
+    const extras = [wa !== wb ? `<b>${esc(surname(wa > wb ? A : B))}</b> is better at ${Math.max(wa, wb)} of ${shared.length} jobs` : "",
+      A.age != null && B.age != null && A.age !== B.age ? `<b>${esc(surname(A.age < B.age ? A : B))}</b> is ${Math.abs(A.age - B.age)} year${Math.abs(A.age - B.age) > 1 ? "s" : ""} younger` : ""].filter(Boolean);
+    return at + (extras.length ? " " + extras.join("; ") + "." : "");
+  };
+  const head = `<div class="tile wide"><div class="ttitle">Compare staff <span class="sub">B's ± is against A</span></div>
+    <div class="cmpgrid">${card(A, 0)}<button id="cswap" title="swap the sides"${A || B ? "" : " disabled"}>⇄</button>${card(B, 1)}</div>
+    ${A && B ? `<div class="advice">${verdict()}</div>` : ""}
+    <datalist id="cnames">${nameOptions(people, "")}</datalist></div>`;
+  let body;
+  if (A && B) {
+    const better = (a, b) => a == null || b == null || a === b ? ["", ""] : a > b ? ["win", ""] : ["", "win"];
+    const diff = (a, b) => a == null || b == null ? `<td class="num dim">–</td>` :
+      `<td class="num ${b > a ? "t4" : b < a ? "t0" : "dim"}" title="${esc(surname(B))} minus ${esc(surname(A))}">${Math.abs(b - a) < 0.05 ? "=" : (b > a ? "+" : "−") + Math.abs(b - a).toFixed(1)}</td>`;
+    const th = first => `<thead><tr><th>${first}</th><th class="num ca">${esc(surname(A))}</th><th class="num cb">${esc(surname(B))}</th><th class="num">±</th></tr></thead>`;
+    const jobs = (d.jobs || []).filter(j => A.s[j.role] != null || B.s[j.role] != null);
+    const jobsTable = `<table class="ctable">${th("Job")}<tbody>${jobs.map(j => { const a = A.s[j.role], b = B.s[j.role], [wa, wb] = better(a, b);
+      return `<tr><td>${esc(j.name)}</td><td class="num ${a == null ? "dim" : stier(a)} ${wa}">${f1(a)}</td><td class="num ${b == null ? "dim" : stier(b)} ${wb}">${f1(b)}</td>${diff(a, b)}</tr>`; }).join("")}</tbody></table>`;
+    const word = v => v == null ? ["–", "dim"] : (([, w, c]) => [w, c])(staffWord(v));
+    const attrTiles = Object.entries(STAFF_GROUPS).map(([g, ks]) => {
+      const rows = ks.filter(k => A.a[k] != null || B.a[k] != null).map(k => { const a = A.a[k], b = B.a[k], [wa, wb] = better(a, b), [xa, ca] = word(a), [xb, cb] = word(b);
+        return `<tr><td>${esc(k)}</td><td class="num ${ca} ${wa}">${xa}</td><td class="num ${cb} ${wb}">${xb}</td>${diff(a, b)}</tr>`; }).join("");
+      return rows ? `<div class="tile"><div class="ttitle">${g}</div><table class="ctable">${th("Attribute")}<tbody>${rows}</tbody></table></div>` : ""; }).join("");
+    body = `<div class="tile"><div class="ttitle">Every job <span class="sub"><span class="ka">■</span> ${esc(A.name)} · <span class="kb">■</span> ${esc(B.name)}</span></div>${jobsTable}</div>${attrTiles}`;
+  } else {
+    body = `<div class="tile wide"><div class="sub">Pick ${A || B ? "one more" : "two staff members"}: type a name above, click the compare icon by a name in any
+      staff list (Team staff, All staff, Last import; or press <b>x</b>), or <b>+ Compare</b> in a staff profile.</div></div>`;
+  }
+  main.innerHTML = head + body;
+  const set = (i, name) => { const p = comparePicks(); p[i] = name; cmpEdit[i] = false; setComparePicks(p); renderStaffCompare(); };
+  main.querySelectorAll(".cfind").forEach(f => {
+    f.addEventListener("input", () => { document.getElementById("cnames").innerHTML = nameOptions(people, f.value); });
+    const pick = () => { const n = people.find(p => p.name.toLowerCase() === f.value.trim().toLowerCase()); if (n) set(+f.dataset.i, n.name); };
+    f.addEventListener("change", pick);
+    f.addEventListener("keydown", e => { if (e.key === "Enter") pick(); if (e.key === "Escape") { cmpEdit[+f.dataset.i] = false; renderStaffCompare(); } });
+  });
+  main.querySelectorAll(".ccancel").forEach(a => a.onclick = e => { e.preventDefault(); cmpEdit[+a.dataset.i] = false; renderStaffCompare(); });
+  main.querySelectorAll(".cpick").forEach(a => a.onclick = e => { e.preventDefault(); cmpEdit[+a.dataset.i] = true; renderStaffCompare();
+    main.querySelector(`.cfind[data-i="${a.dataset.i}"]`)?.focus(); });
+  main.querySelectorAll(".cx").forEach(b => b.onclick = () => set(+b.dataset.i, null));
+  main.querySelectorAll(".cbest").forEach(b => b.onclick = () => {
+    const j = (d.jobs || []).find(x => x.role === b.dataset.role), y = j && j.yours[0];
+    if (!y) { b.textContent = "nobody of yours scored there"; return; }
+    const i = +b.dataset.i, p = comparePicks(); p[1 - i] = y[0]; setComparePicks(p); renderStaffCompare();
+  });
+  const swap = document.getElementById("cswap");
+  if (swap) swap.onclick = () => { const [a, b] = comparePicks(); setComparePicks([b, a]); cmpEdit = [cmpEdit[1], cmpEdit[0]]; renderStaffCompare(); };
+  if (!A && !B) main.querySelector(".cfind")?.focus();
+}
+const DRAW = { staff_compare: renderStaffCompare, development: renderDevelopment, analysis: renderAnalysis,
                compare: renderCompare, formations: renderFormationsPage, attributes: renderAttributes, guide: renderGuide };
-// fold the long tables in tiles (Analysis, the Search pages, Development): their first rows, then "Show all (N)"
-const FOLD_AT = { formations: 8, analysis: 8, filters: 12, staff_filters: 10, development: 15 };
+// fold the long tables in tiles (Formations, Analysis, Development): their first rows, then "Show all (N)"
+const FOLD_AT = { formations: 8, analysis: 8, development: 15 };
 function foldLong() {
   const n = FOLD_AT[PAGE];
   if (!n) return;
@@ -1714,6 +1834,40 @@ function foldLong() {
   });
 }
 new MutationObserver(foldLong).observe(document.getElementById("main"), { childList: true, subtree: true });
+// Staff › Team staff: how to export your club's staff (4 tabs, one F8 each) and which tabs are in already
+if (PAGE === "team_staff" && LINEUP) {
+  const T = LINEUP, done = Object.values(T.tabs).filter(Boolean).length, all = Object.keys(T.tabs).length;
+  const card = document.createElement("div");
+  card.className = "tile teamcard";
+  card.innerHTML = `<div class="ttitle">Team staff <span class="sub">${esc(T.club)}'s own staff, from FM's club staff screen</span></div>
+    <div class="tsteps"><ol>
+      <li>In FM, open your club's <b>Staff</b> screen, then <b>Filter</b> → tick <b>All</b> (Senior Squad, U21, U18).</li>
+      <li>Turn on <b>Menu → Auto-import</b> here.</li>
+      <li>Press <span class="k">F8</span> on each tab: <b>Coaching</b>, <b>Medical</b>, <b>Mental</b>, <b>Scouting</b> (Contract isn't needed). Each one imports by itself and adds to the same staff.</li>
+    </ol>
+    <div class="tticks"><div class="dhead">${T.date ? `Exported ${esc(fmtDate(T.date))}` : "Nothing exported yet"} <span class="sub">${done} of ${all} tabs</span></div>
+      ${Object.entries(T.tabs).map(([tab, ok]) => `<span class="ttick ${ok ? "ok" : ""}"><i>${ok ? "✓" : ""}</i>${tab}</span>`).join("")}
+      <div class="tnote">${done === all ? `<b class="t4">Complete:</b> ${T.people} people, every job scored below.` :
+        done ? `Still to export: <b>${Object.entries(T.tabs).filter(([, ok]) => !ok).map(([t]) => t).join(", ")}</b>.` : "Start with Coaching."}</div></div></div>`;
+  document.getElementById("main").before(card);
+  if (T.jobs && T.jobs.length) {
+    const jobsTile = document.createElement("div");
+    jobsTile.className = "tile teamcard";
+    const row = j => { const y = j.yours[0], n = j.yours[1], l = j.lists, d = y && l ? l[2] - y[1] : null;
+      return `<tr><td title="${esc(j.name)}"><b>${esc(j.name)}</b></td>
+        <td>${y ? `${esc(y[0])} <b class="${stier(y[1])}">${y[1].toFixed(1)}</b>` : `<span class="t0">nobody</span>`}</td>
+        <td class="dim">${n ? `${esc(n[0])} ${n[1].toFixed(1)}` : "–"}</td>
+        <td>${l ? `${esc(l[0])} <span class="sub">${esc(l[1] || "free agent")}</span> <b class="${stier(l[2])}">${l[2].toFixed(1)}</b>` : `<span class="dim">–</span>`}</td>
+        <td class="num ${d == null ? "dim" : d > 0.05 ? "t0" : "t4"}">${d == null ? "–" : (d > 0 ? "+" : "−") + Math.abs(d).toFixed(1)}</td></tr>`; };
+    jobsTile.innerHTML = `<div class="ttitle">Your best at each job <span class="sub">your staff, and the best on your staff lists (± = how much better they are; red = worth a look)</span></div>
+      <table><thead><tr><th>Job</th><th>Your best</th><th>Next</th><th>Best on your lists</th><th class="num">±</th></tr></thead><tbody>${T.jobs.map(row).join("")}</tbody></table>`;
+    document.getElementById("main").before(jobsTile);
+    const plan = document.createElement("div");
+    plan.className = "tile teamcard";
+    plan.innerHTML = staffPlanHtml(T);
+    document.getElementById("main").before(plan);
+  }
+}
 if (PAGE === "squad") renderLineup();
 (DRAW[PAGE] || render)();
 foldLong();

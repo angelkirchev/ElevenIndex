@@ -491,7 +491,7 @@ function summary(people) {
     (empty.length ? `<span class="faint">No player of yours plays ${empty.join(", ")}.</span>` : "") +
     (listed ? `<br><b>Next step:</b> ` + (biggest && biggest.cheapest ? `at <b>${biggest.pos}</b>, ${biggest.cheapest.name} (${biggest.cheapest.scores[biggest.pos].toFixed(1)}, ${fmtWage(biggest.cheapest.wage)}) ` +
       `is the cheapest who beats ${last(biggest.mine.name)}: worth a scout report.` : upgrades.length ? `look at ${upgrades.map(r => r.pos).join(", ")}: someone listed beats your best there.` :
-      `no one here beats your eleven: search for better players (Players › Search has the minimums to type into FM).`) : "");
+      `no one here beats your eleven: search FM for better players and import them.`) : "");
   const body = rows.map(r => `<tr data-pos="${r.pos}" class="${r.pos === choice.pos ? "on" : ""}">
       <td class="pos-cell">${r.pos}</td>
       <td class="num">${r.them.length || "–"}</td>

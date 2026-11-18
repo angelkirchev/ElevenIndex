@@ -54,24 +54,24 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.15.3"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.16.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://github.com/angelkirchev/ElevenIndex"
 CREATOR, CREATOR_URL = "Angelski", "https://community.sports-interactive.com/profile/428404-angelski/"  # About: the maker, on the official FM forum
-PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "filters", "compare", "staff",
-         "last_staff", "staff_filters", "attributes", "guide"]
+PAGES = ["squad", "formations", "analysis", "development", "charts", "elsewhere", "last", "compare", "staff",
+         "last_staff", "team_staff", "staff_compare", "attributes", "guide"]
 # Each page's full name (the window title, the Guide)
-PAGE_LABELS = {"squad": "Lineup", "formations": "Formations", "development": "Development", "elsewhere": "All players", "last": "Last player import", "filters": "Player search",
-               "charts": "Research", "compare": "Compare players", "staff": "All staff", "last_staff": "Last staff import", "staff_filters": "Staff search",
+PAGE_LABELS = {"squad": "Lineup", "formations": "Formations", "development": "Development", "elsewhere": "All players", "last": "Last player import",
+               "charts": "Research", "compare": "Compare players", "staff": "All staff", "last_staff": "Last staff import", "team_staff": "Team staff", "staff_compare": "Compare staff",
                "analysis": "Analysis", "attributes": "Attributes", "guide": "Guide"}
 # The top menu: (key, page) or (key, group name, its pages, the page it opens on), None = a divider. A group's pages are
 # sub-tabs under the bar; its key opens the group on its first page (Lineup, Last import…), and pressed again moves to the next.
 MENU = [("1", "Squad", ["squad", "formations", "analysis", "development"], "squad"), ("2", "charts"),
-        ("3", "Players", ["elsewhere", "last", "filters", "compare"], "last"),
-        ("4", "Staff", ["staff", "last_staff", "staff_filters"], "last_staff"),
+        ("3", "Players", ["elsewhere", "last", "compare"], "last"),
+        ("4", "Staff", ["team_staff", "staff", "last_staff", "staff_compare"], "team_staff"),
         None, ("a", "attributes"), ("g", "guide")]
 SUB_LABELS = {"squad": "Lineup", "formations": "Formations", "analysis": "Analysis", "development": "Development",
-              "elsewhere": "All players", "last": "Last import", "filters": "Search", "compare": "Compare",
-              "staff": "All staff", "last_staff": "Last import", "staff_filters": "Search"}
+              "elsewhere": "All players", "last": "Last import", "compare": "Compare",
+              "staff": "All staff", "last_staff": "Last import", "team_staff": "Team staff", "staff_compare": "Compare"}
 META = {"Name", "Club", "Age", "Position", "Left Foot", "Preferred Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating",
         "Division"}  # every other column is an attribute
 STAFF_META = {"Name", "Club", "Age", "Job", "Personality"}  # a staff file's other columns are attributes
@@ -84,10 +84,6 @@ def foot_word(preferred):
     return "Either" if p.startswith("either") else "Left" if p.startswith("left") else "Right" if p.startswith("right") else None
 MIN_KNOWN_WEIGHT = 0.85  # a player is scored at a position when attributes carrying 85% of its weight are known (FM shows "-" for unscouted ones)
 PARTIAL_SQUAD = re.compile(r"-(u\d+s?|reserves)$")  # an export of only part of the club (U18s, U21s, reserves)
-# Filters page (players): search minimums for the fewest top-weighted attributes making up this share of a position's
-# weight, at least SEARCH_MIN_ATTRS and at most SEARCH_MAX_ATTRS: few where a handful of attributes dominate, more where
-# the weight is spread out (keepers)
-SEARCH_WEIGHT_SHARE, SEARCH_MIN_ATTRS, SEARCH_MAX_ATTRS = 0.85, 3, 8
 CHART_ATTRS, CHART_GK_ATTRS = 8, 5  # Research: a position's top attributes by weight, in a player's tooltip
 # FM's four attribute groups, for Research's Technical / Mental / Physical / Goalkeeping charts
 ATTRIBUTE_GROUPS = {
@@ -375,11 +371,17 @@ def csv_rows(folder):
 def weighted(attrs, groups, min_known=1.0):
     """Each group's Σ(attribute × weight) / Σ(weights) over its known attributes, for the groups where those carry at
     least min_known of the total weight (1.0: every attribute must be known)."""
-    scores = {}
+    scores, get = {}, attrs.get
     for key, w in groups.items():
-        known = {a: x for a, x in w.items() if a in attrs}
-        if known and sum(known.values()) >= min_known * sum(w.values()):
-            scores[key] = sum(attrs[a] * x for a, x in known.items()) / sum(known.values())
+        total = known = s = 0.0  # one pass: fast with tens of thousands of players
+        for a, x in w.items():
+            total += x
+            v = get(a)
+            if v is not None:
+                known += x
+                s += v * x
+        if known and known >= min_known * total:
+            scores[key] = s / known
     return scores
 
 
@@ -505,25 +507,6 @@ def player_cols(w, with_club):
             *((col("rating", "Rating", num=True, fmt="f2"),) if with_club else ())]
 
 
-def filters(squad, w):
-    """The player search page: per position, the squad's best there (three, keepers too) and a suggested FM search
-    minimum for the attributes that carry most of the position's weight (search_attrs): their average, rounded."""
-    pages = []
-    for pos, weights in {"GK": w["gk"], **w["outfield"]}.items():
-        top = sorted((r for r in squad if r.get(pos) is not None), key=lambda r: r[pos], reverse=True)[:3]  # your best three, keepers too
-        if not top:
-            continue
-        searched = search_attrs(weights)
-        rows = []
-        for attr, weight in sorted(weights.items(), key=lambda item: item[1], reverse=True):
-            values = [r["history"][-1]["attrs"].get(attr) for r in top]
-            known = [v for v in values if v is not None]
-            minimum = int(sum(known) / len(known) + 0.5) if known and attr in searched else None
-            rows.append({"attr": attr, "weight": weight, "values": values, "min": minimum})
-        pages.append({"pos": pos, "rows": rows, "players": [{"name": r["name"], "age": r["age"], "score": r[pos]} for r in top]})
-    return pages
-
-
 def charts(rows, squad, w, cfg, last=frozenset()):
     """The Research page: every player (yours flagged squad), each with his position scores and the attributes its menus
     can show (each position's top ones by weight), to compare with your latest import or everyone."""
@@ -597,15 +580,7 @@ def fm_sides(text):
     return out
 
 
-def search_attrs(weights):
-    """The attributes worth a minimum in FM's search: the top-weighted ones making up SEARCH_WEIGHT_SHARE of the weight."""
-    ranked, total, picked, share = sorted(weights.items(), key=lambda kv: -kv[1]), sum(weights.values()), [], 0
-    for attr, weight in ranked:
-        if len(picked) >= SEARCH_MAX_ATTRS or (share >= SEARCH_WEIGHT_SHARE * total and len(picked) >= SEARCH_MIN_ATTRS):
-            break
-        picked.append(attr)
-        share += weight
-    return set(picked)
+
 
 
 # Common FM formations, as the weights' position groups (a wide pair counts twice: one left, one right). Roles and duties
@@ -904,36 +879,56 @@ def staff_row(name, person, roles):
     return row
 
 
+# FM's club staff screen: its tabs with attributes (Contract has none), each exported with F8 on its own
+STAFF_TABS = {"Coaching": ["Attacking", "Defending", "Fitness", "Goalkeeping", "Possession", "Set Pieces", "Tactical", "Technical",
+                           "Working With Youngsters"],
+              "Medical": ["Physiotherapy", "Sports Science"],
+              "Mental": ["Adaptability", "Authority", "Determination", "Motivating", "People Management"],
+              "Scouting": ["Analysing Data", "Judging Player Ability", "Judging Player Potential", "Judging Staff Ability", "Negotiating", "Tactical Knowledge"]}
+
+
+def staff_tabs(staff_dir, club):
+    """The newest export day of your club's staff screen: {date, tabs: {tab: True when that day's file has its attributes}}."""
+    slug = re.sub(r"[^a-z0-9]+", "-", club.lower()).strip("-") + "-staff"
+    files = sorted(staff_dir.glob(f"*_{slug}.csv")) if staff_dir.is_dir() else []
+    if not files:
+        return {"date": None, "tabs": {t: False for t in STAFF_TABS}, "people": 0}
+    with open(files[-1], newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    filled = {k for r in rows for k, v in r.items() if v}
+    return {"date": files[-1].name[:10], "people": len(rows), "tabs": {t: any(a in filled for a in attrs) for t, attrs in STAFF_TABS.items()}}
+
+
+SHOW_MAX = 8000  # imported players shown on the big pages; above it the lowest scored are left off them
+
+
+def keep_best(rows, cap=SHOW_MAX):
+    """The best `cap` rows by score, and a note for the page's info line ("" when nothing is left off)."""
+    if len(rows) <= cap:
+        return rows, ""
+    best = sorted(rows, key=lambda r: r.get("score") or 0, reverse=True)[:cap]
+    floor = best[-1].get("score") or 0
+    return best, f" · showing the best {cap:,} (scores from {floor:.1f}); {len(rows) - cap:,} below are left off to keep it quick"
+
+
+def staff_jobs(staff_rows, club, roles, names):
+    """Each job: [{role, name, yours: [[name, score, job], 2 best], lists: [name, club, score, age] best elsewhere}]."""
+    mine = [r for r in staff_rows if r["club"] == club]
+    rest = [r for r in staff_rows if r["club"] != club]
+    def top(rows, role, n):
+        return sorted((r for r in rows if r.get(role) is not None), key=lambda r: r[role], reverse=True)[:n]
+    return [{"role": role, "name": names.get(role, role),
+             "yours": [[r["name"], round(r[role], 2), r.get("job")] for r in top(mine, role, 2)],
+             "lists": next(([r["name"], r["club"], round(r[role], 2), r.get("age")] for r in top(rest, role, 1)), None)}
+            for role in roles]
+
+
 def staff_cols(roles, names=None):
     """The staff tables' columns: who, then a score per job (its full name as the title, [staff_names])."""
     def col(key, label, **more):
         return {"key": key, "label": label, **more}
     return [col("name", "Name"), col("club", "Club"), col("age", "Age", num=True), col("job", "Job"),
             col("personality", "Personality"), *(col(role, role, num=True, fmt="f1", title=(names or {}).get(role, role)) for role in roles)]
-
-
-def staff_filters(all_staff, roles, words, names):
-    """The staff search page: per job, the best three imported (any club) and a suggested FM search minimum, as FM's
-    word nearest the average, for the attributes that carry most of the job's weight (search_attrs)."""
-    def nearest_word(value):
-        return min(words, key=lambda word: abs(words[word] - value))
-    pages = []
-    for role, weights in roles.items():
-        top = sorted((r for r in all_staff if r.get(role) is not None), key=lambda r: r[role], reverse=True)[:3]
-        if not top:
-            continue
-        searched = search_attrs({a: x for a, x in weights.items() if x > 0})
-        rows = []
-        for attr, weight in sorted(weights.items(), key=lambda item: item[1], reverse=True):
-            values = [r["history"][-1]["attrs"].get(attr) for r in top]
-            known = [v for v in values if v is not None]
-            rows.append({"attr": attr, "weight": weight, "values": values,
-                         "labels": ["–" if v is None else nearest_word(v) for v in values],
-                         "min": nearest_word(sum(known) / len(known)) if known and attr in searched else None})
-        full = names.get(role)
-        pages.append({"pos": role, "title": full if full != role else None, "rows": rows,
-                      "players": [{"name": r["name"], "age": r["age"], "score": r[role], "club": r["club"]} for r in top]})
-    return pages
 
 
 def require_known(cfg, key, known, what):
@@ -1116,6 +1111,13 @@ def build(save, config):
     staff_batch, staff_named = set(cfg.get("last_staff_batch", [])), set(cfg.get("last_staff_names", []))
     last_staff = [r for r in staff_rows if staff[r["name"]]["files"] & staff_batch or r["name"] in staff_named]
 
+    # your own staff against the rest: for each job your best two, and the best on your lists (other clubs, free agents)
+    team_info = {"club": managed, **staff_tabs(save_dir / "staff", managed),
+                 "jobs": staff_jobs(staff_rows, managed, roles, w.get("staff_names", {})),
+                 # for Staff › Compare: everyone (yours first), each job's score and the attributes
+                 "everyone": [{"name": r["name"], "club": r["club"], "job": r.get("job"), "age": r.get("age"), "personality": r.get("personality"),
+                             "s": {k: round(r[k], 2) for k in roles if r.get(k) is not None}, "a": r["history"][-1]["attrs"]}
+                            for r in sorted(staff_rows, key=lambda r: (r["club"] != managed, -(r.get("score") or 0)))]}
     lineup = grid(squad, w, cfg, latest_intake(people, sources))
     # Lineup: per position, the best on your imported lists whose best position it is (to beat your starter)
     lineup["targets"] = {pos: [{"name": r["name"], "club": r["club"], "age": r["age"], "wage": r["wage"], "v": r[pos]}
@@ -1131,34 +1133,39 @@ def build(save, config):
             if re.match(r"\d{4}-\d\d-\d\d", f):
                 return f"exported {f[:10]}"
         return ""
-    many = lambda n, word: f"{n} {word}{'' if n == 1 else 's'}"
+    many = lambda n, word: f"{n:,} {word}{'' if n == 1 else 's'}"
+    # a very big save (tens of thousands imported): the lists, Compare and Research keep the best SHOW_MAX players by
+    # score, so pages stay quick; the rest still count in Analysis and the Lineup's targets
+    shown_others, hidden_note = keep_best(others)
     info = {
         "squad": f"{many(len(squad), 'player')} at {managed} · click a position on the pitch for everyone who plays it",
         "formations": "20 shapes, ranked by how well your squad fits them · click one for its eleven and the numbers",
         "analysis": "your team position by position, against the players you've imported",
         "development": "how your players changed between two squad exports",
-        "elsewhere": f"{many(len(others), 'player')} at other clubs, from everything you've imported",
+        "elsewhere": f"{many(len(others), 'player')} at other clubs, from everything you've imported" + hidden_note,
         "last": " · ".join(filter(None, [many(len(last_rows), 'player'), import_label(batch)])) + " (your latest import)",
-        "filters": "your best at each position, and the minimums to set in FM's player search (Filter)",
         "compare": "two players side by side: pick them with the icon by a name in any list",
         "staff": f"{len(staff_rows)} staff, from every staff import",
         "last_staff": " · ".join(filter(None, [f"{len(last_staff)} staff", import_label(staff_batch)])) + " (your latest staff import)",
-        "staff_filters": "the best staff for each job, and FM's words to search for",
+        "team_staff": f"{sum(r['club'] == managed for r in staff_rows)} staff at {managed} · your club's staff screen, its 4 tabs",
+        "staff_compare": "two staff side by side: every job, then their attributes",
     }
     return cfg, with_info({
         "squad": (players_table, squad, {"lineup": lineup}),
         "formations": ([], {"formations": lineup["formations"]}),
         "development": (players_table, development(rows, people, sources, managed, squad)),
         "analysis": (players_table, analysis(squad, others, lineup, w)),
-        "elsewhere": (others_table, others),
+        "elsewhere": (others_table, shown_others),
         "last": (others_table, last_rows),
-        "filters": ([], filters(squad, w)),
-        "charts": ([], charts(rows, squad, w, cfg, {r["name"] for r in last_rows if r["club"] != managed}
+        "charts": ([], charts(squad + shown_others, squad, w, cfg, {r["name"] for r in last_rows if r["club"] != managed}
                               or latest_search(people, sources))),
-        "compare": ([], compare_page(rows, squad, w, cfg)),
+        "compare": ([], compare_page(squad + shown_others, squad, w, cfg)),
         "staff": (staff_cols(roles, w.get("staff_names", {})), staff_rows),
         "last_staff": (staff_cols(roles, w.get("staff_names", {})), last_staff),
-        "staff_filters": ([], staff_filters(staff_rows, roles, words, w.get("staff_names", {}))),
+        # your own staff (FM's club staff screen, its 4 tabs exported one by one): which tabs today's file holds
+        "team_staff": (staff_cols(roles, w.get("staff_names", {})), [r for r in staff_rows if r["club"] == managed],
+                       {"lineup": team_info}),
+        "staff_compare": ([], team_info),
         "attributes": ([], attributes_page(cfg, w, rows, save_dir)),
         "guide": ([], GUIDE),
     }, info)
@@ -1198,7 +1205,7 @@ def nav_keys():
 
 
 def nav_where():
-    """page -> where it is in the menu, e.g. "5 · Players › Search" (the Guide's tiles)."""
+    """page -> where it is in the menu, e.g. "3 · Players › Compare" (the Guide's tiles)."""
     where = {}
     for item in filter(None, MENU):
         if len(item) > 2:
@@ -1301,6 +1308,7 @@ def write_pages(save, config, cfg, pages):
     site = json.dumps({"where": nav_where(), "currency": config.get("currency", "£"),
                        "gameDate": max(stamps, default=None),  # the newest date: the profile's "years ago"
                        "club": cfg.get("managed_club", ""), "squadBest": squad_best,
+                       "staffBest": {j["role"]: j["yours"][0][:2] for j in (pages.get("staff_compare", ([], {}))[1] or {}).get("jobs", []) if j["yours"]},
                        "ageBench": {str(k): v for k, v in w.get("age_benchmark", {}).items()}}, ensure_ascii=False)
     weights = json.dumps({"GK": w["gk"], **w["outfield"], **w.get("staff", {})}, ensure_ascii=False)  # the profile's ordering
     fills = {"__FONTS__": font_css(), "__THEME__": (APP / "theme.css").read_text(encoding="utf-8"), "__SITE__": site, "__WEIGHTS__": weights,
@@ -1319,7 +1327,7 @@ def write_pages(save, config, cfg, pages):
     for stale in out.glob("*.html"):
         if stale.stem not in pages:
             stale.unlink()
-    tables = [p for p, spec in pages.items() if isinstance(spec[1], list) and p not in ("filters", "staff_filters", "guide")]
+    tables = [p for p, spec in pages.items() if isinstance(spec[1], list) and p != "guide"]
     print(f"[{save}] out/{save}/: " + ", ".join(f"{p} ({len(pages[p][1])})" for p in tables))
     return out
 
@@ -1459,21 +1467,13 @@ GUIDE = [
     {"key": "elsewhere", "title": "All players",
      "text": "<b>Shows:</b> everyone you've imported who isn't at your club, scored the same way as your squad, with club, "
              "wage and value (the top of FM's range).<br>"
-             "<b>Use it to:</b> compare transfer targets with your own players, and follow players over the seasons.<br>"
-             "<b>Clear old lists</b> (bottom right, click twice) moves old searches to an archive folder so the list stays "
-             "short. Nothing is deleted: your squad, the latest list and anyone named in save.toml stay."},
+             "<b>Use it to:</b> compare transfer targets with your own players, and follow players over the seasons. With "
+             "very many imported (over 8,000), it shows the best 8,000 by score and says how many are left off."},
     {"key": "last", "title": "Last player import",
      "text": "<b>Shows:</b> only the players from the file you imported last (a search or shortlist).<br>"
              "<b>Use it to:</b> judge one search at a time. Sort by <b>Score</b> or <b>vs Age</b>, filter, e.g. "
              "<b>best=ST age&lt;=23</b>, and compare with your starters on <b>Squad</b>: anyone clearly higher at a weak "
              "position is worth scouting."},
-    {"key": "filters", "title": "Player search",
-     "text": "<b>Shows:</b> for each position, your best players there (3, or 1 for GK) and the attributes that matter most, "
-             "most important first, with a suggested minimum (<b>Filter</b>) = the average of your best players.<br>"
-             "<b>Use it to:</b> set up FM's player search to find players better than yours.<br>"
-             "<b>How:</b> in FM's search add <b>Position Is Accomplished At</b> that position, then each highlighted attribute "
-             "<b>Is At Least</b> its Filter value. Dimmed attributes don't need a minimum. Too few results? Lower the "
-             "smaller minimums first. The minimums rise as your squad improves."},
     {"key": "compare", "title": "Compare players",
      "text": "<b>Shows:</b> two players side by side: club, age, wage, best position and score, vs Age; a radar of the "
              "attributes that count most at the position you pick in <b>compare at</b>; the Technical, Mental, Physical "
@@ -1492,15 +1492,22 @@ GUIDE = [
              "(<b>AttTct</b>/<b>AttTec</b> attacking tactical/technical, <b>DefTct</b>/<b>DefTec</b> defending, "
              "<b>PosTct</b>/<b>PosTec</b> possession, <b>GKC</b> goalkeeping, <b>FitC</b> fitness, <b>SetC</b> set pieces), "
              "<b>DoF</b> director of football, <b>Scout</b>, <b>PA</b> performance analyst, <b>Physio</b>, <b>SpSci</b> sports scientist.<br>"
-             "<b>How:</b> read across a row: the highest number is the job he suits best. Sort by a job to find the best for it. "
-             "<b>Clear old lists</b> works here too."},
+             "<b>How:</b> read across a row: the highest number is the job he suits best. Sort by a job to find the best for it."},
     {"key": "last_staff", "title": "Last staff import",
      "text": "Only the staff from your latest staff import: judge one staff search at a time, the way Last player import works."},
-    {"key": "staff_filters", "title": "Staff search",
-     "text": "<b>Shows:</b> per job, the best staff you've imported (from any club) and the attributes that matter most for "
-             "that job, with a suggested minimum as FM's word (e.g. Good).<br>"
-             "<b>Use it to:</b> set up FM's staff search when hiring: set each highlighted attribute to at least its "
-             "<b>Filter</b> word. The more staff searches you import, the better the minimums get."},
+    {"key": "team_staff", "title": "Team staff",
+     "text": "<b>Shows:</b> your own club's staff, scored for every job, and your best at each job against the best on your "
+             "staff lists.<br><b>How to import:</b> in FM open your club's <b>Staff</b> screen, <b>Filter</b> → tick <b>All</b> "
+             "(Senior Squad, U21, U18), turn on <b>Menu → Auto-import</b>, then press F8 on each tab: <b>Coaching</b>, "
+             "<b>Medical</b>, <b>Mental</b>, <b>Scouting</b>. They add up to one staff; the ticks on the page show which are in. "
+             "Coaching jobs are scored once the Mental tab is in too.<br>"
+             "<b>Staff plan</b> (under Your best at each job): what to do about your staff, most urgent first: jobs with nobody "
+             "(Act now), staff on your lists at least 1 better than yours (Hire), and weak spots (Improve).<br><b>Also:</b> a "
+             "searched staff member's profile says where he'd be your best (<b>For you</b>)."},
+    {"key": "staff_compare", "title": "Compare staff",
+     "text": "<b>Shows:</b> two staff side by side, every job and attribute. <b>Pick them:</b> the compare icon by a name in "
+             "any staff list, <b>x</b> on a row, or <b>+ Compare</b> in a profile; or type a name. <b>×</b> empties a side, "
+             "<b>Reset</b> both."},
     {"key": "attributes", "title": "Attributes",
      "text": "<b>Shows:</b> one weight per attribute, 1–20 like FM's attributes, for every position at once (keepers too), and "
              "what it comes to at each position: weight × FM's CA cost there, as the attribute's share of that position's "
@@ -1546,7 +1553,7 @@ GUIDE = [
              "Lineup, <b>3</b> Players and <b>4</b> Staff on Last import; press it again for the next sub-tab.</li>"
              "<li><b>Arrow keys</b>: move around a table; <b>Enter</b>: the player's profile; <b>s</b>: sort by the current column.</li>"
              "<li><b>/</b> or <b>f</b>: the Search box; <b>Esc</b>: clear it, or close a profile.</li>"
-             "<li><b>c</b>: copy the player's name, to paste into FM's search; <b>x</b>: add him to <b>Players › Compare</b>.</li>"
+             "<li><b>c</b>: copy the player's name, to paste into FM's search; <b>x</b>: add him to <b>Compare</b> (Players › Compare, or Staff › Compare on the staff pages).</li>"
              "<li><b>?</b>: the list of every shortcut.</li></ul>"},
 ]
 

@@ -7,7 +7,6 @@ the date in the exporter's file name (export_date), as your squad if the file na
 starts with "First Team"/"Squad", else as a search named after the file. Then score.py runs and the 'last' page shows.
 Needs pywebview (pip install pywebview).
 """
-import csv
 import glob
 import html
 import json
@@ -125,11 +124,19 @@ class App:
         if skipped:
             text += (f" {len(skipped)} skipped, not enough attributes to score: "
                      + ", ".join(skipped[:5]) + (f" and {len(skipped) - 5} more" if len(skipped) > 5 else "") + ".")
+        # your club's staff screen (its 4 tabs, one export each): which tabs are in, which are still to export
+        club_staff = kind == "staff" and written and written[0][0].endswith("-staff.csv") and "_search-" not in written[0][0]
+        if club_staff:
+            text = text.replace(f" as {label}.", " as your staff.")
+            t = score.staff_tabs(self.save_dir / "staff", self.club_name())
+            left = [tab for tab, ok in t["tabs"].items() if not ok]
+            text += (f" Your staff is complete: {t['people']} people, every job scored." if not left else
+                     f" Your staff: {', '.join(tab + ' ✓' for tab, ok in t['tabs'].items() if ok)}; still to export: {', '.join(left)}.")
         self.notice = (text, False)  # shown by on_load after the reload
         self.mark_imported(path)
-        # where the import shows: your squad on Squad › Lineup, a player search on Players › Last import, staff on
-        # Staff › Last import
-        page = "last_staff.html" if kind == "staff" else "squad.html" if source is None else "last.html"
+        # where the import shows: your squad on Squad › Lineup, a player search on Players › Last import, your club's
+        # staff on Staff › Team staff, other staff on Staff › Last import
+        page = "team_staff.html" if club_staff else "last_staff.html" if kind == "staff" else "squad.html" if source is None else "last.html"
         url = (out / page).resolve().as_uri()
         try:
             here = (self.window.get_current_url() or "").split("?")[0].split("#")[0]
@@ -139,57 +146,6 @@ class App:
             self.window.evaluate_js("location.reload()")
         else:
             self.open_url(url)
-
-    # --- clearing old lists --------------------------------------------------------------------------------------
-
-    def clearable(self, kind):
-        """Old search lists the Clear button would move to the archive: players' (obs) or staff's. Kept: the squad,
-        the latest import (last_batch), youth intakes (the grid uses them), and lists holding anyone save.toml names."""
-        folder = self.save_dir / ("staff" if kind == "staff" else "obs")
-        cfg = score.load_toml(self.save_dir / "save.toml")
-        keep = set(cfg.get("last_staff_batch" if kind == "staff" else "last_batch", []))
-        names = set(cfg.get("last_staff_names", [])) if kind == "staff" else \
-            {n for k in ("last_names", "released", "signed", "recalled") for n in cfg.get(k, [])}
-        names |= {cut for cut, full in cfg.get("aliases", {}).items() if full in names}  # files may hold the cut-off name
-        found = []
-        for p in sorted(folder.glob("*.csv")):
-            source = score.obs_parts(p.stem)[1] if folder.name == "obs" else p.stem.split("_", 1)[-1]
-            if not source.startswith("search-") or "intake" in source or p.name in keep:
-                continue
-            with open(p, newline="", encoding="utf-8") as f:
-                if names & {r["Name"] for r in csv.DictReader(f)}:
-                    continue
-            found.append(p)
-        return folder, found
-
-    def count_clearable(self, kind):
-        return len(self.clearable(kind)[1])
-
-    def clear_lists(self, kind):
-        """Move old search lists to <folder>/archive (not deleted), rescore, and reload the page."""
-        with self.lock:
-            folder, files = self.clearable(kind)
-            if not files:
-                return self.show_notice("Nothing to clear: only your squad and latest list are left.")
-            archive = folder / "archive"
-            archive.mkdir(exist_ok=True)
-            moved = []
-            try:
-                for p in files:
-                    p.rename(archive / p.name)
-                    moved.append(p)
-                cfg, pages = score.build(self.save, self.config)
-                out = score.write_pages(self.save, self.config, cfg, pages)
-            except (Exception, SystemExit) as e:  # put everything back as it was
-                for p in moved:
-                    (archive / p.name).rename(p)
-                return self.show_notice(f"Couldn't clear the lists, so nothing was moved: {e}", error=True)
-            self.commit(f"{self.save}: archived {len(moved)} old {kind} lists")
-        where = f"saves\\{self.save}\\{folder.name}\\archive"
-        self.notice = (f"Cleared {len(moved)} old list{'s' if len(moved) > 1 else ''}. They're not deleted: they're in {where}, "
-                       "and moving them back brings them back.", False)
-        page = "staff.html" if kind == "staff" else "elsewhere.html"
-        self.open_url((out / page).resolve().as_uri())
 
     def commit(self, message):
         """Commit the save data, as the screenshot workflow does. Silently skipped without git."""
@@ -805,12 +761,6 @@ class MainApi:
     def saves(self):
         return self._app.saves()
 
-    def count_clearable(self, kind):
-        return self._app.count_clearable(kind)
-
-    def clear_lists(self, kind):
-        # in the background: the page reloads before a reply could reach it
-        threading.Thread(target=self._app.clear_lists, args=(kind,), daemon=True).start()
 
     def switch_save(self, name):
         return self._call(self._app.switch_save, name)
@@ -1246,25 +1196,6 @@ TOOLBAR_JS = """(() => {
   window.fmUpdate = (u, show) => { if (show) window.fmNotice(`ElevenIndex ${u.version} is out (you have """ + VERSION + """).`, false,
     { title: "New version", label: "Download", run: () => window.fmOpen(u.url) }); };
 
-  // Elsewhere and Staff pages: Clear old lists. First click says how many, a second click within 5 s clears.
-  const page = location.href.split(/[\\\\/]/).pop().split(/[?#]/)[0];
-  const kind = {"elsewhere.html": "players", "staff.html": "staff"}[page];
-  if (kind) {
-    const c = document.createElement("button");
-    c.id = "fm-clear"; c.title = "Move old search lists to the archive (not deleted). Keeps your squad and your latest list.";
-    const idle = "Clear old lists";
-    c.textContent = idle;
-    c.style.cssText = BUTTON + "background:#33292e;color:#f87171";
-    let armed = null;
-    c.onclick = async () => {
-      if (armed) { clearTimeout(armed); armed = null; c.textContent = "Clearing…"; return pywebview.api.clear_lists(kind); }
-      const n = await pywebview.api.count_clearable(kind);
-      if (!n) { window.fmNotice("Nothing to clear: only your squad and latest list are left.", false); return; }
-      c.textContent = `Clear ${n} old list${n > 1 ? "s" : ""}? Click again`;
-      armed = setTimeout(() => { armed = null; c.textContent = idle; }, 5000);
-    };
-    bar.append(c);
-  }
   if (bar.children.length) document.body.append(bar);
 
   // The Saves panel: switch to a save, or create one. Typing in it isn't a page shortcut.
@@ -1464,7 +1395,7 @@ TOOLBAR_JS = """(() => {
     const n = document.createElement("div");
     n.id = "fm-notice";
     n.setAttribute("role", error ? "alert" : "status");
-    n.style.cssText = "position:fixed;right:16px;bottom:" + (document.getElementById("fm-clear") ? 68 : 16) + "px;z-index:9999;width:420px;max-width:calc(100vw - 32px);overflow:hidden;" +
+    n.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:9999;width:420px;max-width:calc(100vw - 32px);overflow:hidden;" +
       "display:flex;gap:12px;align-items:flex-start;padding:12px 12px 14px 14px;color:#f2efe7;background:#1d2522d9;backdrop-filter:blur(6px);" +
       "border:1px solid #2a332f;border-left:4px solid " + kind.c + ";border-radius:10px;box-shadow:0 10px 30px #000a;" +
       "font:14px/1.45 Inter,'Segoe UI',system-ui,sans-serif;animation:fmIn .18s ease-out";

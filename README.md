@@ -45,7 +45,7 @@
     <td valign="top"><img src="docs/screenshots/development.png" alt="Development"><br><sub><b>Development</b>: how your players changed between two squad exports</sub></td>
   </tr>
   <tr>
-    <td valign="top"><img src="docs/screenshots/filters.png" alt="Player search"><br><sub><b>Player search</b>: the minimums to type into FM's search to beat your players</sub></td>
+    <td valign="top"><img src="docs/screenshots/staff-compare.png" alt="Compare staff"><br><sub><b>Compare staff</b>: two staff side by side, every job and attribute</sub></td>
     <td valign="top"><img src="docs/screenshots/staff.png" alt="Staff"><br><sub><b>Staff</b>: every staff member scored for every job</sub></td>
   </tr>
   <tr>
