@@ -266,6 +266,22 @@ def named_teams(db):
     return out
 
 
+def name_teams(players):
+    """Your club's teams for its players' "Team": 0 is the first team; the others are named by their players' ages
+    (the middle one): 17 or under the Under-18s, 20 or under the Under-21s, 22 or under the Under-23s, else the B team."""
+    ages = {}
+    for r in players:
+        if isinstance(r.get("Team"), int) and r["Team"] > 0 and str(r.get("Age", "")).isdigit():
+            ages.setdefault(r["Team"], []).append(int(r["Age"]))
+    label = {0: "First team"}
+    for k, xs in ages.items():
+        mid = sorted(xs)[len(xs) // 2]
+        label[k] = "Under-18s" if mid <= 17 else "Under-21s" if mid <= 20 else "Under-23s" if mid <= 22 else "B team"
+    for r in players:
+        if isinstance(r.get("Team"), int):
+            r["Team"] = label.get(r["Team"], "First team")
+
+
 def club_teams(db, club_at, first_team):
     """The numbers of a club's teams: its record lists `[u8 count][first team][the others]` before its name; the
     others are referred to by number + 1."""
@@ -459,6 +475,7 @@ def read(path, symbol="£", club=None, everyone=False):
     team_ids = club_teams(db, at, first[cid])
     contract_teams = {team_ids[0]} | {t + 1 for t in team_ids[1:]}  # a contract names a team by its head's number + 1
     playing = {i for t in team_ids if t in all_teams for i in all_teams[t][1]}  # record index + 1
+    team_no = {i: k for k, t in reversed(list(enumerate(team_ids))) if t in all_teams for i in all_teams[t][1]}  # index+1 -> 0 first team, 1… the others
     elsewhere = {i for t, (_, members) in all_teams.items() if t not in team_ids for i in members}  # at other clubs
     rate = currency_rate(db, symbol)
     today = info["date"]
@@ -472,6 +489,7 @@ def read(path, symbol="£", club=None, everyone=False):
                     for i in all_teams.get(t, (None, []))[1]:
                         plays_for.setdefault(i, c)
     players, staff, others = [], [], []
+    mine_index = {}  # your players' record index + 1 -> name (their match stats)
     first_name, where = {}, []  # each player's first name number; each other's (club, record index + 1)
     others_staff, where_staff = [], []  # with everyone: every other club's staff, and their club
     for x, kind in records(db):
@@ -522,7 +540,9 @@ def read(path, symbol="£", club=None, everyone=False):
                    "Position": fm_position_text(db[x + 49:x + 64]),
                    "Preferred Foot": foot_text(shown(db[x + 64 + LEFT_FOOT]), shown(db[x + 64 + RIGHT_FOOT])),
                    "Loan": loan, "Familiarity": ",".join(str(v) for v in db[x + 49:x + 64])}
+            row["Team"] = "" if loan == "out" else team_no.get(index1, 0)
             players.append(fill_player(row, db, x, who, deal, symbol, rate))
+            mine_index[index1] = who["name"]
             row["Injured until"] = hurt[index1].isoformat() if index1 in hurt else ""
         else:
             base = x + 7 * u16(db, x + 19)
@@ -575,11 +595,13 @@ def read(path, symbol="£", club=None, everyone=False):
         woman = lambda c, i: c in women or (fem(i) and share.get(c, 1.0) >= 0.2)
         others = [r for r, (c, i) in zip(others, where) if woman(c, i) == mine_women]
         others_staff = [r for r, c in zip(others_staff, where_staff) if (c in women) == mine_women]
+    season_stats = match_stats(data, sections, mine_index)
     money_now = finances(db, at)
     if money_now:  # in the currency the app shows
         money_now = {k: round(v * rate) for k, v in money_now.items()}
+    name_teams(players)
     return {"club": short, "long": long, "manager": info["manager"], "date": today, "players": players, "staff": staff,
-            "others": others, "others_staff": others_staff, "finances": money_now}
+            "others": others, "others_staff": others_staff, "finances": money_now, "season_stats": season_stats}
 
 
 # FM27's first-name list keeps a block of female names here; a club whose players mostly have one is a women's club.
@@ -715,3 +737,96 @@ if __name__ == "__main__":
           f"in {time.time() - t:.1f} s")
     for r in got["players"][:5] + got["staff"][:3]:
         print(r)
+
+
+# ---- the season's match stats (match_stats_cfg): one zstd frame per match played in the save this season ----
+# In a match, every player in a matchday squad has a record `02 [index+1 u32] [position] [flag] 02 [4] 02 [4] [byte]`,
+# 227 bytes plus 18 per shot. Offsets from its start, checked against FM's own season totals (17 players, every column):
+MATCH_U8 = {"goals": 20, "assists": 56, "dribbles": 58, "fouls": 60, "fouled": 61, "passes": 86, "passes_done": 87,
+            "crosses": 89, "crosses_done": 90, "headers": 95, "headers_won": 96, "mistakes": 149, "pressures": 165,
+            "pressures_done": 166, "poss_won": 156, "prog_passes": 191}
+MATCH_RECORD = re.compile(rb"(?=\x02(....)([\x00-\x3f])([\x00-\x01])\x02(....)\x02(....)([\x00-\x20\xff]))", re.S)
+MATCH_COMP = re.compile(rb"([\x04-\x30])\x00\x00\x00([A-Z][A-Za-z .'0-9-]{3,45})")
+
+
+def match_goals(match, everyone):
+    """A match's goals, from its start: [(scorer index+1, assister or 0xFFFFFFFF, type, minute)], type 3 an own goal
+    (2 a penalty). Each `[scorer][assister][4][side u8][type u8][minute u8][added u8]` after a u32 count; found by its
+    scorers being players in the match."""
+    for c in range(300, 900):
+        n = struct.unpack_from("<I", match, c)[0]
+        if not 1 <= n <= 20:
+            continue
+        out = []
+        for k in range(n):
+            sc, asst, _, side, kind, minute, _added = struct.unpack_from("<IIIBBBB", match, c + 4 + 16 * k)
+            if sc not in everyone or side > 1 or not 1 <= minute <= 130:
+                break
+            out.append((sc, asst, kind, minute))
+        if len(out) == n:
+            return out
+    return []
+
+
+def match_stats(data, sections, mine):
+    """Your players' stats this season, from every match in the save: {competitions: {competition: {name: totals}},
+    matches: {name: [[competition, rating, minutes, goals, assists, started], …] oldest first}}, totals with apps,
+    starts, minutes, rating (sum of match ratings, `rated` matches), xg and MATCH_U8's counts. Only your club's
+    matches count (5 or more of your players in it): a call-up to a national side doesn't. Friendlies are kept apart."""
+    if "match_stats_cfg" not in sections or not mine:
+        return {"competitions": {}, "matches": {}}
+    b = section(data, sections, "match_stats_cfg")
+    view = memoryview(b)
+    starts = []
+    p = b.find(b"\x28\xb5\x2f\xfd")
+    while p != -1:
+        starts.append(p)
+        p = b.find(b"\x28\xb5\x2f\xfd", p + 4)
+    out, recent = {}, {}
+    for a, z in zip(starts, starts[1:] + [len(b)]):
+        try:
+            match = zstd.ZstdDecompressor().decompress(view[a:z])
+        except zstd.ZstdError:
+            continue
+        found, everyone = {}, set()
+        for m in MATCH_RECORD.finditer(match, 0, 40000):
+            p = m.start()
+            if match[p + 17:p + 22] == b"\x02\xff\xff\xff\xff":  # a name record, not stats
+                continue
+            pid = int.from_bytes(m.group(1), "little")
+            everyone.add(pid)
+            if pid in mine and pid not in found:
+                found[pid] = p
+        if len(found) < 5:  # not one of your club's matches
+            continue
+        c = MATCH_COMP.search(match, 40, 200)
+        comp = c.group(2).decode("utf-8", "replace").strip() if c else "Other"
+        when = struct.unpack_from("<f", match, 11)[0]  # rises from match to match: their order in the season
+        # goals against you: the other side's, and your own goals (type 3); the other side's own goals are yours
+        against = [g[3] for g in match_goals(match, everyone) if (g[0] in mine) == (g[2] == 3)]
+        table = out.setdefault(comp, {})
+        for pid, p in found.items():
+            r = match[p:p + 227]
+            if len(r) < 227 or r[140] == 0:  # in the squad, didn't play
+                continue
+            t = table.setdefault(mine[pid], {"apps": 0, "starts": 0, "minutes": 0, "rating": 0.0, "rated": 0, "xg": 0.0,
+                                             "distance": 0.0, **{k: 0 for k in MATCH_U8}})
+            on, off = r[71], r[67] or 90
+            t["apps"] += 1
+            t["starts"] += on == 0
+            t["minutes"] += max(0, off - on)
+            rating = struct.unpack_from("<H", r, 141)[0] / 100
+            if 1 <= rating <= 10:
+                t["rating"] += rating
+                t["rated"] += 1
+            t["xg"] += struct.unpack_from("<f", r, 25)[0]
+            conceded = sum(1 for g in against if on <= g <= off)
+            t["conceded"] = t.get("conceded", 0) + conceded
+            # a clean sheet: he started, wasn't taken off, and nothing went in (the pages show it for keepers)
+            t["clean_sheets"] = t.get("clean_sheets", 0) + int(on == 0 and r[67] == 0 and conceded == 0)
+            if comp != "Friendly":  # his matches in order, for his form
+                recent.setdefault(mine[pid], []).append([round(when, 6), comp, round(rating, 2), max(0, off - on), r[20], r[56], int(on == 0)])
+            t["distance"] += struct.unpack_from("<f", r, 145)[0]
+            for k, o in MATCH_U8.items():
+                t[k] += r[o]
+    return {"competitions": out, "matches": {n: [m[1:] for m in sorted(ms)] for n, ms in recent.items()}}

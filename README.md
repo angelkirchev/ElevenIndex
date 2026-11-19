@@ -62,8 +62,8 @@
 1. Download **ElevenIndex.exe** from **[elevenindex.pages.dev](https://elevenindex.pages.dev)**, put it somewhere permanent
    (e.g. **Documents**) and double-click it. If Windows says *Windows protected your PC*, click **More info → Run anyway**.
 2. The first time it asks for the **club you manage** and the **currency** FM shows wages in, then **Start**.
-3. In FM, **save your game**. In the app, **Menu → Read save game…** (or drop the `.fm` file on the window). About a minute
-   later every page is up to date. **Auto-read** (on by default) reads each new save by itself.
+3. In FM, **save your game**. In the app, **Menu → Read save game…** (or drop the `.fm` file on the window). Be patient: your
+   save is loaded soon, then every page is up to date. **Auto-read** (on by default) reads each new save by itself.
 
 Everything else is explained in the app's **Guide** (key **G**).
 

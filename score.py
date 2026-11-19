@@ -54,26 +54,26 @@ def data_root():
 _HOME = os.environ.get("ELEVENINDEX_HOME") or os.environ.get("FMANALYST_HOME")
 ROOT = Path(_HOME) if _HOME else data_root() if getattr(sys, "frozen", False) else Path(__file__).parent
 CONFIG = ROOT / "config.toml"
-VERSION = "1.19.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
+VERSION = "1.20.0"  # the app's version: the window title and the guide show it; the release tag is v<VERSION>
 PROJECT_URL = "https://elevenindex.pages.dev"  # the website: download, guide, changelog; version.json for the update check
 CREATOR, CREATOR_URL = "Angelski", "https://community.sports-interactive.com/profile/428404-angelski/"  # About: the maker, on the official FM forum
-PAGES = ["club", "contracts", "medical", "transfers", "squad", "formations", "depth", "analysis", "development", "training", "youth", "charts", "elsewhere",
+PAGES = ["club", "contracts", "medical", "transfers", "squad", "formations", "depth", "analysis", "development", "training", "season", "youth", "charts", "elsewhere",
          "toplists", "compare", "staff", "team_staff", "staff_compare", "staff_research", "attributes", "guide"]
 # Each page's full name (the window title, the Guide)
-PAGE_LABELS = {"club": "Club", "squad": "Lineup", "formations": "Formations", "depth": "Squad depth", "youth": "Youth", "contracts": "Contracts", "medical": "Medical", "transfers": "Transfers", "development": "Development", "training": "Training plan", "elsewhere": "Players database", "toplists": "Top lists",
+PAGE_LABELS = {"club": "Club", "squad": "Lineup", "formations": "Formations", "depth": "Squad depth", "youth": "Youth", "contracts": "Contracts", "medical": "Medical", "transfers": "Transfers", "development": "Development", "training": "Training plan", "season": "Match stats", "elsewhere": "Players database", "toplists": "Top lists",
                "charts": "Research", "compare": "Compare players", "staff": "Staff database", "team_staff": "Your staff", "staff_compare": "Compare staff", "staff_research": "Staff research",
                "analysis": "Analysis", "attributes": "Attributes", "guide": "Guide"}
 # The top menu: (key, page) or (key, group name, its pages, the page it opens on), None = a divider. A group's pages are
 # sub-tabs under the bar; its key opens the group on its first page (Lineup, Latest list…), and pressed again moves to the next.
-MENU = [("1", "Club", ["club", "contracts", "medical", "transfers"], "club"),
+MENU = [("1", "Club", ["club", "season", "contracts", "medical", "transfers"], "club"),
         ("2", "Squad", ["squad", "formations", "depth", "analysis", "development", "training", "youth"], "squad"),
         ("3", "Players", ["elsewhere", "toplists", "charts", "compare"], "elsewhere"),
         ("4", "Staff", ["team_staff", "staff", "staff_research", "staff_compare"], "team_staff"),
         None, ("a", "attributes"), ("g", "guide")]
-SUB_LABELS = {"club": "Overview", "squad": "Lineup", "formations": "Formations", "depth": "Depth", "youth": "Youth", "contracts": "Contracts", "medical": "Medical", "transfers": "Transfers", "analysis": "Analysis", "development": "Development", "training": "Training",
+SUB_LABELS = {"club": "Overview", "squad": "Lineup", "formations": "Formations", "depth": "Depth", "youth": "Youth", "contracts": "Contracts", "medical": "Medical", "transfers": "Transfers", "analysis": "Analysis", "development": "Development", "training": "Training", "season": "Match stats",
               "elsewhere": "Database", "toplists": "Top lists", "compare": "Compare",
               "staff": "Database", "team_staff": "Your staff", "staff_compare": "Compare", "charts": "Research", "staff_research": "Research"}
-META = {"Name", "Club", "Age", "Position", "Left Foot", "Preferred Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating",
+META = {"Name", "Club", "Age", "Position", "Left Foot", "Preferred Foot", "Wage", "Transfer Value", "Loan", "Team", "Minutes", "Rating",
         "Division", "Height", "Contract", "Current Ability", "Potential Ability", "Reputation", "Familiarity",
         "Match Exercise", "Fitness", "Jadedness", "Injured until", "Traits", "Moves", "Born", "Left Foot Rating",
         "Right Foot Rating", "Home Reputation", "World Reputation"}
@@ -446,6 +446,8 @@ def row_facts(row):
         facts["hidden"] = hidden
     if "Loan" in row:  # squad screens only: in, out, trial, or blank for none
         facts["loan"] = row["Loan"] or None
+    if "Team" in row:  # a save game: the club's team he's in (First team, Under-21s, Under-18s, B team…), blank on loan
+        facts["team"] = row["Team"] or None
     if row.get("Rating"):  # a season's average rating (and minutes, from views that show them)
         facts.update(rating=float(row["Rating"]),
                      minutes=int(row["Minutes"]) if (row.get("Minutes") or "").isdigit() else None)
@@ -510,7 +512,7 @@ def player_row(name, person, w):
     him). None when no date has enough."""
     groups = {"GK": w["gk"]} if person["keeper"] else w["outfield"]
     expected = age_benchmark(w)
-    facts = {"leftFoot": None, "wage": None, "value": (None, None), "loan": None, "position": None, "height": None,
+    facts = {"leftFoot": None, "wage": None, "value": (None, None), "loan": None, "team": None, "position": None, "height": None,
              "contract": None, "ca": None, "pa": None, "hidden": None, "fam": None, "state": None,
              "injured": None, "traits": None, "personal": None}
     history = []
@@ -536,7 +538,7 @@ def player_row(name, person, w):
                plays=[g for g in fm_positions(facts["position"]) if g in groups] or None,
                left=None if foot is None else ("yes" if strong_left else "no"),
                foot=foot,
-               loan=facts["loan"], wage=facts["wage"], valueLo=facts["value"][0], value=facts["value"][1],
+               loan=facts["loan"], team=facts["team"], wage=facts["wage"], valueLo=facts["value"][0], value=facts["value"][1],
                height=facts["height"], contract=facts["contract"], ca=facts["ca"], pa=facts["pa"],
                hidden=facts["hidden"], fam=facts["fam"], state=facts["state"], injured=facts["injured"],
                traits=facts["traits"], personal=facts["personal"], history=history)
@@ -552,7 +554,7 @@ def player_cols(w, with_club):
             if with_club else [col("age", "Age", num=True), wage])
     return [col("name", "Player"), *lead, col("foot", "Foot"),
             *(col(g, g, num=True, fmt="f1") for g in ("GK", *w["outfield"])),
-            col("position", "FM position"), col("height", "Height", num=True), col("contract", "Contract to"),
+            col("position", "Position"), col("height", "Height", num=True), col("contract", "Contract"),
             col("ca", "CA", num=True, title="Current Ability (hidden in FM)"),
             col("pa", "PA", num=True, title="Potential Ability (hidden in FM; negative: FM's code for a range)"),
             col("best", "Best"), col("score", "Score", num=True, fmt="f1"),
@@ -622,6 +624,8 @@ def compare_page(rows, squad, w, cfg):
     mine = {id(r) for r in squad}
     players = [{"name": r["name"], "club": r["club"], "age": r["age"], "wage": r["wage"], "value": r["value"],
                 "best": r["best"], "score": r["score"], "vsAge": r["vsAge"], "squad": id(r) in mine, "position": r["position"],
+                "ca": r.get("ca"), "pa": r.get("pa"), "contract": r.get("contract"),
+                "hidden": r.get("hidden"),
                 "plays": r.get("plays") or NEAR.get(r["best"], [r["best"]]),
                 "scores": {g: r[g] for g in positions if r.get(g) is not None},
                 "attrs": {a: v for a, v in r["history"][-1]["attrs"].items() if v is not None},
@@ -1256,13 +1260,14 @@ def squad_tabs(squad, lineup, cfg, save_dir, youth_age=21):
         h = r.get("hidden") or {}
         people[r["name"]] = {
             "name": r["name"], "age": r["age"], "best": r["best"], "score": r["score"], "vsAge": r["vsAge"],
-            "role": roles.get(r["name"], "Youth" if (r["age"] or 99) <= youth_age else "Third"), "loan": r["loan"],
+            "role": roles.get(r["name"], "Youth" if (r["age"] or 99) <= youth_age else "Third"), "loan": r["loan"], "team": r.get("team"),
             "wage": r["wage"], "value": r["value"], "contract": r.get("contract"), "ca": r.get("ca"), "pa": r.get("pa"),
             "dev": development_factor(r), "warn": warnings(r),
             "traits": {k: h[k] for k in ("Professionalism", "Ambition", "Consistency", "Important Matches",
                                          "Injury Proneness") if k in h},
             "det": r["history"][-1]["attrs"].get("Determination"),
             "state": r.get("state"), "injured": r.get("injured"), "natfit": r["history"][-1]["attrs"].get("Natural Fitness"),
+            "mstats": r.get("mstats"),
             "position": r.get("position")}
     return {"people": people, "formations": lineup["formations"], "targets": lineup["targets"],
             "money": money, "today": money.get("game_date"), "youthAge": youth_age, "players": {r["name"]: r for r in squad}}
@@ -1282,6 +1287,7 @@ def attributes_page(cfg, w, rows, save_dir):
 
 
 CHECKPOINT_ORDER = []  # build(): the checkpoints' labels, oldest first
+CHECKPOINT_META = {}  # label -> (first / mid / end / now, the season it belongs to)
 FM_DATES = "fm_dates.json"  # in a save: each save game read (its file time, the snapshot's stamp) -> FM's date in it
 
 
@@ -1331,20 +1337,25 @@ def checkpoints(stamps, dates):
     # (the day, the last day a save still counts for it: a month later, label)
     points = sorted([(f"{y}-12-31", f"{y + 1}-01-31", f"31 Dec {y} · mid {y}/{str(y + 1)[2:]}") for y in years] +
                     [(f"{y}-06-30", f"{y}-07-31", f"30 Jun {y} · end of {y - 1}/{str(y)[2:]}") for y in years])
+    CHECKPOINT_META.clear()
     out, order = {}, []
+    season = lambda d: (lambda y, m: f"{y if m >= 7 else y - 1}/{str((y if m >= 7 else y - 1) + 1)[2:]}")(int(d[:4]), int(d[5:7]))
     for day, until, label in points:
         hit = min((st for st in fm if day <= fm[st] <= until), key=lambda st: (fm[st], st), default=None)
         if hit:
             out[hit] = label
             order.append(label)
+            CHECKPOINT_META[label] = ("mid" if " mid " in label else "end", label.split(" of ")[-1] if " of " in label else label.split(" mid ")[-1])
     first = min(fm, key=lambda st: (fm[st], st))
     if first not in out and len(set(fm.values())) > 1:  # the first save read: where development starts from
         out[first] = f"First read · {nice(fm[first])}"
         order.insert(0, out[first])
+        CHECKPOINT_META[out[first]] = ("first", season(fm[first]))
     newest = max(fm, key=lambda st: (fm[st], st))
     if newest not in out:
         out[newest] = f"Now · {nice(fm[newest])}"
         order.append(out[newest])
+        CHECKPOINT_META[out[newest]] = ("now", season(fm[newest]))
     return out, order
 
 
@@ -1370,7 +1381,23 @@ def development(rows, players, obs_files, managed, squad):
               for h in r["history"] if h["date"] in in_snaps and h.get("season")}
         seasons |= set(at)
         out.append({"name": r["name"], "age": r["age"], "best": r["best"], "here": r["club"] == managed, "at": at})
-    return {"snapshots": [c for c in CHECKPOINT_ORDER if c in seasons], "players": out, "rows": {r["name"]: r for r in squad}}  # rows: for the history overlay
+    snaps = [c for c in CHECKPOINT_ORDER if c in seasons]
+    # each season: from its start (the season before's end, else its first checkpoint) to its end (30 Jun; while it's on,
+    # its mid-season, else now)
+    by = {}
+    for c in snaps:
+        kind, s = CHECKPOINT_META.get(c, ("now", c))
+        by.setdefault(s, []).append((kind, c))
+    spans, prev_end = [], None
+    for s in sorted(by):
+        labels = by[s]
+        rank = {"end": 3, "mid": 2, "now": 1, "first": 0}
+        end = max(labels, key=lambda kc: (rank[kc[0]], snaps.index(kc[1])))
+        start = prev_end if prev_end else labels[0][1]
+        state = {"end": "season end", "mid": "to mid-season", "now": "so far", "first": "so far"}[end[0]]
+        spans.append({"season": s, "start": start, "end": end[1], "state": state})
+        prev_end = end[1] if end[0] == "end" else None
+    return {"snapshots": snaps, "seasons": spans, "players": out, "rows": {r["name"]: r for r in squad}}  # rows: for the history overlay
 
 
 def settings_tile(config, cfg, save):
@@ -1475,6 +1502,90 @@ def top_lists(rows, managed, n=25):
     return {"lists": out, "bands": [f"{lo}–{hi}" if hi < 99 else f"{lo}+" for lo, hi in SCORE_BANDS], "managed": managed}
 
 
+YOUTH_COMP = re.compile(r"\bU-?1[6-9]\b|\bU-?2[0-3]\b|Sub-?\d|Youth|Juvenil|Junior|Primavera|Reserve|Academy|2 Division|"
+                        r"International Cup|Under[- ]\d", re.I)
+
+
+def youth_comps(competitions, ages):
+    """The season's youth competitions: by name (U18, Sub-20, Primavera…), or because most players you used in it are
+    20 or under (it works for any league and cup, in any country). `ages`: name -> age."""
+    out = []
+    for comp, players in competitions.items():
+        if comp == "Friendly":
+            continue
+        known = sorted(ages[n] for n in players if ages.get(n) is not None)
+        if YOUTH_COMP.search(comp) or (len(known) >= 3 and known[len(known) // 2] <= 20):
+            out.append(comp)
+    return out
+
+
+def match_summary(save_dir, ages):
+    """Each of your players this season, from the newest season's match stats: {name: {apps, starts, minutes, goals,
+    assists, xg, rating (average), form: [last 5 ratings, oldest first], formAvg}}; first-team competitions only for
+    the totals (friendlies and youth left out), every competitive match for the form."""
+    files = sorted((save_dir / "stats").glob("*.json")) if (save_dir / "stats").is_dir() else []
+    if not files:
+        return {}
+    try:
+        d = json.loads(files[-1].read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    youth = set(youth_comps(d.get("competitions", {}), ages))
+    for comp, players in d.get("competitions", {}).items():
+        if comp in youth:  # his youth football, apart
+            for name, t in players.items():
+                y = out.setdefault(name, {"apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0, "xg": 0.0, "rsum": 0.0, "rated": 0,
+                                          "clean_sheets": 0, "conceded": 0})
+                y["yapps"] = y.get("yapps", 0) + t.get("apps", 0)
+                y["ymin"] = y.get("ymin", 0) + t.get("minutes", 0)
+                y["yrsum"] = y.get("yrsum", 0) + t.get("rating", 0)
+                y["yrated"] = y.get("yrated", 0) + t.get("rated", 0)
+                y["ygoals"] = y.get("ygoals", 0) + t.get("goals", 0)
+            continue
+        if comp == "Friendly":
+            continue
+        for name, t in players.items():
+            a = out.setdefault(name, {"apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0, "xg": 0.0, "rsum": 0.0, "rated": 0,
+                                      "clean_sheets": 0, "conceded": 0})
+            for k in ("apps", "starts", "minutes", "goals", "assists", "xg", "clean_sheets", "conceded"):
+                a[k] += t.get(k, 0)
+            a["rsum"] += t.get("rating", 0)
+            a["rated"] += t.get("rated", 0)
+    for name, ms in d.get("matches", {}).items():
+        played = [m for m in ms if m[2] >= 10 and 1 <= m[1] <= 10]  # 10 minutes or more
+        last = played[-5:]
+        a = out.setdefault(name, {"apps": 0, "starts": 0, "minutes": 0, "goals": 0, "assists": 0, "xg": 0.0, "rsum": 0.0, "rated": 0,
+                                  "clean_sheets": 0, "conceded": 0})
+        a["form"] = [m[1] for m in last]
+        a["recent"] = sum(m[2] for m in ms[-3:])  # minutes in his club's last three matches he was in the squad for
+        a["formAvg"] = round(sum(a["form"]) / len(a["form"]), 2) if a["form"] else None
+    for a in out.values():
+        a["rating"] = round(a.pop("rsum") / a["rated"], 2) if a["rated"] else None
+        a.pop("rated")
+        if a.get("yrated"):
+            a["yrating"] = round(a.pop("yrsum") / a.pop("yrated"), 2)
+        else:
+            a.pop("yrsum", None), a.pop("yrated", None)
+        a["xg"] = round(a["xg"], 2)
+    out["_season"] = d.get("season")
+    return out
+
+
+def season_page(save_dir, squad, ages):
+    """Squad › Season: every season's match stats read from save games (saves/<save>/stats/<season>.json, the newest
+    read of each season), and your squad's scores beside them."""
+    seasons = {}
+    for f in sorted((save_dir / "stats").glob("*.json")) if (save_dir / "stats").is_dir() else []:
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+            d["youth"] = youth_comps(d.get("competitions", {}), ages)
+            seasons[d["season"]] = d
+        except (OSError, ValueError, KeyError):
+            continue
+    return {"seasons": seasons, "players": {r["name"]: r for r in squad}}
+
+
 def club_page(squad, staff_rows, lineup, tabs, managed, team_info):
     """Club › Overview: the money, the squad in numbers, the best eleven, who's injured, contracts ending, the best
     youngsters and the staff's strongest jobs."""
@@ -1550,9 +1661,13 @@ def build(save, config):
     lineup["targets"] = {pos: [{"name": r["name"], "club": r["club"], "age": r["age"], "wage": r["wage"], "v": r[pos],
                                 "value": r["value"], "ca": r.get("ca"), "pa": r.get("pa"), "contract": r.get("contract")}
                                for r in sorted((r for r in others if r["best"] == pos and r.get(pos) is not None),
-                                               key=lambda r: r[pos], reverse=True)[:8]]
+                                               key=lambda r: r[pos], reverse=True)[:30]]
                          for pos in FORMATION_ORDER}
     players_table, others_table = player_cols(w, False), player_cols(w, True)
+    mstats = match_summary(save_dir, {r["name"]: r["age"] for r in rows})  # this season's match stats and form, on every player of yours
+    for r in squad:
+        if r["name"] in mstats:
+            r["mstats"] = mstats[r["name"]]
     tabs = squad_tabs(squad, lineup, cfg, save_dir)
     many = lambda n, word: f"{n:,} {word}{'' if n == 1 else 's'}"
     # a very big save (tens of thousands imported): the lists, Compare and Research keep the best SHOW_MAX players by
@@ -1576,6 +1691,7 @@ def build(save, config):
         "analysis": "your squad position by position against the whole game",
         "development": "how your players changed between checkpoints (31 Dec, 30 Jun, now)",
         "training": "what each player should train next in FM",
+        "season": "your players' match stats this season, from the save game: live as you play, the season report at the end",
         "elsewhere": f"{many(len(others), 'player')} in the game" + hidden_note + " · Filter to narrow it down",
         "toplists": "the best, the most promising and the bargains, by position",
         "compare": "two players side by side · pick them with the icon by a name",
@@ -1593,6 +1709,7 @@ def build(save, config):
         "contracts": ([], tabs),
         "medical": ([], tabs),
         "training": ([], tabs),
+        "season": ([], season_page(save_dir, squad, {r["name"]: r["age"] for r in rows})),
         "transfers": ([], tabs),
         "development": (players_table, dev),
         "analysis": (players_table, analysis(squad, others, lineup, w)),
@@ -1826,7 +1943,7 @@ GUIDE = [
     {"key": "", "title": "Start here",
      "text": "<ol><li>In FM, <b>save your game</b>.</li>"
              "<li>Here: <b>Menu</b> (key <b>M</b>) → <b>Read save game…</b> (key <b>I</b>), or drop the <b>.fm</b> file on the window.</li>"
-             "<li>About a minute later every page is up to date.</li></ol>"
+             "<li>Be patient: your save is loaded soon, then every page is up to date.</li></ol>"
              "<b>Auto-read</b> (on unless you turn it off in the Menu) reads every new save of your game by itself. "
              "FM's save is only ever read, never changed."},
     {"key": "", "title": "What you get",
@@ -1856,7 +1973,9 @@ GUIDE = [
              "<li><b>Analysis</b>: what he's good for, strengths, weaknesses, what to train. <b>Positions</b>: FM's ratings and ours.</li>"
              "<li><b>History</b>: by checkpoint; pick two to compare. Staff have <b>Jobs</b>: every job and its key attributes.</li></ul>"},
     {"key": "club", "title": "Club",
-     "text": "<b>Overview</b>: money, squad, best eleven, injuries, contracts ending, youngsters, staff. <b>Contracts</b>: who to renew "
+     "text": "<b>Overview</b>: money, squad, best eleven, injuries, contracts ending, youngsters, staff. <b>Match stats</b>: your "
+             "players' match stats this season (apps, minutes, rating, goals, assists, xG, passes, pressures, distance…), by "
+             "competition, totals or per 90; live as you play, the season report at the end. <b>Contracts</b>: who to renew "
              "or sell. <b>Medical</b>: injured, unfit, rusty, tired, injury-prone. <b>Transfers</b>: who could go, and the best "
              "upgrade in the game for each position, within your budgets too."},
     {"key": "squad", "title": "Squad",
@@ -1864,6 +1983,16 @@ GUIDE = [
              "with a scout's view of the good and the bad. <b>Depth</b>: starter, backup and third choice at each position. "
              "<b>Analysis</b>: each position against the game, and the Squad plan. <b>Development</b>: changes between "
              "checkpoints. <b>Training</b>: each player's next individual routine in FM. <b>Youth</b>: how far your youngsters can grow."},
+    {"key": "training", "title": "Training",
+     "text": "<b>The week</b> (Squad › Training): a schedule for your first team and one for your youth teams (under-21s, "
+             "under-18s, a B team), from what their players lack, how much they can still grow, minutes, form and load. "
+             "Copy it into FM: <b>Training → Schedule</b>, for each team. Two matches a week: switch it on the page (it starts "
+             "there when your starters are tired). The first team keeps two tactical understanding sessions (they keep the "
+             "tactic's effectiveness up, which wins matches, and wear off within weeks); youth teams train only to grow. "
+             "<b>Each player</b>: in FM, <b>Training → Individual</b>, pick him and set his <b>Training Focus</b> to the routine "
+             "listed (one at a time); look again next month, a routine stops paying once its attributes catch up. A focus adds "
+             "about +1 a season to its own attributes, so use it on a player's real gaps; set-piece routines only for your takers. "
+             "From harvestgreen22's FM27 tests (sortitoutsi, November 2026): one test player, so a guide, not a law."},
     {"key": "elsewhere", "title": "Players",
      "text": "<b>Database</b>: every player in the game (the best 8,000 listed); <b>Filter</b> narrows it by anything "
              "(position, age, contract, value, CA, PA, attributes, personality) or start from a preset. <b>Top lists</b>: "
@@ -1920,7 +2049,7 @@ def main():
     on every start and import)."""
     parser = argparse.ArgumentParser(description="Rebuild ElevenIndex's pages for a save.")
     parser.add_argument("--save", help="the save to rebuild (default: config.toml's active_save)")
-    parser.add_argument("--open", nargs="?", const="squad", choices=PAGES, metavar="PAGE", help="then open a page in the browser")
+    parser.add_argument("--open", nargs="?", const="club", choices=PAGES, metavar="PAGE", help="then open a page in the browser")
     args = parser.parse_args()
     config = load_config()
     save = args.save or config["active_save"]

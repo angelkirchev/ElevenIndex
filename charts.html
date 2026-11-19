@@ -45,8 +45,8 @@ __THEME__
   .lead-line { margin: 4px 0 10px; color: var(--fg); font-size: 13px; line-height: 1.6; }
   .lead-line b { font-weight: 600; } .lead-line .good { color: var(--green); } .lead-line .bad { color: var(--red); }
   table.market { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.market th { padding: 6px 8px; color: var(--dim); font-weight: 600; font-size: 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  table.market td { padding: 6px 8px; border-bottom: 1px solid #ffffff0a; white-space: nowrap; }
+  table.market th { padding: 4px 8px; color: var(--dim); font-weight: 500; font-size: 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.market td { padding: 4px 8px; border-bottom: 1px solid #ffffff0a; white-space: nowrap; }
   table.market th.num, table.market td.num { text-align: right; }
   table.market tbody tr { cursor: pointer; }
   table.market tbody tr:nth-child(even) { background: var(--row); }
@@ -428,9 +428,15 @@ function fillSelect(id, options, current, key) {
 function draw() {
   fillSelect("against", CHOICES.map(c => [c, shortName(c)]), choice.against, "against");
   const bar = document.getElementById("positions");
-  if (STAFF) bar.querySelector(".name").textContent = "job";
+  if (STAFF) {  // jobs: one dropdown with their full names, right after the sub-tabs
+    bar.querySelector(".name").textContent = "Job";
+    let sel = bar.querySelector("select");
+    if (!sel) { sel = document.createElement("select"); sel.id = "jobpick"; bar.appendChild(sel); }
+    sel.innerHTML = POSITIONS.map(p => `<option value="${p}"${p === choice.pos ? " selected" : ""}>${JOB(p)}</option>`).join("");
+    sel.onchange = () => choose("pos", sel.value);
+  }
   bar.querySelectorAll("button").forEach(b => b.remove());
-  for (const pos of POSITIONS) {
+  for (const pos of STAFF ? [] : POSITIONS) {
     const b = document.createElement("button");
     b.textContent = pos;
     if (STAFF) b.title = JOB(pos);

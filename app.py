@@ -35,15 +35,106 @@ def window_title(save=None):
 
 
 
+START_PAGE = "club.html"  # the page the app opens on, after start and after reading a save: the first tab
+
+
+FM_TAIL = Path("Sports Interactive", "Football Manager 27", "games")
+
+
+def fm_saves_in(folder):
+    """The FM save games (.fm) in a folder, newest first (FM's own backup copy left out); [] when there's none."""
+    try:
+        found = [f for f in Path(folder).iterdir() if f.is_file() and f.suffix.lower() == ".fm"
+                 and not f.stem.lower().startswith("last save overwrite backup")]
+    except OSError:
+        return []
+    return sorted(found, key=lambda f: f.stat().st_mtime, reverse=True)
+
+
+def steam_folders():
+    """Steam Cloud's copies of FM's saves: Steam\\userdata\\<account>\\<game>\\remote(\\games), where FM writes
+    a save game when it's saved to the cloud."""
+    roots = []
+    if sys.platform == "win32":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as key:
+                roots.append(Path(winreg.QueryValueEx(key, "SteamPath")[0]))
+        except OSError:
+            pass
+        roots += [Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Steam", Path(r"C:\Steam")]
+    out = []
+    for root in dict.fromkeys(roots):
+        for remote in (root / "userdata").glob("*/*/remote") if (root / "userdata").is_dir() else []:
+            out += [remote / "games", remote]
+    return out
+
+
+def fm_folders(config=None):
+    """Where FM27's save games can be: config.toml's games_dir, Documents (wherever Windows has put it, OneDrive's
+    too), the Public Documents, and Steam Cloud's folders."""
+    docs = [score.documents(), Path.home() / "OneDrive" / "Documents", Path.home() / "Documents",
+            Path(os.environ.get("PUBLIC", r"C:\Users\Public")) / "Documents"]
+    picked = [Path(config["games_dir"]).expanduser()] if (config or {}).get("games_dir") else []
+    return list(dict.fromkeys(picked + [d / FM_TAIL for d in docs] + steam_folders()))
+
+
 def games_dir(config):
-    """FM27's save games folder: config.toml's games_dir, else found under Documents (OneDrive's too)."""
+    """FM27's save games folder: config.toml's games_dir when it holds save games; else the folder found with the
+    newest save game (Documents, OneDrive, Public Documents, Steam Cloud); else the chosen one, or FM's usual one."""
+    folders = fm_folders(config)
+    if config.get("games_dir") and fm_saves_in(folders[0]):
+        return folders[0]
+    with_saves = [(fm_saves_in(f)[0].stat().st_mtime, f) for f in folders if fm_saves_in(f)]
+    if with_saves:
+        return max(with_saves)[1]
     if config.get("games_dir"):
         return Path(config["games_dir"]).expanduser()
-    tail = Path("Sports Interactive", "Football Manager 27", "games")
-    for docs in (score.documents(), Path.home() / "OneDrive" / "Documents", Path.home() / "Documents"):
-        if (docs / tail).is_dir():
-            return docs / tail
-    return Path.home() / "Documents" / tail
+    return next((f for f in folders if f.is_dir()), score.documents() / FM_TAIL)
+
+
+_SUMMARIES = {}
+
+
+def save_summary(path):
+    """{path, file, club, manager, date} from a save game's summary (a fraction of a second; cached), or None."""
+    path = Path(path)
+    try:
+        key = (str(path), path.stat().st_mtime)
+        if key not in _SUMMARIES:
+            import fm_save
+            data, sections = fm_save.open_save(path)
+            info = fm_save.summary(data, sections)
+            _SUMMARIES[key] = {"path": str(path), "file": path.stem, "club": info["club"], "manager": info["manager"],
+                               "date": info["date"].strftime("%d %b %Y")}
+        return _SUMMARIES[key]
+    except Exception:  # not an FM27 save, or one we can't read: left out
+        return None
+
+
+def detect_clubs(folder, newest=8):
+    """The clubs managed in a folder's newest save games, one entry a club (its newest save), newest first."""
+    out, seen = [], set()
+    for f in fm_saves_in(folder)[:newest]:
+        info = save_summary(f)
+        if info and info["club"] not in seen:
+            seen.add(info["club"])
+            out.append(info)
+    return out
+
+
+def folder_report(folder):
+    """The setup page's line under the folder: how many save games it holds, or where else they were found."""
+    folder = Path(folder.strip()).expanduser() if folder and folder.strip() else None
+    found = fm_saves_in(folder) if folder else []
+    if found:
+        return {"ok": True, "text": f"Found {len(found)} save game{'s' if len(found) != 1 else ''} here, the newest "
+                                    f"{found[0].stem} ({time.strftime('%d %b %H:%M', time.localtime(found[0].stat().st_mtime))})."}
+    elsewhere = [f for f in fm_folders() if fm_saves_in(f) and f != folder]
+    if elsewhere:
+        return {"ok": False, "text": f"No save games in this folder, but there are some in {elsewhere[0]}.", "suggest": str(elsewhere[0])}
+    return {"ok": False, "text": "No save games found yet. Save your game in FM first (with cloud saving on, FM puts it in "
+                                 "Steam's folder: Steam › userdata › … › remote), then Browse… to the folder holding the .fm file."}
 
 
 def slug(text):
@@ -82,11 +173,38 @@ class App:
 
     pick_save_game = pick_file
 
+    def profile_for(self, path):
+        """The game profile a save game belongs to, by the club its manager runs: this one when it's that club's (or
+        still empty), else that club's profile, made when there's none. Switches to it; returns a word for the notice."""
+        info = save_summary(path)
+        if not info:
+            return ""
+        club = info["club"]
+        here = score.ROOT / "saves" / (self.save or "")
+        empty = not any((here / "obs").glob("*.csv"))
+        if self.save and (empty or import_export.same_club(self.club_name() or "", club)):
+            return ""
+        match = next((s["name"] for s in self.saves() if import_export.same_club(s["club"] or "", club)), None)
+        made = match is None
+        if made:
+            name, n = slug(club) or "save", 2
+            while (score.ROOT / "saves" / name).exists():
+                name, n = f"{slug(club)}-{n}", n + 1
+            score.new_save(name, club, "")
+            match = name
+        score.set_active_save(match)
+        self.config = score.load_config()
+        self.save, self.save_dir = match, score.ROOT / "saves" / match
+        self.window.set_title(window_title(match))
+        return f" It's a {club} save, so it went to {'a new' if made else 'your'} {club} profile."
+
     def import_now(self, path):
         """Read an FM27 save game: your club, everyone else, the club's money (import_export.import_save)."""
-        self.show_notice(f"Reading {path.name}… (about half a minute)")
+        self.show_notice(f"Reading {path.name}… Be patient: your save will be loaded soon.")
+        moved = ""
         try:
             with self.lock:
+                moved = self.profile_for(path)
                 save, written, skipped, _ = import_export.import_save(path, save=self.save)
                 cfg, pages = score.build(save, self.config)
                 out = score.write_pages(save, self.config, cfg, pages)
@@ -99,10 +217,10 @@ class App:
         rest = sum(n for name, n in written if "search-save-game" in name and "-staff" not in name)
         rest_staff = sum(n for name, n in written if "search-save-game-staff" in name)
         text = (f"Read {path.name}: your {mine} players and {staff} staff"
-                + (f", and {rest:,} other players and {rest_staff:,} other staff in the game." if rest else "."))
+                + (f", and {rest:,} other players and {rest_staff:,} other staff in the game." if rest else ".") + moved)
         self.notice = (text, False)
         self.mark_imported(path)
-        url = (out / "squad.html").resolve().as_uri()
+        url = (out / START_PAGE).resolve().as_uri()
         try:
             here = (self.window.get_current_url() or "").split("?")[0].split("#")[0]
         except Exception:
@@ -151,10 +269,10 @@ class App:
                 cfg, pages = score.build(name, self.config)
                 out = score.write_pages(name, self.config, cfg, pages)
                 self.notice = (notice or f"Now on {self.club_name() or name} ({name}).", False, title)
-                self.show_soon(url=(out / "squad.html").resolve().as_uri())
+                self.show_soon(url=(out / START_PAGE).resolve().as_uri())
             else:
                 self.notice = (notice or f"Now on {self.club_name() or name} ({name}): no players yet.", False, title)
-                self.show_soon(html=screen('start', self.club_name()))
+                self.show_soon(html=screen("start", self.club_name(), saves=self.save_files(), folder=self.games))
 
     # A deleted save waits in saves/_deleted, where Saves… can restore it, for KEEP_DELETED_DAYS; then it's gone.
     KEEP_DELETED_DAYS = 14
@@ -275,11 +393,7 @@ class App:
 
     def save_files(self):
         """FM's save games, newest first (FM's own backup copy left out)."""
-        if not self.games.is_dir():
-            return []
-        found = [f for f in self.games.iterdir() if f.is_file() and f.suffix.lower() == ".fm"
-                 and not f.stem.lower().startswith("last save overwrite backup")]
-        return sorted(found, key=lambda f: f.stat().st_mtime, reverse=True)
+        return fm_saves_in(self.games)
 
     def menu_data(self):
         """What the menu shows: this save, the others, the newest save games, a newer version."""
@@ -287,7 +401,8 @@ class App:
         recent = [{"name": f.stem, "path": str(f), "imported": self.save_key(f) in done,
                    "when": time.strftime("%d %b %H:%M", time.localtime(f.stat().st_mtime))} for f in self.save_files()[:5]]
         return {"current": self.club_name() or self.save, "save": self.save, "saves": self.saves(), "recent": recent,
-                "update": getattr(self, "update", None), "auto": self.auto_import()}
+                "update": getattr(self, "update", None), "auto": self.auto_import(),
+                "folder": str(self.games), "count": len(self.save_files())}
 
     def import_path(self, path):
         """Read a save game picked in the menu, offered by the watcher or dropped on the window."""
@@ -442,15 +557,15 @@ class App:
 
     def new_save(self, club, division, name):
         club, division = club.strip(), division.strip()
-        if not club:
-            raise ValueError("Type the club you manage, exactly as FM shows it in its player lists.")
-        name = slug(name) or slug(club)
+        name = slug(name) or slug(club)  # the club comes from the first save game read into it
+        if not name:
+            raise ValueError("Give the new game profile a name, e.g. Man Utd.")
         if (score.ROOT / "saves" / name).exists():
             raise ValueError(f"There's already a save called {name}: give this one another name, e.g. {name}-2.")
         score.new_save(name, club, division)
         self.commit(f"{name}: new save")
-        self.switch_save(name, f"{club} ({name}) is ready. Now read your game: save it in FM, then Menu → Read save game…",
-                         title="Save created")
+        self.switch_save(name, f"{name} is ready. Now read your game: pick a save game here; the club comes from it.",
+                         title="Profile created")
 
     # --- weights (the Attributes page) ----------------------------------------------------------------------------
 
@@ -541,6 +656,20 @@ class App:
     def open_exports(self):
         if self.games.is_dir() and sys.platform == "win32":
             os.startfile(self.games)
+
+    def change_games_dir(self):
+        """Menu → Change FM's saves folder…: pick the folder FM saves its games in; kept in config.toml."""
+        chosen = self.browse_folder(str(self.games))
+        if not chosen:
+            return
+        score.set_setting("games_dir", str(chosen))
+        self.config["games_dir"] = str(chosen)
+        self.games = games_dir(self.config)
+        report = folder_report(str(chosen))
+        if self.save and not (score.ROOT / "out" / self.save / START_PAGE).exists():  # still on the start screen: list them
+            self.window.load_html(screen("start", self.club_name(), saves=self.save_files(), folder=self.games))
+        self.window.evaluate_js(f"fmNotice({json.dumps(report['text'])}, {json.dumps(not report['ok'])}, "
+                                f"{json.dumps({'title': 'Saves folder changed'})})")
 
     # --- the window -------------------------------------------------------------------------------------------------
 
@@ -643,11 +772,11 @@ class App:
             return
         log_error("the page hadn't loaded 10 s after start: reloading it")
         try:
-            page = score.ROOT / "out" / self.save / "squad.html" if self.save else None
+            page = score.ROOT / "out" / self.save / START_PAGE if self.save else None
             if page is not None and page.exists():
                 self.window.load_url(page.resolve().as_uri())
             else:
-                self.window.load_html(self.setup_page() if self.save is None else screen("start", self.club_name()))
+                self.window.load_html(self.setup_page() if self.save is None else screen("start", self.club_name(), saves=self.save_files(), folder=self.games))
         except Exception:
             log_error("reloading the page")
 
@@ -680,12 +809,13 @@ class App:
         body = SETUP_HTML.replace("__DATA__", json.dumps(data)).replace("__PROJECT__", score.PROJECT_URL)
         return screen("setup", body=body)
 
-    def setup(self, club, division, currency, exports, name, shortcut):
-        """The setup page's Start: write config.toml, create the save, and open it."""
+    def setup(self, club, division, currency, exports, name, shortcut, read=""):
+        """The setup page's Start: write config.toml, create the save, and open it; with read (a save game picked
+        there), read it straight away."""
         club, division, currency, exports = club.strip(), division.strip(), currency.strip() or "£", exports.strip()
-        if not club:
-            raise ValueError("Type the club you manage, exactly as FM writes it in its player lists.")
-        name = slug(name) or slug(club)
+        name = slug(name) or slug(club)  # the club comes from the first save game read (import_save)
+        if not name:
+            raise ValueError("Give this game profile a name, e.g. Man Utd.")
         if not (score.ROOT / "saves" / name / "save.toml").is_file():
             score.new_save(name, club, division)
         score.write_config(name, currency, games_dir=exports or None)
@@ -696,11 +826,16 @@ class App:
         self.save, self.save_dir = name, score.ROOT / "saves" / name
         self.commit(f"{name}: new save")
         self.window.set_title(window_title(name))
-        self.notice = (f"All set up for {club}. Now read your game: save it in FM, then Menu → Read save game…", False, "Save created")
-        self.show_soon(html=screen('start', self.club_name()))
+        if read and Path(read).is_file():
+            self.show_soon(html=screen("start", self.club_name(), saves=self.save_files(), folder=self.games))
+            threading.Timer(0.8, lambda: self.import_now(Path(read))).start()
+            return
+        self.notice = (f"All set up. Now read your game: pick a save game here (or save it in FM first): the club comes from it.", False, "Profile created")
+        self.show_soon(html=screen("start", self.club_name(), saves=self.save_files(), folder=self.games))
 
     def browse_folder(self, current):
-        chosen = self.window.create_file_dialog(webview.FileDialog.FOLDER, directory=current or str(Path.home()))
+        start = current if current and Path(current).is_dir() else str(Path.home())
+        chosen = self.window.create_file_dialog(webview.FileDialog.FOLDER, directory=start)
         return (chosen[0] if isinstance(chosen, (list, tuple)) else chosen) if chosen else None
 
     def start(self):
@@ -710,11 +845,11 @@ class App:
             # rescore on every start, so a change of weights (or a newer version of the app) shows straight away. With
             # last time's pages there, the window opens on them at once and the rescoring runs behind it (a big save
             # takes seconds); the page reloads if anything changed. The first time, the pages are made before it opens.
-            page = score.ROOT / "out" / self.save / "squad.html"  # the app opens on Squad › Lineup
+            page = score.ROOT / "out" / self.save / START_PAGE  # the app opens on its first tab (Club › Overview)
             behind = page.exists()
             if not behind:
                 self.rescore_on_start()
-            where = {"url": page.resolve().as_uri()} if page.exists() else {"html": screen("start", self.club_name())}
+            where = {"url": page.resolve().as_uri()} if page.exists() else {"html": screen("start", self.club_name(), saves=self.save_files(), folder=self.games)}
             title = window_title(self.save)
         self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
         self.window.events.loaded += self.on_load
@@ -843,11 +978,20 @@ class MainApi:
             log_error("restore")
             return {"error": str(e)}
 
-    def setup(self, club, division, currency, exports, name, shortcut):
-        return self._call(self._app.setup, club, division, currency, exports, name, shortcut)
+    def setup(self, club, division, currency, exports, name, shortcut, read=""):
+        return self._call(self._app.setup, club, division, currency, exports, name, shortcut, read)
+
+    def detect_clubs(self, folder):
+        return detect_clubs(folder)
 
     def browse_folder(self, current):
         return self._app.browse_folder(current)
+
+    def check_folder(self, folder):
+        return folder_report(folder)
+
+    def change_games_dir(self):
+        return self._call(self._app.change_games_dir)
 
     def save_weights(self, values):
         return self._call(self._app.save_weights, values)
@@ -946,14 +1090,15 @@ SETUP_HTML = """<style>
 eleven: read straight from your Football Manager 27 save games. All on your computer.</p></div>
 <div class="setup"><h2>Your save</h2>
 <div class="hint">A few details and you're ready. More clubs later: Menu → <b>Game profiles…</b></div>
-<label for="club">Club you manage</label>
-<input id="club" placeholder="e.g. Man Utd" autofocus>
-<div class="hint">Exactly as FM writes it in its player lists: "Man Utd", not "Manchester United".</div>
+<label for="pname">Profile name: your club's name</label>
+<input id="pname" placeholder="e.g. Man Utd" autofocus>
+<div class="hint">One profile a club you manage. The club itself is read from your save game, so a typo does no harm.</div>
 <label for="currency">Currency FM shows wages in</label>
 <select id="currency"><option>£</option><option>€</option><option>$</option></select>
 <label for="exports">FM27's save games folder</label>
 <div class="row"><input id="exports"><button id="browse">Browse…</button></div>
-<div class="hint">Where FM keeps your saves (Documents › Sports Interactive › Football Manager 27 › games). It's usually found for you.</div>
+<div class="hint" id="found">Where FM keeps your saves (Documents › Sports Interactive › Football Manager 27 › games, or Steam's
+folder with cloud saves). It's usually found for you. A folder picker shows folders only, not the save games in them.</div>
 <div class="check" id="shortcut-row"><input type="checkbox" id="shortcut" checked><label for="shortcut">Put a shortcut on the desktop</label></div>
 <div class="error" id="error"></div>
 <button class="go" id="go">Start</button>
@@ -964,18 +1109,28 @@ eleven: read straight from your Football Manager 27 save games. All on your comp
 <li>In FM, <b>save your game</b>.</li>
 <li>Here: Menu → <b>Read save game…</b> and pick it (or drop the .fm file on the window): your club, every player
 and every staff member in the game come in at once.</li>
-<li>With Menu → <b>Auto-read</b> on, every later save in FM is read by itself.</li>
+<li><b>Auto-read</b> is on: every later save in FM is read by itself (Menu → Auto-read).</li>
 </ol><div class="more"><b>Private:</b> nothing leaves your computer; your saves and pages stay in the folder shown under Start.</div></div>
 <script>
 const d = __DATA__, $ = id => document.getElementById(id);
 $("exports").value = d.exports;
 $("home").textContent = "Kept in " + d.home;
 if (!d.shortcut) $("shortcut-row").style.display = "none";
-$("browse").onclick = async () => { const f = await pywebview.api.browse_folder($("exports").value); if (f) $("exports").value = f; };
+// under the folder: how many save games it holds, or where they were found instead (a click there uses that folder)
+async function check() {
+  if (!window.pywebview) return setTimeout(check, 200);
+  const r = await pywebview.api.check_folder($("exports").value), el = $("found");
+  el.textContent = r.text; el.style.color = r.ok ? "#c5f04f" : "#f0c24f";
+  if (r.suggest) { const a = document.createElement("a"); a.href = "#"; a.textContent = " Use that folder";
+    a.style.color = "#8bd3f7"; a.onclick = e => { e.preventDefault(); $("exports").value = r.suggest; check(); }; el.append(a); }
+}
+$("browse").onclick = async () => { const f = await pywebview.api.browse_folder($("exports").value); if (f) { $("exports").value = f; check(); } };
+$("exports").onchange = check;
+window.addEventListener("pywebviewready", check); check();
 async function go() {
   $("go").disabled = true; $("error").textContent = "Setting up…";
-  const r = await pywebview.api.setup($("club").value, "", $("currency").value, $("exports").value, "",
-                                      d.shortcut && $("shortcut").checked);
+  const r = await pywebview.api.setup("", "", $("currency").value, $("exports").value, $("pname").value,
+                                      d.shortcut && $("shortcut").checked, "");
   if (r && r.error) { $("error").textContent = r.error; $("go").disabled = false; }
 }
 $("go").onclick = go;
@@ -1038,7 +1193,7 @@ __BODY__
 </body></html>"""
 
 
-def screen(kind, club="", detail="", body=""):
+def screen(kind, club="", detail="", body="", saves=None, folder=None):
     """The new-save screen ("start"), the error screen ("error") or the first-run setup ("setup", its body given), as HTML."""
     logo = (score.APP / "logo.svg").read_text(encoding="utf-8") if (score.APP / "logo.svg").exists() else ""
     esc = lambda t: html.escape(str(t))
@@ -1060,8 +1215,24 @@ def screen(kind, club="", detail="", body=""):
 <div class="card"><h2>Read your game</h2><ol>
 <li>In FM, <b>save your game</b>.</li>
 <li>Here: Menu → <b>Read save game…</b> and pick it, or drop the <b>.fm</b> file on this window.</li>
-<li>Your club, every player and every staff member in the game come in at once (about half a minute).</li>
-</ol><div class="more"><b>Auto-read:</b> turn it on in the Menu and every later save in FM is read by itself.</div></div>"""
+<li>Your club, every player and every staff member in the game come in at once. Be patient: it's loaded soon.</li>
+</ol><div class="more"><b>Auto-read</b> is on: every later save in FM is read by itself (turn it off in the Menu).</div></div>"""
+        # the save games found, newest first, each one a click away; and where they were looked for
+        rows = "".join(
+            f'<li class="sg"><button data-r="Reading…" onclick="this.disabled=true;this.textContent=this.dataset.r;window.pywebview&&pywebview.api.import_path({esc(json.dumps(str(f)))})">Read</button>'
+            f'<div><b title="{esc(f.name)}">{esc(f.stem)}</b><span>{time.strftime("%d %b %Y %H:%M", time.localtime(f.stat().st_mtime))} · {f.stat().st_size / 1e6:.0f} MB</span></div></li>'
+            for f in (saves or [])[:6])
+        where = esc(folder) if folder else "FM's games folder"
+        body += f"""<div class="card saves"><h2>Your save games</h2>
+<div class="more" style="margin:0 0 8px">In <b>{where}</b> <button class="chg" onclick="window.pywebview&&pywebview.api.change_games_dir()">Change…</button></div>
+{f'<ul class="sgl">{rows}</ul>' if rows else '<p>None found here yet. Save your game in FM, or press <b>Change…</b> and pick the folder holding your .fm files.</p>'}
+</div>"""
+        body += """<style>.card.saves{left:auto;right:40px;width:520px;max-height:calc(100% - 200px);overflow:auto}
+.sgl{list-style:none;margin:0;padding:0}.card li.sg{display:flex;align-items:center;gap:12px;margin:0;padding:8px 0;border-top:1px solid #2a332f}
+.card li.sg::before{content:none}.sg div{flex:1;min-width:0}.sg b{display:block;overflow-wrap:anywhere;line-height:1.3}
+.sg span{display:block;margin-top:2px;color:#9aa49f;font-size:12px}
+.sg button,.chg{padding:4px 12px;border:0;border-radius:6px;background:#c5f04f;color:#0f1412;font:700 12px Inter,'Segoe UI',sans-serif;cursor:pointer}
+.chg{background:transparent;color:#f2efe7;border:1px solid #3a4540;margin-left:6px}</style>"""
     theme = (score.APP / "theme.css").read_text(encoding="utf-8") if (score.APP / "theme.css").exists() else ""
     i, j = theme.find("  /* the banner at the right of the top bar"), theme.find("  .bar #filter {")
     promo_css = theme[i:j] if 0 <= i < j else ""  # the banner's own rules (score.PROMO), as on every page
@@ -1094,10 +1265,13 @@ TOOLBAR_JS = """(() => {
   const list = document.createElement("div");
   list.id = "fm-menu";
   list.style.cssText = "position:fixed;display:none;z-index:10000;width:320px;max-height:calc(100vh - 110px);overflow:auto;padding:6px;" +
-    "border:1px solid var(--line,#2a332f);border-radius:10px;background:var(--pop,#121815);box-shadow:0 12px 30px #000c";
+    "border:2px solid color-mix(in srgb, var(--blue,#c5f04f) 45%, var(--line,#2a332f));border-radius:10px;" +
+    "box-shadow:0 18px 44px #000e, 0 0 0 1px #0008";
+  // dark and solid; its parts set apart by clear lines and borders (EDGE: the theme's line colour, lighter)
+  const menuBg = "var(--pop,#121815)";
   // the logo, large and faint, in the menu's corner
   const mark = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 70"><text x="2" y="62" font-family="Arial Black,Arial" font-weight="900" font-size="72" fill="#f2efe7" fill-opacity=".05">X</text><text x="62" y="62" font-family="Arial Black,Arial" font-weight="900" font-size="72" fill="#c5f04f" fill-opacity=".07">I</text></svg>';
-  list.style.background = `var(--pop,#121815) url("data:image/svg+xml,${encodeURIComponent(mark)}") no-repeat right -14px bottom -10px / 170px auto`;
+  list.style.background = `${menuBg} url("data:image/svg+xml,${encodeURIComponent(mark)}") no-repeat right -14px bottom -10px / 170px auto`;
   document.body.append(list);
   // main: the one used most (Read save game…), in the accent, lighter than the rest
   // keep: the menu stays open after the click (a switch, like Auto-read)
@@ -1113,39 +1287,69 @@ TOOLBAR_JS = """(() => {
     it.onclick = e => { if (keep) { e.stopPropagation(); run(it); } else { list.style.display = "none"; run(); } };
     return it;
   };
-  const line = () => { const l = document.createElement("div"); l.style.cssText = "height:1px;margin:5px 6px;background:var(--line,#2a332f)"; return l; };
+  const EDGE = "color-mix(in srgb, var(--line,#2a332f) 72%, #ffffff)";
+  const line = () => { const l = document.createElement("div"); l.style.cssText = "height:2px;margin:8px 4px;border-radius:1px;background:" + EDGE; return l; };
   const label = t => { const l = document.createElement("div"); l.textContent = t;
     l.style.cssText = "padding:6px 12px 3px;color:#9aa49f;font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase"; return l; };
   const escH = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  // Auto-read: a switch; a click flips it in place (ON / OFF), the menu stays open
-  const autoText = on => `Auto-read <span style="margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;${on
-    ? 'color:#0f1412;background:#c5f04f">ON' : 'color:#cfd6d1;background:#2a332f">OFF'}</span>`;
-  const autoHint = on => on ? "every time you save in FM it's read by itself · click to turn off" : "read every new save of your game by itself · click to turn on";
-  const autoItem = d => item(autoText(d.auto), autoHint(d.auto), async it => {
-    const r = await pywebview.api.set_auto_import(!d.auto);
-    if (r && r.error) return window.fmNotice(r.error, true);
-    d.auto = !d.auto;
-    it.innerHTML = autoText(d.auto) + `<div style="color:#9aa49f;font-size:12px;font-weight:400">${autoHint(d.auto)}</div>`;
-  }, false, true);
+  // FM's saves folder: where it is and how many save games it holds, with Open and Change… beside it
+  const folderCard = d => {
+    const box = document.createElement("div");
+    const short = String(d.folder || "").split(/[\\\\/]/).filter(Boolean).slice(-2).join(" › ");
+    const btn = (t, run) => { const b = document.createElement("button"); b.textContent = t;
+      b.style.cssText = "padding:4px 10px;border:1px solid " + EDGE + ";border-radius:6px;background:transparent;color:#f2efe7;font:600 12px Inter,'Segoe UI',sans-serif;cursor:pointer";
+      b.onmouseenter = () => b.style.borderColor = "var(--blue,#c5f04f)"; b.onmouseleave = () => b.style.borderColor = EDGE;
+      b.onclick = e => { e.stopPropagation(); list.style.display = "none"; run(); }; return b; };
+    box.style.cssText = "margin:4px 2px 2px;padding:8px 10px 8px 12px;border:1px solid " + EDGE + ";border-radius:8px;display:flex;align-items:center;gap:8px";
+    box.innerHTML = `<div style="flex:1;min-width:0"><div style="color:#9aa49f;font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase">FM's saves folder</div>
+      <div title="${escH(d.folder || "")}" style="margin-top:4px;color:#f2efe7;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(short || "not found")}</div>
+      <div style="margin-top:2px;font-size:12px;color:${d.count ? "#9aa49f" : "#f0c24f"}">${d.count ? `${d.count} save game${d.count === 1 ? "" : "s"}` : "no save games here: Change…"}</div></div>`;
+    box.append(btn("Open", () => window.pywebview && pywebview.api.open_exports()), btn("Change…", () => window.pywebview && pywebview.api.change_games_dir()));
+    return box;
+  };
+  const small = (t, run, tip) => { const b = document.createElement("button"); b.textContent = t; if (tip) b.title = tip;
+    b.style.cssText = "flex:none;padding:4px 10px;border:1px solid " + EDGE + ";border-radius:6px;background:transparent;color:#f2efe7;font:600 12px Inter,'Segoe UI',sans-serif;cursor:pointer";
+    b.onmouseenter = () => b.style.borderColor = "var(--blue,#c5f04f)"; b.onmouseleave = () => b.style.borderColor = EDGE;
+    b.onclick = e => { e.stopPropagation(); list.style.display = "none"; run(); }; return b; };
+  const tile = (t, hint, run) => { const b = document.createElement("button");
+    b.innerHTML = `${t}<div style="margin-top:2px;color:#9aa49f;font-size:11px;font-weight:400">${hint}</div>`;
+    b.style.cssText = "padding:8px 6px;border:1px solid " + EDGE + ";border-radius:8px;background:transparent;color:#f2efe7;font:600 13px Inter,'Segoe UI',sans-serif;cursor:pointer;text-align:center";
+    b.onmouseenter = () => b.style.background = "var(--hover,#232c29)"; b.onmouseleave = () => b.style.background = "transparent";
+    b.onclick = e => { e.stopPropagation(); list.style.display = "none"; run(); }; return b; };
+  // Auto-read: one line with a switch; a click flips it, the menu stays open
+  const autoRow = d => {
+    const row = document.createElement("button");
+    const draw = () => { row.innerHTML = `<div style="flex:1"><div>Auto-read</div><div style="color:#9aa49f;font-size:12px;font-weight:400">${d.auto ? "each save in FM is read by itself" : "off: read each save yourself"}</div></div>` +
+      `<span style="flex:none;width:34px;height:18px;border-radius:999px;position:relative;background:${d.auto ? "#c5f04f" : "#2a332f"}">` +
+      `<span style="position:absolute;top:2px;${d.auto ? "right:2px" : "left:2px"};width:14px;height:14px;border-radius:50%;background:${d.auto ? "#0f1412" : "#9aa49f"}"></span></span>`; };
+    row.style.cssText = "display:flex;align-items:center;gap:10px;width:100%;padding:7px 12px;border:0;border-radius:6px;background:transparent;color:#f2efe7;font:500 14px Inter,'Segoe UI',sans-serif;text-align:left;cursor:pointer";
+    row.onmouseenter = () => row.style.background = "var(--hover,#232c29)"; row.onmouseleave = () => row.style.background = "transparent";
+    row.onclick = async e => { e.stopPropagation(); const r = await pywebview.api.set_auto_import(!d.auto);
+      if (r && r.error) return window.fmNotice(r.error, true); d.auto = !d.auto; draw(); };
+    draw(); return row;
+  };
   const fill = async () => {
     const d = window.pywebview ? await pywebview.api.menu_data() : { recent: [], saves: [] };
     list.innerHTML = "";
-    if (d.current) {  // the save you're in, as a highlighted card
-      const cur = document.createElement("div");
-      cur.innerHTML = `<div style="color:var(--blue,#c5f04f);font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase">Current save</div>` +
-        `<div style="margin-top:4px;color:#f2efe7;font:600 22px/1 'Barlow Condensed','Bahnschrift SemiCondensed','Arial Narrow',sans-serif;letter-spacing:.02em">${escH(d.current)}</div>` +
-        `<div style="margin-top:3px;color:#9aa49f;font-size:12px">${escH(d.save || "")}</div>`;
-      cur.style.cssText = "margin:2px 2px 6px;padding:10px 12px;border-radius:8px;border-left:3px solid var(--blue,#c5f04f);" +
-        "background:color-mix(in srgb, var(--blue,#c5f04f) 10%, transparent)";
-      list.append(cur);
-    }
-    list.append(label("Your game"),
-      item("Read save game…", "your club, every player and staff member, from an FM27 save (.fm), or drop one on the window · key I", () => window.pywebview && pywebview.api.pick_file(), true),
-      item("Open FM's saves folder", "where FM keeps your save games", () => window.pywebview && pywebview.api.open_exports()),
-      autoItem(d), line(), label("Game profiles"),
-      item("Game profiles…", "switch, start, delete, back up or restore one (one per club you manage)", () => window.fmSaves()), line(), label("ElevenIndex"),
-      item("Theme…", "the app's colours", () => window.fmTheme()),
-      item("Check for updates", "is there a newer ElevenIndex?", async () => {
+    // 1. the save you're in, with Manage… (Game profiles: switch, start, delete, back up, restore)
+    const cur = document.createElement("div");
+    cur.style.cssText = "margin:2px 2px 8px;padding:10px 10px 10px 12px;border-radius:8px;border-left:3px solid var(--blue,#c5f04f);display:flex;align-items:center;gap:8px;" +
+      "background:color-mix(in srgb, var(--blue,#c5f04f) 10%, transparent)";
+    cur.innerHTML = `<div style="flex:1;min-width:0"><div style="color:var(--blue,#c5f04f);font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase">Game profile</div>` +
+      `<div style="margin-top:4px;color:#f2efe7;font:600 22px/1 'Barlow Condensed','Bahnschrift SemiCondensed','Arial Narrow',sans-serif;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(d.current || "none yet")}</div>` +
+      `<div style="margin-top:3px;color:#9aa49f;font-size:12px">${(d.saves || []).length > 1 ? `${d.saves.length} profiles` : "your only profile"}</div></div>`;
+    cur.append(small("Manage…", () => window.fmSaves(), "switch, start, delete, back up or restore a game profile"));
+    list.append(cur);
+    // 2. your game: read a save, read every save by itself, where FM keeps them
+    list.append(line(), label("Your game"),
+      item("Read save game…", "pick an FM27 save (.fm), or drop one on the window · key I", () => window.pywebview && pywebview.api.pick_file(), true),
+      autoRow(d), folderCard(d));
+    // 3. the app: a new version first when there is one, then Theme, Updates, About as three tiles
+    if (d.update && d.update.version) list.append(item(`New version ${escH(d.update.version)}`, "download it from the website", () => window.fmOpen(d.update.url), true));
+    const tiles = document.createElement("div");
+    tiles.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 2px 2px";
+    tiles.append(tile("Theme", "colours", () => window.fmTheme()),
+      tile("Updates", "check now", async () => {
         window.fmNotice("Checking for a new version…", false);
         const r = await pywebview.api.check_now();
         if (r.error) return window.fmNotice(r.error, true);
@@ -1153,7 +1357,11 @@ TOOLBAR_JS = """(() => {
         if (u.newer) window.fmNotice(`ElevenIndex ${u.latest} is out (you have ${u.current}).`, false, { title: "New version", label: "Download", run: () => window.fmOpen(u.url) });
         else window.fmNotice(`You have the latest version (${u.current}).`, false, { title: "Up to date", label: "Release notes", run: () => window.fmOpen(u.url) });
       }),
-      item("About", "version, your settings, project page", () => window.fmAbout()));
+      tile("About", "settings, guide", () => window.fmAbout()));
+    const foot = document.createElement("div");
+    foot.style.cssText = "padding:8px 4px 2px;color:#6f7a75;font:500 11px Inter,'Segoe UI',sans-serif;text-align:center";
+    foot.textContent = "ElevenIndex """ + VERSION + """ · M opens this menu";
+    list.append(line(), label("ElevenIndex"), tiles, foot);
   };
   // a link out (the browser, not this window)
   window.fmOpen = url => { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; document.body.append(a); a.click(); a.remove(); };
@@ -1306,20 +1514,18 @@ TOOLBAR_JS = """(() => {
       if (r && r.result) window.fmNotice("Saved to " + r.result, false, { title: "Backup saved" });
     };
     box.append(css(make("h3", "Backup"), "margin:20px 0 0;font-size:16px"), backupBk, restoreBk);
-    box.append(css(make("h3", "New save"), "margin:20px 0 4px;font-size:16px"),
-      css(make("div", "Your old saves stay as they are: switch back to them here any time."), "color:#9aa49f;margin-bottom:8px"));
+    box.append(css(make("h3", "New game profile"), "margin:20px 0 4px;font-size:16px"),
+      css(make("div", "One profile a club you manage. Your other profiles stay as they are. The club itself is read from your save game, so a typo does no harm."), "color:#9aa49f;margin-bottom:8px"));
     const input = (labelText, placeholder) => {
       const l = css(make("label", labelText), "display:block;margin:8px 0 4px");
       const i = css(make("input"), field); i.placeholder = placeholder; box.append(l, i); return i;
     };
-    const club = input("Club you manage, exactly as FM writes it in player lists", "e.g. Man Utd");
-    const name = input("Name for this save (optional)", "made from the club's name");
-    club.oninput = () => { name.placeholder = club.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "made from the club's name"; };
+    const name = input("Profile name: your club's name", "e.g. Man Utd");
     const buttons = css(make("div"), "display:flex;gap:8px;justify-content:flex-end;margin-top:14px");
     const cancel = css(make("button", "Close"), "padding:7px 16px;border:0;border-radius:6px;background:#2a332f;color:#f2efe7;font:inherit;cursor:pointer");
     const create = css(make("button", "Create and switch to it"), "padding:7px 16px;border:0;border-radius:6px;background:#a9d93b;color:#0f1412;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer");
     cancel.onclick = () => shade.remove();
-    create.onclick = () => run(() => pywebview.api.new_save(club.value, "", name.value));
+    create.onclick = () => run(() => pywebview.api.new_save("", "", name.value));
     buttons.append(cancel, create);
     box.append(error, buttons);
     shade.append(box);

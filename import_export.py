@@ -13,7 +13,7 @@ import score  # the data folder (ROOT), the weights and the scoring rules
 
 HERE = Path(__file__).parent
 
-META_ORDER = ["Name", "Club", "Age", "Position", "Preferred Foot", "Left Foot", "Wage", "Transfer Value", "Loan", "Contract", "Height", "Minutes", "Rating"]
+META_ORDER = ["Name", "Club", "Age", "Position", "Preferred Foot", "Left Foot", "Wage", "Transfer Value", "Loan", "Team", "Contract", "Height", "Minutes", "Rating"]
 GK_CHECK = ["Handling", "Reflexes", "One on Ones", "Aerial Reach", "Command of Area"]  # outfielders show 1-5 here
 GK_ATTRS = set(GK_CHECK) | {"Communication", "Eccentricity", "Kicking", "Punching", "Rushing Out (Tendency)", "Throwing"}
 OUTFIELD_ONLY = {"Finishing", "Tackling", "Marking", "Heading", "Dribbling", "Crossing", "Long Shots", "Penalty Taking",
@@ -54,7 +54,7 @@ def convert(rows, headers, club):
         for foot in ("Preferred Foot", "Left Foot"):  # the views now show Preferred Foot; older ones Left Foot
             if (r.get(foot) or "").strip() not in ("", "-"):
                 new[foot] = r[foot].strip()
-        for extra in ("Height", "Contract", "Familiarity", "Current Ability", "Potential Ability", "Reputation",
+        for extra in ("Team", "Height", "Contract", "Familiarity", "Current Ability", "Potential Ability", "Reputation",
                       "Match Exercise", "Fitness", "Jadedness", "Injured until", "Traits", "Moves", "Born", "Left Foot Rating", "Right Foot Rating",
                       "Home Reputation", "World Reputation", *score.HIDDEN_COLS):
             # read from a save game: height in cm, the contract's end date, FM's hidden ability and attributes
@@ -114,8 +114,14 @@ def set_last_batch(save_toml, files, key="last_batch", names_key="last_names"):
 
 
 def same_club(a, b):
-    slug = lambda s: re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
-    return slug(a) == slug(b)
+    """The same club, however it was typed: "Man Utd" = "man-utd", and "Tottenham" = "Tottenham Hotspur" (every word
+    of the shorter one in the longer one)."""
+    words = lambda s: re.sub(r"[^a-z0-9]+", " ", s.lower()).split()
+    x, y = words(a), words(b)
+    if not x or not y:
+        return False
+    short, long = sorted((x, y), key=len)
+    return x == y or all(w in long for w in short)
 
 
 SAVE_LIST = "search-save-game"  # every other player in a save game: one list, the newest save's only
@@ -135,9 +141,17 @@ def import_save(path, save=None, everyone=None):
     club = cfg["managed_club"]
     everyone = config.get("save_everyone", True) if everyone is None else everyone
     got = fm_save.read(path, config.get("currency", "£"), everyone=everyone)
-    if not (same_club(club, got["club"]) or same_club(club, got["long"])):
-        raise ValueError(f"This FM save is {got['long']}'s, but the save open here is {club}'s. "
-                         f"Start a new save for {got['club']} (Menu → Saves… → New), then import it there.")
+    obs = save_toml.parent / "obs"
+    if not any(obs.glob("*.csv")) if obs.is_dir() else True:
+        # nothing read into this profile yet: the save game decides its club (whatever was typed at setup)
+        if club != got["club"]:
+            text = save_toml.read_text(encoding="utf-8")
+            text = re.sub(r'(?m)^managed_club\s*=\s*".*"$', lambda m: f'managed_club = "{got["club"]}"', text, count=1)
+            save_toml.write_text(text, encoding="utf-8")
+            club = got["club"]
+    elif not (same_club(club, got["club"]) or same_club(club, got["long"])):
+        raise ValueError(f"This FM save is {got['long']}'s, but the game profile open here is {club}'s. "
+                         f"Start a profile for {got['club']} (Menu → Manage… → New), then read it there.")
     stamp = time.strftime("%Y-%m-%dT%H%M", time.localtime(path.stat().st_mtime))
     source = re.sub(r"[^a-z0-9]+", "-", club.lower()).strip("-")
     for r in got["players"] + got["staff"]:
@@ -199,6 +213,20 @@ def import_save(path, save=None, everyone=None):
         dates = {}
     dates[stamp] = got["date"].isoformat()
     dates_file.write_text(json.dumps(dates, indent=1, sort_keys=True), encoding="utf-8")
+    if got.get("season_stats"):  # the season's match stats, one file a season (the newest read in it wins)
+        d = got["date"]
+        start = d.year if d.month >= 7 else d.year - 1
+        stats_dir = save_toml.parent / "stats"
+        stats_dir.mkdir(exist_ok=True)
+        stats_file = stats_dir / f"{start}-{str(start + 1)[2:]}.json"
+        try:
+            old = json.loads(stats_file.read_text(encoding="utf-8")).get("game_date", "")
+        except (OSError, ValueError):
+            old = ""
+        if d.isoformat() >= old:
+            stats_file.write_text(json.dumps({"season": f"{start}/{str(start + 1)[2:]}", "game_date": d.isoformat(), "read": stamp,
+                                              "competitions": got["season_stats"].get("competitions", {}),
+                                              "matches": got["season_stats"].get("matches", {})}, ensure_ascii=False), encoding="utf-8")
     money_file = save_toml.parent / "finances.json"
     newest = score.read_finances(save_toml.parent).get("game_date", "")
     if got.get("finances") and got["date"].isoformat() >= newest:  # the club's budgets; an older save doesn't replace them

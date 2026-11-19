@@ -26,7 +26,7 @@ __THEME__
   .ttitle { margin-bottom: 8px; color: var(--fg); font: 700 17px/1.2 var(--head); text-transform: uppercase; letter-spacing: .02em; }
   .ttitle .sub { font: 500 12px var(--body); text-transform: none; letter-spacing: 0; }
   table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th, td { padding: 3px 8px; text-align: left; white-space: nowrap; }
+  th, td { padding: 4px 8px; text-align: left; white-space: nowrap; }  /* one cell size on every page */
   th { color: var(--dim); font-size: 12px; font-weight: 500; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
   .tiles th { cursor: default; vertical-align: bottom; }
   .num { text-align: right; }
@@ -184,7 +184,7 @@ __THEME__
   .chip.also { opacity: .6; border-style: dashed; }
   .chip.t4, .chip.t3 { border-color: #4ade8066; } .chip.t2 { border-color: #fbd13d55; } .chip.t1, .chip.t0 { border-color: #f8717166; }
   table.dtable { width: auto; min-width: 280px; } table.dtable.wide { min-width: 460px; }
-  table.dtable td, table.dtable th { padding: 4px 10px; } table.dtable tr.on td { background: color-mix(in srgb, var(--blue) 8%, transparent); } table.dtable tr.minor td { color: var(--dim); }
+  table.dtable td, table.dtable th { padding: 4px 8px; } table.dtable tr.on td { background: color-mix(in srgb, var(--blue) 8%, transparent); } table.dtable tr.minor td { color: var(--dim); }
   .dbar { display: inline-block; width: 140px; height: 8px; vertical-align: 1px; background: #ffffff10; border-radius: 4px; overflow: hidden; }
   .dbar i { display: block; height: 100%; border-radius: 4px; }
   .dbar i.t4, .dbar i.t3 { background: var(--green); } .dbar i.t2 { background: var(--yellow); } .dbar i.t1, .dbar i.t0 { background: var(--red); }
@@ -271,7 +271,7 @@ __THEME__
   /* Formations page */
   table.flist tr.f { cursor: pointer; } table.flist tr.f:hover td { background: var(--hover); }
   table.flist tr.on td { background: color-mix(in srgb, var(--blue) 8%, transparent); } table.flist tr.on td:first-child { box-shadow: inset 3px 0 var(--blue); }
-  table.flist td { padding: 5px 8px; vertical-align: top; } table.flist .sub { white-space: normal; }
+  table.flist td { padding: 4px 8px; vertical-align: top; } table.flist .sub { white-space: normal; }
   .fview { display: grid; grid-template-columns: minmax(280px, 380px) minmax(240px, 1fr); gap: 16px; align-items: start; }
   @media (max-width: 1100px) { .fview { grid-template-columns: minmax(0, 1fr); } }
   table.fstats { width: 100%; table-layout: fixed; }
@@ -299,16 +299,14 @@ __THEME__
   table.fstats td { padding: 5px 8px; white-space: normal; } table.fstats td:first-child { width: 48%; color: var(--dim); }
 
   /* ---- Analysis and Development ---- */
-  .rankby { margin-left: 6px; color: var(--dim); font: 500 13px var(--body); text-transform: none; letter-spacing: 0; }
-  #rankby { margin-left: 4px; padding: 3px 8px; color: var(--fg); font: 600 13px var(--body); background-color: var(--row);
-            border: 1px solid var(--blue); border-radius: 6px; }
+  .rankby { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: 8px; vertical-align: 2px; color: var(--dim);
+            font: 500 13px var(--body); text-transform: none; letter-spacing: 0; }
+  .rankby .seg button, .ttitle .seg button { height: 23px; padding: 0 10px; font-size: 12px; line-height: 21px; }
+  #rankby { margin-left: 4px; }
   /* Development's two checkpoints: labelled pickers with a calendar mark and the app's own arrow */
   .devrange { display: inline-flex; align-items: center; gap: 8px; margin-left: 14px; vertical-align: 2px; text-transform: none; letter-spacing: 0; }
   .devrange .dlab { color: var(--dim); font: 700 10.5px var(--body); letter-spacing: .08em; text-transform: uppercase; }
   .devrange .darr { color: var(--blue); font: 600 15px var(--body); margin: 0 2px; }
-  select.snapsel { padding-left: 27px !important; font-variant-numeric: tabular-nums;  /* the size: every dropdown's (theme.css) */ background-size: 12px 12px, 10px 10px; background-position: 9px 50%, right 8px center;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238bd3f7' stroke-width='2' stroke-linecap='round'%3E%3Crect x='3.5' y='5' width='17' height='15.5' rx='2.5'/%3E%3Cpath d='M3.5 10h17M8 3v4M16 3v4'/%3E%3C/svg%3E"),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c5f04f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); }
   .devsum { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 10px; }
   .devsum > div { min-width: 120px; padding: 6px 12px; background: var(--row); border: 1px solid var(--line); border-radius: 8px; }
   .devsum b { display: block; color: var(--fg); font: 700 22px/1.1 var(--head); }
@@ -343,7 +341,7 @@ __THEME__
   .plan { margin: 10px 0 0; padding: 0; list-style: none; counter-reset: pl; }
   .plan li { display: flex; gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid var(--line); counter-increment: pl; }
   .plan li::before { content: counter(pl); min-width: 18px; color: var(--dim); font-size: 12px; text-align: right; }
-  .plan .ppos { min-width: 70px; color: var(--fg); } .plan .ppos[title] { min-width: 190px; } .plan .rec { font-size: 13px; }
+  .plan .ppos { min-width: 70px; color: var(--fg); } .plan .ppos[title] { min-width: 190px; }
   .ptag { flex: none; min-width: 84px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-align: center; color: #0f1412 !important; }
   .ptag.act { background: #f87171; } .ptag.warn { background: #d8c38f; } .ptag.plan { background: #9aa49f; } .ptag.young { background: var(--cyan); }
   .why { margin-top: 3px; color: var(--dim); font-size: 12px; white-space: normal; max-width: 300px; } .why b { color: var(--purple); font-weight: 600; }
@@ -403,7 +401,17 @@ __THEME__
   .bh .sub { margin-left: auto; color: var(--dim); text-transform: none; letter-spacing: 0; font: 400 11px var(--body); text-align: right; }
   .bh select, .aat select { padding: 2px 6px; color: var(--fg); font: 600 12px var(--body); background-color: var(--bg); border: 1px solid var(--line);
         border-radius: 5px; text-transform: none; }
-  .boxes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; margin-bottom: 12px; }
+  .boxes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: stretch; margin-bottom: 12px; }
+  .panel { overflow-x: auto; }  /* a table wider than its box scrolls inside it, never out of it */
+  .panel table { width: 100%; } .panel td:not(.num) { white-space: normal; }
+  .sub { font-size: 12px; }
+  button, select, input { font-family: inherit; }  /* every control in the page's font */  /* small notes: one size everywhere (headings' own .sub rules stay smaller) */
+  td.notes { white-space: normal; min-width: 200px; } td.notes .rec { white-space: nowrap; }
+  td.wrap { white-space: normal; min-width: 150px; }
+  #main > .tile:has(> table) { overflow-x: auto; }  /* a long list scrolls sideways inside its box, never past it */
+  .panel table.dtable { min-width: 0; }
+  .boxes.wage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(260px, .55fr); }
+  @media (max-width: 1350px) { .boxes.wage { grid-template-columns: minmax(0, 1fr); } }
   .boxes.two { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
   .tile .boxes:last-child { margin-bottom: 0; }
   .pgrid { display: grid; gap: 12px; grid-template-columns: 290px minmax(0, 1fr) 290px; align-items: start; }
@@ -426,7 +434,7 @@ __THEME__
   .sbar { display: inline-block; width: 70px; height: 6px; vertical-align: 1px; background: #ffffff12; border-radius: 3px; overflow: hidden; }
   .sbar i { display: block; height: 100%; background: var(--cyan); opacity: .8; }
   .hsel { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; color: var(--dim); font-size: 12px; }
-  .hsel select, .devrange select.snapsel { padding: 3px 8px; color: var(--fg); font: 600 13px var(--body); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+
   .bignum { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
   .bignum > div { padding: 6px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
   .bignum b { display: block; color: var(--fg); font: 700 20px var(--head); } .bignum span { color: var(--dim); font-size: 11px; }
@@ -454,6 +462,10 @@ __THEME__
   .h2h { margin-top: 10px; } .h2bar { display: inline-block; height: 8px; vertical-align: 1px; border-radius: 4px; }
   .h2bar.a { background: var(--cyan); } .h2bar.b { background: var(--blue); }
   .ptag.big { color: #0f1412; background: #e9a066; } .ptag.judge { color: #0f1412; background: #8bd3f7; }
+  .formchips { display: inline-flex; gap: 3px; } .formchips i { min-width: 30px; padding: 1px 4px; border-radius: 4px; background: #ffffff10;
+    font: 700 11px var(--body); font-style: normal; text-align: center; }
+  .formchips i.t4 { color: #0f1412; background: var(--green); } .formchips i.t3 { color: #0f1412; background: #a6e163; }
+  .formchips i.t2 { color: #0f1412; background: var(--yellow); } .formchips i.t0 { color: #0f1412; background: var(--red); }
   .angrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 520px); gap: 12px; align-items: start; }
   .angrid .boxes { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 0; }
   .angrid .dtable { width: 100%; min-width: 0; } .angrid .dbar { width: 70px; } .angrid td.barcell { width: auto; }
@@ -1077,6 +1089,15 @@ const miniTable = (obj, keys, low = new Set()) => { const ks = keys.filter(k => 
 const leftText = m => m == null ? "" : m <= 0 ? "ending now" : m < 12 ? `${Math.round(m)} months left` : `${Math.floor(m / 12)}y ${Math.round(m % 12)}m left`;
 const HIDDEN_KEYS = ["Consistency", "Important Matches", "Injury Proneness", "Versatility", "Dirtiness"];
 const PERSON_KEYS = ["Professionalism", "Ambition", "Pressure", "Loyalty", "Temperament", "Sportsmanship", "Adaptability", "Controversy"];
+// ---- match stats (Club › Match stats): ratings and form, used in profiles, Club, Depth and Transfers ----
+const rClass = v => v == null ? "dim" : v >= 7.3 ? "t4" : v >= 6.9 ? "t3" : v >= 6.6 ? "t2" : "t0";
+const formChips = ms => ms && ms.form && ms.form.length ? `<span class="formchips">${ms.form.map(v => `<i class="${rClass(v)}" title="${v.toFixed(2)}">${v.toFixed(1)}</i>`).join("")}</span>` : `<span class="dim">–</span>`;
+// a player's form against his season: in form (last five 0.25 above his average, or 7.2+), out of form (0.25 below, or under 6.6)
+function formWord(ms) {
+  if (!ms || ms.formAvg == null || !ms.form || ms.form.length < 3) return null;
+  const base = ms.rating ?? ms.formAvg;
+  return ms.formAvg >= base + 0.25 || ms.formAvg >= 7.2 ? "in form" : ms.formAvg <= base - 0.25 || ms.formAvg < 6.6 ? "out of form" : "steady";
+}
 // ---- a player's Profile and Scout report (save games fill most of it; exports only some) ----
 const POS_WORDS = { GK: "goalkeeper", CD: "centre-back", "DL/DR": "full-back", "WBL/WBR": "wing-back", DM: "defensive midfielder",
   MC: "central midfielder", "ML/MR": "wide midfielder", AMC: "attacking midfielder", "AML/AMR": "winger", ST: "striker" };
@@ -1098,6 +1119,15 @@ function personalityWords(h, det) {
   add(h.Temperament >= 16, "level-headed"); add(h.Sportsmanship != null && h.Sportsmanship <= 5, "unsporting");
   add(h.Sportsmanship >= 16, "sporting"); add(h.Controversy >= 15, "outspoken"); add(h.Adaptability >= 16, "settles in anywhere");
   return out;
+}
+function seasonBox(r) {  // this season's match stats (first-team competitions) and his last five ratings
+  const m = r.mstats;
+  if (!m || !m.apps) return "";
+  const fw = formWord(m);
+  return box("This season", kv([["Apps", `${m.starts}${m.apps > m.starts ? ` <span class="sub" style="display:inline">(+${m.apps - m.starts} as sub)</span>` : ""}`], ["Minutes", m.minutes],
+    ["Goals · assists", `${m.goals} · ${m.assists}`], ["xG", m.xg.toFixed(2)], ["Average rating", m.rating == null ? "–" : `<b class="${rClass(m.rating)}">${m.rating.toFixed(2)}</b>`],
+    ["Last five", formChips(m)], fw ? ["Form", `<span class="${fw === "in form" ? "t4" : fw === "out of form" ? "t0" : ""}">${fw}</span>`] : null]),
+    "first-team matches · Club › Match stats");
 }
 function playerProfile(r, s, groups) {
   const p = r.personal || {}, h = r.hidden || {}, st = r.state, a = s.attrs || {};
@@ -1131,7 +1161,7 @@ function playerProfile(r, s, groups) {
       <div class="pcol">${box("Personal", personal)}${box("Contract", contract)}${box("Condition", condition)}</div>
       <div class="pcol">${box("Attributes", `<div class="attrwrap">${profileAttributes(r, s, groups, false)}</div>`)}
         ${box("Scout report", scoutReportFull(r, s), "", "rtext")}</div>
-      <div class="pcol">${box("Ability", ability, "CA / PA hidden in FM")}
+      <div class="pcol">${box("Ability", ability, "CA / PA hidden in FM")}${seasonBox(r)}
         ${box("Personality", person, "hidden in FM")}
         ${box("Hidden attributes", hidden, "lower is better: Dirtiness, Injury Proneness")}${box("Preferred moves", moves)}</div>
     </div>`;
@@ -1242,7 +1272,8 @@ function profileHeader(r, s, isStaff, about) {
     ? stat("Best job", s.best ? `<span class="${stier(s.score)}">${FMT.f1(s.score)}</span>` : "–", esc(s.best ? colLabel(s.best) : "")) + ability
       + (r.reputation != null ? stat("Reputation", repK(r.reputation)) : "") + money
     : stat("Best", `<span class="${stier(s.score)}">${FMT.f1(s.score)}</span>`, esc(s.best || "")) + (s.vsAge != null ? stat("vs Age", `<span class="${tier(s.vsAge, RANGE.pct)}">${FMT.pct(s.vsAge)}</span>`) : "")
-      + ability + (r.value != null ? stat("Value", FMT.money(r.value)) : "") + money;
+      + ability + (r.mstats && r.mstats.rating != null ? stat("Rating", `<span class="${rClass(r.mstats.rating)}">${r.mstats.rating.toFixed(2)}</span>`, `${r.mstats.apps} apps`) : "")
+      + (r.value != null ? stat("Value", FMT.money(r.value)) : "") + money;
   const flags = [r.injured ? `<span class="chip warnchip">injured until ${fmtDay(r.injured)}</span>` : "", r.loan ? `<span class="chip">${esc(loanLabel(r))}</span>` : "",
     r.club === "Free agent" ? `<span class="chip t4">free agent</span>` : ""].join("");
   return `<div class="phead"><div class="pav${isStaff ? " staff" : ""}">${esc(initials)}</div>
@@ -1691,13 +1722,19 @@ function renderDevelopment() {
       Once a 31 Dec or 30 Jun is passed, this page compares it with now: score changes, attributes, CA, risers and fallers, who came and went.</div></div>`;
     return;
   }
-  if (!S.includes(devTo)) devTo = S[S.length - 1];
-  if (!S.includes(devFrom) || devFrom >= devTo) devFrom = S[Math.max(0, S.indexOf(devTo) - 1)];
+  // the menus: seasons. From a season = its start (the season before's end, else its first checkpoint); to a season =
+  // its end (30 Jun; while it's on, its mid-season or now). So 2026/27 → 2026/27 is that season, 2026/27 → 2028/29 three.
+  const SP = (d.seasons || []).filter(x => S.includes(x.start) && S.includes(x.end));
+  let fromS = SP.find(x => x.season === devFrom), toS = SP.find(x => x.season === devTo);
+  if (!toS) toS = SP[SP.length - 1];
+  if (!fromS || SP.indexOf(fromS) > SP.indexOf(toS)) fromS = SP.find(x => x.start !== toS.end && SP.indexOf(x) <= SP.indexOf(toS)) || toS;
+  devFrom = fromS.season; devTo = toS.season;
+  const fromLabel = fromS.start, toLabel = toS.end;
   const sign = v => (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v).toFixed(1);
   const cls = v => v > 0.05 ? "t4" : v < -0.05 ? "t0" : "dim";
   const both = [], joined = [], left = [];
   for (const p of d.players) {
-    const a = p.at[devFrom], b = p.at[devTo];
+    const a = p.at[fromLabel], b = p.at[toLabel];
     if (a && b) {
       const ch = Object.keys(b.attrs).filter(k => a.attrs[k] != null && b.attrs[k] !== a.attrs[k])
         .map(k => ({ k, d: b.attrs[k] - a.attrs[k] })).sort((x, y) => Math.abs(y.d) - Math.abs(x.d) || x.k.localeCompare(y.k));
@@ -1758,15 +1795,15 @@ function renderDevelopment() {
     ${pivotNote ? `<div class="advice">${pivotNote}</div>` : ""}
     <div class="devpivot">${barChart("By area", "average score change a player", areaData)}${barChart("By attribute group", "attribute points gained a player", groupData)}</div></div>`;
   const hasCa = both.some(p => p.b.ca != null);  // save games: current ability then and now
-  const opt = (sel, keep) => S.map(s => `<option value="${esc(s)}"${s === sel ? " selected" : ""}>${esc(fmtDate(s))}</option>`).join("");
+  const opt = (sel, to) => SP.map(x => `<option value="${esc(x.season)}"${x.season === sel ? " selected" : ""}>${esc(x.season)}${to ? ` (${x.state})` : ""}</option>`).join("");
   const top = (title, ps) => `<div class="tile"><div class="ttitle">${title}</div>${ps.length ? `<table><tbody>${ps.map(p =>
     `<tr><td>${name(p)}</td><td class="num dim">${p.b.age}y</td><td class="text">${esc(p.b.best)}</td>
      <td class="num">${p.a.score.toFixed(1)} → ${p.b.score.toFixed(1)}</td><td class="num ${cls(p.ds)}">${sign(p.ds)}</td></tr>`).join("")}</tbody></table>`
     : `<div class="sub">No one.</div>`}</div>`;
   main.innerHTML = `<div class="tile wide"><div class="ttitle">Development <span class="devrange"><span class="dlab">From</span>
-      <select id="devfrom" class="snapsel" title="the earlier season">${opt(devFrom)}</select><span class="darr">→</span><span class="dlab">To</span>
-      <select id="devto" class="snapsel" title="the later season">${opt(devTo)}</select></span>
-      <span class="sub">checkpoints: 31 Dec (mid-season) and 30 Jun (season end), by FM's date, and now</span></div>
+      <select id="devfrom" class="snapsel" title="from the start of this season">${opt(devFrom, false)}</select><span class="darr">→</span><span class="dlab">To</span>
+      <select id="devto" class="snapsel" title="to the end of this season (while it's on: its mid-season, or now)">${opt(devTo, true)}</select></span>
+      <span class="sub">${esc(fromLabel.split(" · ")[0])} → ${esc(toLabel.split(" · ")[0])} · a season runs to 30 Jun; while it's on, to 31 Dec, then now</span></div>
     <div class="devsum">
       <div><b>${both.length}</b><span>players compared</span></div>
       <div><b class="${cls(avg)}">${sign(avg)}</b><span>average score change</span></div>
@@ -2019,6 +2056,26 @@ function renderCompare() {
       .map(a => { const va = A.attrs[a], vb = B.attrs[a], [wa, wb] = better(va, vb);
         return `<tr class="${w[a] ? "" : "minor"}"><td>${esc(a)}</td><td class="num ${va == null ? "dim" : attrTier(va)} ${wa}">${va ?? "–"}</td>
           <td class="num ${vb == null ? "dim" : attrTier(vb)} ${wb}">${vb ?? "–"}</td>${diff(va, vb, v => String(v))}</tr>`; }).join("");
+    const seasonTile = (() => {  // hidden attributes and personality (from the save game), then ability and contract
+      const row = (label, f, num = true, hi = true) => { const a = f(A), b = f(B);
+        const [wa, wb] = num && typeof a === "number" && typeof b === "number" ? (hi ? better(a, b) : better(-a, -b)) : ["", ""];
+        return `<tr><td>${label}</td><td class="num ${wa}">${a ?? "–"}</td><td class="num ${wb}">${b ?? "–"}</td></tr>`; };
+      const h = k => p => p.hidden?.[k] ?? null, sect = t => `<tr><td colspan="3" class="sub" style="padding-top:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:10px">${t}</td></tr>`;
+      const LOW = new Set(["Dirtiness", "Injury Proneness", "Controversy"]);  // lower is better
+      const hid = ["Consistency", "Important Matches", "Injury Proneness", "Versatility", "Dirtiness"];
+      const per = ["Professionalism", "Ambition", "Determination", "Pressure", "Temperament", "Adaptability", "Loyalty", "Sportsmanship", "Controversy"];
+      const det = p => p.attrs?.Determination ?? null;
+      return `<div class="tile"><div class="ttitle">Hidden attributes <span class="sub">FM doesn't show these; from the save game · lower is better for Dirtiness, Injury Proneness and Controversy</span></div>
+        <table class="ctable"><thead><tr><th></th><th class="num ca">${esc(surname(A))}</th><th class="num cb">${esc(surname(B))}</th></tr></thead><tbody>
+        ${hid.map(k => row(k, h(k), true, !LOW.has(k))).join("")}
+        ${sect("Personality")}${per.map(k => row(k, k === "Determination" ? det : h(k), true, !LOW.has(k))).join("")}
+        ${sect("Ability and contract")}
+        ${row("CA / PA", p => p.ca != null ? `${p.ca} / ${p.pa ?? "–"}` : null, false)}
+        ${row("Value", p => p.value != null ? shortMoney(p.value) : null, false)}
+        ${row("Wage p/w", p => p.wage != null ? shortMoney(p.wage) : null, false)}
+        ${row("Contract to", p => p.contract ? fmtDay(p.contract) : null, false)}
+        </tbody></table></div>`;
+    })();
     const attrTiles = Object.keys(d.groups).map(g => { const rows = attrRows(g); return rows ? `<div class="tile"><div class="ttitle">${g}</div>
       <table class="ctable"><thead><tr><th>Attribute</th><th class="num ca">${esc(surname(A))}</th><th class="num cb">${esc(surname(B))}</th><th class="num">±</th></tr></thead>
       <tbody>${rows}</tbody></table></div>` : ""; }).join("");
@@ -2028,7 +2085,7 @@ function renderCompare() {
         <div class="cradar">${radar}<div>${groups}</div></div></div>
       <div class="tile"><div class="ttitle">Every position</div>${positions}
         <div class="ttitle" style="margin-top:14px">Score over time</div><div class="chist"><div><span class="ka">■</span> ${hist(A)}</div><div><span class="kb">■</span> ${hist(B)}</div></div></div>
-      ${attrTiles}`;
+      ${attrTiles}${seasonTile}`;
   } else {
     body = `<div class="tile wide"><div class="sub">Pick ${A || B ? "one more player" : "two players"}: type a name above, click the compare icon by a player's name in any
       list (Lineup, Players › Database, Top lists…; or press <b>x</b>), or <b>+ Compare</b> in a player's profile.</div></div>`;
@@ -2294,6 +2351,9 @@ function renderDepth() {
       if (!b) { notes.push(["act", "no backup"]); urgency = 3; }
       else if (drop >= 1.5) { notes.push(["warn", `drop ${drop.toFixed(1)}`]); urgency = 2; }
       if (b && s.age >= 30 && b.age >= 30) { notes.push(["plan", "both 30+"]); urgency = Math.max(urgency, 1); }
+      const sf = (d.players[s.name] || {}).mstats, bf = b ? (d.players[b.name] || {}).mstats : null;
+      if (formWord(sf) === "out of form") { notes.push(["warn", "starter out of form"]); urgency = Math.max(urgency, 1); }
+      if (sf?.formAvg != null && bf?.formAvg != null && (bf.form || []).length >= 3 && bf.formAvg >= sf.formAvg + 0.3) notes.push(["young", "backup playing better"]);
       if (left != null && left <= 12) { notes.push(["plan", `starter's contract ends in ${Math.max(0, Math.round(left))} months`]); urgency = Math.max(urgency, 1); }
       const target = (d.targets[pos] || []).find(t => b ? t.v > b.v : true);
       rows.push({ pos, s, b, drop, sp, bp, notes, urgency, target });
@@ -2303,7 +2363,6 @@ function renderDepth() {
   // the third choice for each slot: the best of the rest of the squad who plays it
   const all = Object.values(d.players || {}), named = new Set([...f.players, ...(f.second || [])].map(p => p.name));
   const playsIt = (p, pos) => !p.plays || !p.plays.length || p.plays.includes(pos);
-  const thirdFor = pos => all.filter(p => !named.has(p.name) && p.loan !== "out" && p[pos] != null && playsIt(p, pos)).sort((a, b) => b[pos] - a[pos])[0];
   // by line: the starters' and backups' averages
   const LINES = { Defence: ["GK", "CD", "DL/DR", "WBL/WBR"], Midfield: ["DM", "MC", "ML/MR"], Attack: ["AMC", "AML/AMR", "ST"] };
   const mean = xs => xs.length ? xs.reduce((t, v) => t + v, 0) / xs.length : null;
@@ -2332,15 +2391,14 @@ function renderDepth() {
       <span class="sub">first XI ${f.xi.toFixed(1)} · second XI ${f.depth == null ? "–" : f.depth.toFixed(1)} · an average drop of ${avgDrop.toFixed(1)} from starter to backup</span></div>
     <div class="advice">${count("act") ? `<b class="rec act">${count("act")}</b> slot(s) with no backup. ` : ""}${count("warn") ? `<b class="rec warn">${count("warn")}</b> with a big drop to the backup. ` : ""}${count("plan") ? `<b class="rec plan">${count("plan")}</b> to plan for (age, contracts). ` : ""}${!count("act") && !count("warn") ? "Every slot has decent cover." : "Back to front; a name in the game that beats the backup is shown beside it. Click a heading to sort."}</div>
     ${summary}
-    <table><thead><tr><th>Slot</th><th>Starter</th><th class="num">Age</th><th class="num">Score</th><th class="num">CA</th><th>Contract</th><th>Backup</th><th class="num">Age</th><th class="num">Score</th><th class="num">Drop</th><th>Third choice</th><th>Notes</th><th>Better in the game</th></tr></thead><tbody>
-    ${rows.map(r => { const t = thirdFor(r.pos), left = monthsLeft(r.sp.contract); return `<tr><td><b>${esc(r.pos)}</b></td><td>${pname(r.s.name)} ${warnChips(r.sp)}</td><td class="num">${r.s.age ?? "–"}</td><td class="num">${sc(r.s.v)}</td>
-      <td class="num">${r.sp.ca ?? "–"}${r.sp.pa > 0 && r.sp.pa - (r.sp.ca ?? 0) >= 10 ? ` <span class="sub">/ ${r.sp.pa}</span>` : ""}</td>
+    <table><thead><tr><th>Slot</th><th>Starter</th><th class="num">Age</th><th class="num">Score</th><th>Form</th><th>Contract</th><th>Backup</th><th class="num">Age</th><th class="num">Score</th><th class="num">Drop</th><th>Notes</th><th>Better in the game</th></tr></thead><tbody>
+    ${rows.map(r => { const left = monthsLeft(r.sp.contract); return `<tr><td><b>${esc(r.pos)}</b></td><td>${pname(r.s.name)} ${warnChips(r.sp)}</td><td class="num">${r.s.age ?? "–"}</td><td class="num">${sc(r.s.v)}</td>
+      <td>${formChips((d.players[r.s.name] || {}).mstats)}</td>
       <td class="${left == null ? "dim" : left <= 6 ? "t0" : left <= 12 ? "t2" : ""}">${left == null ? "–" : leftText(left)}</td>
       <td>${r.b ? pname(r.b.name) + " " + warnChips(r.bp) : `<span class="dim">nobody</span>`}</td><td class="num">${r.b?.age ?? "–"}</td><td class="num">${r.b ? sc(r.b.v) : "–"}</td>
       <td class="num ${r.drop == null ? "dim" : r.drop >= 1.5 ? "t0" : r.drop >= 0.8 ? "t2" : "t4"}">${r.drop == null ? "–" : r.drop.toFixed(1)}</td>
-      <td>${t ? `${pname(t.name)} ${sc(t[r.pos])}` : `<span class="dim">–</span>`}</td>
-      <td>${r.notes.map(([k, t]) => `<span class="rec ${k}">${esc(t)}</span>`).join(" · ") || `<span class="dim">fine</span>`}</td>
-      <td>${r.target ? `${esc(r.target.name)} <span class="sub">${esc(r.target.club || "")}, ${r.target.age ?? "–"}</span> ${sc(r.target.v)}` : `<span class="dim">–</span>`}</td></tr>`; }).join("")}
+      <td class="notes">${r.notes.map(([k, t]) => `<span class="rec ${k}">${esc(t)}</span>`).join(" · ") || `<span class="dim">fine</span>`}</td>
+      <td class="wrap">${r.target ? `${esc(r.target.name)} <span class="sub">${esc(r.target.club || "")}, ${r.target.age ?? "–"}</span> ${sc(r.target.v)}` : `<span class="dim">–</span>`}</td></tr>`; }).join("")}
     </tbody></table><div class="sub">Starters and backups are the formation's first and second XI (Formations). Warnings beside names come from a save game: low Consistency or Important Matches, high Injury Proneness.</div></div>`;
   document.getElementById("depthpick").onchange = e => { try { localStorage.setItem(DEPTH_STORE, e.target.value); } catch (err) {} renderDepth();
     notify(`Depth now shows ${e.target.value}.`, "Formation changed"); };
@@ -2355,7 +2413,13 @@ function renderYouth() {
   const room = p => p.ca != null && p.pa > 0 ? p.pa - p.ca : null;
   kids.sort((a, b) => (room(b) ?? -1) - (room(a) ?? -1) || (b.vsAge ?? 0) - (a.vsAge ?? 0));
   const flags = p => {
-    const out = [];
+    const out = [], ms = p.mstats || {}, yr = ms.yrating, ya = ms.yapps || 0, fm = ms.minutes || 0;
+    const full = (d.players || {})[p.name];
+    if (fm >= 270 && ms.rating >= 6.9) out.push(["young", `earning his place: ${fm} first-team min, ${ms.rating.toFixed(2)}`]);
+    else if (ya >= 4 && yr >= 7.2 && (p.vsAge ?? 0) >= 0.95) out.push(["young", `outgrowing youth football (${yr.toFixed(2)}): first-team minutes or a senior loan`]);
+    if (ya >= 4 && yr != null && yr < 6.5) out.push(["warn", `struggling at youth level (${yr.toFixed(2)}): patience, train his weak points`]);
+    if (p.age >= 18 && !fm && !ya && p.loan !== "out") out.push(["plan", "not playing anywhere: loan him out"]);
+    if (full && full.history?.length && typeof routinesFor === "function") { const r0 = routinesFor(full)[0]; if (r0) out.push(["plan", `train ${r0.name}`]); }
     if (p.pa >= 140 && p.dev != null && p.dev < 10) out.push(["warn", "high potential, poor attitude"]);
     if (p.vsAge >= 1 && ["Youth", "Third"].includes(p.role) && p.loan !== "out") out.push(["young", "ready for minutes"]);
     if (p.age >= 19 && ["Youth", "Third"].includes(p.role) && !p.loan && (p.vsAge ?? 0) < 1) out.push(["plan", "loan him out"]);
@@ -2366,15 +2430,80 @@ function renderYouth() {
   const pa = p => p.pa == null ? "–" : p.pa < 0 ? `<span title="FM's code for a range">${p.pa}</span>` : p.pa;
   main.innerHTML = `<div class="tile wide"><div class="ttitle">Youth <span class="sub">${kids.length} players ${d.youthAge} and under, most room to grow first</span></div>
     ${hasSave ? `<div class="advice">Room = potential − current ability (both hidden in FM). <b>Development</b> = how likely he gets there: Professionalism counts double, then Determination and Ambition.</div>` : NEED_SAVE}
-    <table><thead><tr><th>Player</th><th class="num">Age</th><th>Role</th><th>Best</th><th class="num">Score</th><th class="num">vs Age</th><th class="num">CA</th><th class="num">PA</th><th class="num">Room</th><th>Development</th><th class="num">Prof</th><th class="num">Amb</th><th class="num">Det</th><th>Contract to</th><th>Notes</th></tr></thead><tbody>
-    ${kids.map(p => `<tr><td>${pname(p.name)}${p.loan ? ` <span class="sub">loan ${esc(p.loan)}</span>` : ""}</td><td class="num">${p.age}</td><td>${esc(p.role)}</td><td>${esc(p.best || "–")}</td>
+    <table><thead><tr><th>Player</th><th class="num">Age</th><th>Best</th><th class="num">Score</th><th class="num">vs Age</th><th class="num">CA</th><th class="num">PA</th><th class="num">Room</th><th>Dev</th><th class="num">Prof</th><th class="num">Amb</th><th class="num">Det</th><th>Contract</th><th>Notes</th></tr></thead><tbody>
+    ${kids.map(p => `<tr><td>${pname(p.name)}${p.loan ? ` <span class="sub">loan ${esc(p.loan)}</span>` : ""}</td><td class="num">${p.age}</td><td>${esc(p.best || "–")}</td>
       <td class="num">${sc(p.score)}</td><td class="num">${p.vsAge == null ? "–" : `<b class="${tier(p.vsAge, RANGE.pct)}">${FMT.pct(p.vsAge)}</b>`}</td>
       <td class="num">${p.ca ?? "–"}</td><td class="num">${pa(p)}</td><td class="num">${room(p) ?? "–"}</td>
       <td>${p.dev == null ? "–" : `<b class="${attrTier(p.dev)}">${devWord(p.dev)}</b> <span class="sub">${p.dev.toFixed(1)}</span>`}</td>
       <td class="num ${attrTier(p.traits.Professionalism ?? 0)}">${p.traits.Professionalism ?? "–"}</td><td class="num ${attrTier(p.traits.Ambition ?? 0)}">${p.traits.Ambition ?? "–"}</td>
-      <td class="num ${attrTier(p.det ?? 0)}">${p.det ?? "–"}</td><td>${esc(p.contract || "–")}</td>
-      <td>${flags(p).map(([k, t]) => `<span class="rec ${k}">${esc(t)}</span>`).join(" · ")}</td></tr>`).join("")}
+      <td class="num ${attrTier(p.det ?? 0)}">${p.det ?? "–"}</td><td>${p.contract ? fmtDay(p.contract) : "–"}</td>
+      <td class="notes">${flags(p).map(([k, t]) => `<span class="rec ${k}">${esc(t)}</span>`).join(" · ")}</td></tr>`).join("")}
     </tbody></table></div>`;
+}
+// Club › Contracts: wages against what each player brings: each one's wage against the middle wage of your players
+// within half a point of his score (what his level earns here); over- and underpaid, and the middle wage of each role
+// each player's wage against the middle wage of your players within half a point of his score: {name: ratio}
+function fairWages(people) {
+  // peers: first-team players (21+, not youth) within a point of his score; three at least, else no ratio
+  const ps = people.filter(p => p.wage > 0 && p.score != null && p.loan !== "out" && (p.age ?? 0) >= 21 && p.role !== "Youth");
+  const med = xs => { const s = [...xs].sort((a, b) => a - b); return s.length >= 3 ? s[Math.floor(s.length / 2)] : null; };
+  return Object.fromEntries(ps.map(p => { const f = med(ps.filter(q => Math.abs(q.score - p.score) <= 1).map(q => q.wage)); return [p.name, f ? p.wage / f : null]; }));
+}
+// Club › Contracts: what to do with a player's contract, from all we know of him: his role, age, score and room to grow
+// (PA − CA), this season (minutes, rating, form), his wage against his level, his value and how long is left. One
+// verdict, then the reasons.
+function contractAdvice(p, left, wageRatio, ms) {
+  const room = p.ca != null && p.pa > 0 ? p.pa - p.ca : null, rating = ms?.rating, form = formWord(ms);
+  const mins = ms?.minutes ?? 0, apps = ms?.apps ?? 0, why = [];
+  if (rating != null && apps >= 3) why.push(`rating ${rating.toFixed(2)} in ${apps}`);
+  if (form && form !== "steady") why.push(form);
+  if (room != null && room >= 10 && p.age <= 23) why.push(`${room} to grow`);
+  if (wageRatio != null && wageRatio >= 1.6) why.push(`paid ×${wageRatio.toFixed(1)} his level`);
+  if (wageRatio != null && wageRatio <= 0.6 && ["Starter", "Backup"].includes(p.role)) why.push(`paid ×${wageRatio.toFixed(1)} his level`);
+  const soon = left != null && left <= 12, urgent = left != null && left <= 6;
+  const good = rating == null || rating >= 6.85, poor = rating != null && apps >= 3 && rating < 6.6;
+  let v;
+  if (p.loan === "out") v = room != null && room >= 15 ? ["young", "keep: developing on loan"] : soon ? ["warn", "let go when it ends"] : ["plan", "review after the loan"];
+  else if (p.age <= 21) {
+    if (room != null && room >= 20 && (p.dev ?? 12) >= 11) v = [soon ? "act" : "young", soon ? "extend now: a future first-teamer" : "extend early: a future first-teamer"];
+    else if (room != null && room < 8 && (p.score ?? 0) < 11) v = ["warn", soon ? "release: not going to make it" : "loan or sell: limited ceiling"];
+    else v = soon ? ["warn", "renew short, then judge him"] : ["plan", "no rush: keep developing him"];
+  } else if (p.role === "Starter") {
+    if (p.age >= 32) v = [soon ? "act" : "plan", soon ? "one more year at most" : "plan his successor"];
+    else if (poor) v = ["warn", soon ? "renew only on a lower wage" : "out of his level this season: watch"];
+    else if (wageRatio != null && wageRatio <= 0.6) v = ["act", "raise his wage: key and underpaid"];
+    else if (wageRatio != null && wageRatio >= 2.5 && p.age >= 29) v = [soon ? "warn" : "plan", soon ? "renew only on a lower wage" : "key, but paid well over his level"];
+    else v = [soon ? "act" : "young", soon ? (urgent ? "renew now: key player" : "renew: key player") : left != null && left <= 24 ? "extend early: key player" : "no rush: settled"];
+  } else if (p.role === "Backup") {
+    if (p.age >= 29 && (p.value ?? 0) >= 5e6) v = ["plan", `sell while he's worth ${shortMoney(p.value)}`];
+    else if (wageRatio != null && wageRatio >= 1.6) v = ["warn", soon ? "don't renew at this wage" : "overpaid for a backup: sell"];
+    else if (poor || (apps >= 3 && mins < 270)) v = [soon ? "warn" : "plan", soon ? "let go" : "rarely helps: sell"];
+    else if (room != null && room >= 10 && p.age <= 25) v = [soon ? "act" : "young", soon ? "renew: still growing" : "keep: still growing"];
+    else v = [soon ? "warn" : "plan", soon ? "renew if the wage fits" : "useful cover: keep"];
+  } else {
+    v = (p.value ?? 0) >= 3e6 ? ["plan", `sell: surplus worth ${shortMoney(p.value)}`] : [soon ? "warn" : "plan", soon ? "let go" : "surplus: loan or sell"];
+  }
+  return [[v[0], v[1], why.join(", ")]];
+}
+function wageStructure(people) {
+  const ps = people.filter(p => p.wage != null && p.score != null && p.loan !== "out" && p.wage > 0);
+  if (ps.length < 6) return "";
+  const med = xs => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
+  const rows = ps.map(p => { const peers = ps.filter(q => Math.abs(q.score - p.score) <= 0.5).map(q => q.wage);
+    const fair = med(peers); return { p, fair, ratio: fair ? p.wage / fair : 1 }; });
+  const over = rows.filter(r => r.ratio >= 1.6 && r.p.wage >= 20000).sort((a, b) => b.ratio - a.ratio).slice(0, 6);
+  const under = rows.filter(r => r.ratio <= 0.6 && ["Starter", "Backup"].includes(r.p.role)).sort((a, b) => a.ratio - b.ratio).slice(0, 6);
+  const roles = ["Starter", "Backup", "Third", "Youth"].map(role => [role, med(ps.filter(p => p.role === role).map(p => p.wage)), ps.filter(p => p.role === role).length]).filter(r => r[2]);
+  const line = r => `<tr><td>${pname(r.p.name)}</td><td class="dim">${esc(r.p.role)}</td><td class="num">${sc(r.p.score)}</td><td class="num">${shortMoney(r.p.wage)}</td>
+    <td class="num sub">${shortMoney(r.fair)}</td><td class="num ${r.ratio >= 1 ? "t0" : "t4"}">×${r.ratio.toFixed(1)}</td></tr>`;
+  const head = `<thead><tr><th>Player</th><th>Role</th><th class="num">Score</th><th class="num">Wage</th><th class="num">Level</th><th class="num">×</th></tr></thead>`;
+  return `<div class="tile wide"><div class="ttitle">Wage structure <span class="sub">each wage against what players of his level earn at your club (the middle wage within half a point of his score)</span></div>
+    <div class="boxes wage">
+      ${box("Paid well above his level", over.length ? `<table class="dtable" style="width:100%">${head}<tbody>${over.map(line).join("")}</tbody></table>` : `<span class="dim">Nobody.</span>`, "1.6× or more · sell or don't renew at this wage")}
+      ${box("Paid well below his level", under.length ? `<table class="dtable" style="width:100%">${head}<tbody>${under.map(line).join("")}</tbody></table>` : `<span class="dim">Nobody.</span>`, "starters and backups at 0.6× or less · a raise keeps him happy")}
+      ${box("By role", `<table class="dtable" style="width:100%"><thead><tr><th>Role</th><th class="num">Players</th><th class="num">Middle wage p/w</th></tr></thead><tbody>${
+        roles.map(([role, w, n]) => `<tr><td>${role}</td><td class="num">${n}</td><td class="num">${shortMoney(w)}</td></tr>`).join("")}</tbody></table>`, "a ceiling for new contracts")}
+    </div></div>`;
 }
 function renderContracts() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
@@ -2390,29 +2519,46 @@ function renderContracts() {
       ${card2("Balance", shortMoney(m.balance), "at FM's last month end")}
       ${card2("Players' wages", shortMoney(bill) + " p/w", "your squad, loans out left off")}</div>
       <div class="sub">From the save game read on ${esc((m.date || "").slice(0, 10))}, FM's date ${esc(m.game_date || "–")}.</div>` : NEED_SAVE;
+  const fair = fairWages(people);
   const rows = people.map(p => {
-    const left = monthsLeft(p.contract), notes = [];
-    if (left != null && left <= 6) notes.push(["act", p.role === "Starter" ? "renew now" : "renew or let go"]);
-    else if (left != null && left <= 12) notes.push(["warn", p.role === "Starter" ? "renew" : "decide"]);
-    if (p.age >= 29 && ["Backup", "Third"].includes(p.role) && (p.value ?? 0) >= 5e6) notes.push(["plan", "sell while he has value"]);
-    if (p.wage != null && p.score != null && p.role === "Third" && p.wage >= 50000) notes.push(["plan", "high wage for a third choice"]);
-    return { ...p, left, notes, perPoint: p.wage != null && p.score ? p.wage / p.score : null };
+    const left = monthsLeft(p.contract);
+    return { ...p, left, notes: contractAdvice(p, left, fair[p.name], (DATA.players[p.name] || {}).mstats), perPoint: p.wage != null && p.score ? p.wage / p.score : null };
   }).sort((a, b) => (a.left ?? 999) - (b.left ?? 999));
-  main.innerHTML = `<div class="tile wide"><div class="ttitle">Money</div>${money}</div>
+  main.innerHTML = `<div class="tile wide"><div class="ttitle">Money</div>${money}</div>${wageStructure(people)}
     <div class="tile wide"><div class="ttitle">Contracts <span class="sub">soonest to end first</span></div>${hasSave ? "" : NEED_SAVE}
-    <table><thead><tr><th>Player</th><th class="num">Age</th><th>Role</th><th class="num">Score</th><th class="num">Wage p/w</th><th class="num">Wage per point</th><th class="num">Value</th><th>Contract to</th><th class="num">Months left</th><th>Notes</th></tr></thead><tbody>
+    <table><thead><tr><th>Player</th><th class="num">Age</th><th>Role</th><th class="num">Score</th><th class="num">Wage p/w</th><th class="num">Per point</th><th class="num">Value</th><th>Contract</th><th class="num">Left</th><th>Advice</th></tr></thead><tbody>
     ${rows.map(p => `<tr><td>${pname(p.name)}${p.loan ? ` <span class="sub">loan ${esc(p.loan)}</span>` : ""}</td><td class="num">${p.age ?? "–"}</td><td>${esc(p.role)}</td><td class="num">${sc(p.score)}</td>
       <td class="num">${p.wage == null ? "–" : shortMoney(p.wage)}</td><td class="num">${p.perPoint == null ? "–" : shortMoney(p.perPoint)}</td>
-      <td class="num">${p.value == null ? "–" : shortMoney(p.value)}</td><td>${esc(p.contract || "–")}</td>
+      <td class="num">${p.value == null ? "–" : shortMoney(p.value)}</td><td>${p.contract ? fmtDay(p.contract) : "–"}</td>
       <td class="num ${p.left == null ? "dim" : p.left <= 6 ? "t0" : p.left <= 12 ? "t2" : ""}">${p.left == null ? "–" : Math.max(0, Math.round(p.left))}</td>
-      <td>${p.notes.map(([k, t]) => `<span class="rec ${k}">${esc(t)}</span>`).join(" · ")}</td></tr>`).join("")}
+      <td class="notes">${p.notes.map(([k, t, why]) => `<span class="rec ${k}">${esc(t)}</span>${why ? ` <span class="sub">${esc(why)}</span>` : ""}`).join(" · ")}</td></tr>`).join("")}
     </tbody></table><div class="sub"><b>Wage per point</b>: his weekly wage per point of his best position score: lower is better value.</div></div>`;
 }
 document.getElementById("main").addEventListener("click", e => {
-  const el = ["depth", "youth", "contracts", "club", "medical", "transfers", "training"].includes(PAGE) && e.target.closest(".pl[data-name]");
+  const el = ["depth", "youth", "contracts", "club", "medical", "transfers", "training", "season"].includes(PAGE) && e.target.closest(".pl[data-name]");
   if (el && getSelection().isCollapsed && DATA.players[el.dataset.name]) showDetail(DATA.players[el.dataset.name]);
 });
 // ---- Club › Overview: DATA = club_page() in score.py ----
+// Club › Overview's form: in and out of form (last five against his season), and good players who don't play
+function clubForm(d) {
+  const ps = Object.values(d.players || {}).filter(p => p.mstats && p.loan !== "out");
+  if (!ps.length) return "";
+  const withForm = ps.filter(p => p.mstats.formAvg != null && (p.mstats.form || []).length >= 3);
+  const hot = withForm.filter(p => formWord(p.mstats) === "in form").sort((a, b) => b.mstats.formAvg - a.mstats.formAvg).slice(0, 6);
+  const cold = withForm.filter(p => formWord(p.mstats) === "out of form").sort((a, b) => a.mstats.formAvg - b.mstats.formAvg).slice(0, 6);
+  const maxMin = Math.max(...ps.map(p => p.mstats.minutes || 0), 1);
+  const unused = Object.values(d.players || {}).filter(p => p.loan !== "out" && p.score >= 13 && (p.mstats?.minutes || 0) < maxMin * 0.25 && !p.injured)
+    .sort((a, b) => b.score - a.score).slice(0, 6);
+  const row = p => `<tr><td>${pname(p.name)}</td><td class="dim">${esc(p.best || "")}</td><td>${formChips(p.mstats)}</td><td class="num"><b class="${rClass(p.mstats.formAvg)}">${p.mstats.formAvg.toFixed(2)}</b></td></tr>`;
+  const t = rs => rs.length ? `<table><tbody>${rs}</tbody></table>` : `<div class="sub">Nobody.</div>`;
+  return `<div class="tile"><div class="ttitle">In form <span class="sub">last five matches, best first</span></div>${t(hot.map(row).join(""))}
+      <div class="sub">Keep them in the side; a new contract may be worth it.</div></div>
+    <div class="tile"><div class="ttitle">Out of form <span class="sub">last five matches</span></div>${t(cold.map(row).join(""))}
+      <div class="sub">A rest, a word, or the backup's chance (Squad › Depth).</div></div>
+    <div class="tile"><div class="ttitle">Good but not playing <span class="sub">score 13+, under a quarter of the minutes</span></div>${t(unused.map(p =>
+      `<tr><td>${pname(p.name)}</td><td class="dim">${esc(p.best || "")}</td><td class="num">${sc(p.score)}</td><td class="num">${p.mstats?.minutes || 0} min</td></tr>`).join(""))}
+      <div class="sub">Give them minutes, or a loan or sale if there's no way in.</div></div>`;
+}
 function renderClub() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA, m = d.money || {}, q = d.squad;
@@ -2428,6 +2574,7 @@ function renderClub() {
         ${card("Staff", d.staffCount)}</div></div>
     ${d.xi ? `<div class="tile"><div class="ttitle">Best eleven <span class="sub">${esc(d.xi.name)} · ${d.xi.avg.toFixed(1)}${d.xi.weak ? ` · weakest: ${esc(d.xi.weak.pos)}` : ""}</span></div>
       ${list(d.xi.players, p => `<tr><td class="dim">${esc(p.pos)}${p.side ? ` ${p.side}` : ""}</td><td>${pname(p.name)}</td><td class="num">${p.age}</td><td class="num">${sc(p.v)}</td></tr>`)}</div>` : ""}
+    ${clubForm(d)}
     <div class="tile"><div class="ttitle">Injured <span class="sub">${d.injured.length}</span></div>
       ${list(d.injured, x => `<tr><td>${pname(x[0])}</td><td class="dim">${esc(x[2] || "")}</td><td class="num">${sc(x[3])}</td><td class="t0">until ${esc(fmtDay(x[1]))}</td></tr>`)}</div>
     <div class="tile"><div class="ttitle">Contracts ending within a year</div>
@@ -2478,6 +2625,175 @@ function routinesFor(p) {
       return { name, v, weak: weak.map(k => [k, a[k]]) };
     }).sort((x, y) => y.v - x.v);
 }
+// harvestgreen22's FM27 training test (Training excel, ver5, 15 Nov 2026; docs/training_schedule_test.csv): one
+// 18-year-old (PA 150, every attribute 8; coaches 16, facilities 20) through a season of 100 matches under each team
+// schedule, individual focus Quickness. base: his CA gain with no training; gains: what each development session adds
+// to each attribute over no training; schedules: [schedule, CA gain] for every schedule tested.
+const TRAIN_TEST = {"base":11.3,"gains":{"conditioning":{"Passing":1.07,"Crossing":0.83,"Marking":0.83,"Technique":1.33,"Corners":0.73,"Long Throws":0.6,"Dribbling":1.23,"Tackling":1.2,"Free Kick Taking":0.93,"Finishing":0.9,"First Touch":1.0,"Heading":0.97,"Long Shots":-0.27,"Flair":1.13,"Positioning":0.7,"Work Rate":0.67,"Concentration":0.73,"Decisions":1.27,"Leadership":-0.27,"Vision":1.13,"Teamwork":-0.1,"Off The Ball":0.9,"Determination":-0.1,"Bravery":0.33,"Anticipation":0.77,"Composure":1.27,"Jumping Reach":0.1,"Agility":1.03,"Stamina":0.97,"Balance":0.83,"Strength":1.3,"Natural Fitness":1.27},"heavy conditioning":{"Passing":0.93,"Crossing":0.7,"Marking":0.67,"Penalty Taking":0.13,"Technique":1.13,"Corners":0.77,"Long Throws":-0.13,"Dribbling":1.1,"Tackling":1.1,"Free Kick Taking":0.8,"Finishing":1.03,"First Touch":1.03,"Heading":1.07,"Long Shots":-0.2,"Flair":1.13,"Positioning":0.7,"Work Rate":0.33,"Concentration":0.77,"Decisions":1.23,"Leadership":0.1,"Vision":1.03,"Teamwork":-0.1,"Off The Ball":1.0,"Determination":-0.07,"Bravery":0.2,"Anticipation":0.6,"Composure":1.33,"Acceleration":0.1,"Jumping Reach":0.3,"Agility":1.17,"Stamina":0.9,"Balance":0.77,"Strength":1.07,"Pace":0.07,"Natural Fitness":1.13},"individual development":{"Passing":1.13,"Crossing":1.07,"Marking":1.07,"Penalty Taking":0.23,"Technique":1.4,"Corners":0.93,"Long Throws":0.37,"Dribbling":1.27,"Tackling":1.8,"Free Kick Taking":1.17,"Finishing":1.07,"First Touch":1.03,"Heading":1.07,"Long Shots":-0.37,"Flair":1.2,"Positioning":1.13,"Work Rate":-0.27,"Concentration":1.1,"Decisions":1.4,"Vision":1.3,"Teamwork":-0.23,"Off The Ball":0.8,"Bravery":0.27,"Anticipation":0.83,"Composure":1.33,"Acceleration":0.1,"Jumping Reach":-0.23,"Agility":-0.23,"Balance":-0.23,"Natural Fitness":0.17},"attacking ball work":{"Passing":1.47,"Crossing":1.97,"Marking":0.9,"Technique":1.53,"Corners":0.9,"Long Throws":0.6,"Dribbling":1.47,"Tackling":1.33,"Free Kick Taking":1.03,"Finishing":1.67,"First Touch":1.3,"Heading":1.3,"Long Shots":-0.23,"Flair":1.67,"Positioning":0.87,"Work Rate":-0.13,"Concentration":1.07,"Decisions":2.13,"Vision":1.97,"Teamwork":0.23,"Off The Ball":1.77,"Determination":-0.07,"Bravery":0.07,"Anticipation":1.53,"Composure":2.1,"Jumping Reach":-0.37,"Agility":-0.37,"Stamina":-0.2,"Balance":-0.2,"Strength":-0.33,"Pace":-0.07,"Natural Fitness":0.07},"defensive ball work":{"Passing":1.4,"Crossing":0.97,"Marking":2.0,"Penalty Taking":-0.07,"Technique":1.7,"Corners":0.93,"Long Throws":0.47,"Dribbling":1.3,"Tackling":2.37,"Free Kick Taking":1.03,"Finishing":1.0,"First Touch":1.3,"Heading":1.27,"Long Shots":-0.17,"Flair":1.33,"Positioning":1.77,"Work Rate":-0.13,"Concentration":2.0,"Decisions":1.53,"Leadership":0.13,"Vision":1.43,"Teamwork":-0.1,"Off The Ball":1.07,"Bravery":0.13,"Anticipation":1.27,"Composure":1.43,"Jumping Reach":0.13,"Agility":-0.33,"Stamina":-0.07,"Balance":-0.07,"Strength":0.17,"Natural Fitness":0.27},"possession ball work":{"Passing":2.07,"Crossing":1.63,"Marking":0.97,"Penalty Taking":0.17,"Technique":2.13,"Corners":0.87,"Long Throws":0.53,"Dribbling":2.1,"Tackling":1.5,"Free Kick Taking":1.17,"Finishing":1.37,"First Touch":2.0,"Heading":1.77,"Long Shots":-0.23,"Flair":1.87,"Positioning":0.97,"Work Rate":-0.07,"Concentration":1.0,"Decisions":2.03,"Vision":1.73,"Teamwork":0.3,"Off The Ball":1.17,"Determination":-0.1,"Bravery":0.2,"Anticipation":1.57,"Composure":1.57,"Acceleration":0.07,"Jumping Reach":-0.47,"Agility":-0.27,"Strength":0.13,"Pace":0.17,"Natural Fitness":0.4}},"schedules":[["rest",10.7],["rest",11.3],["recovery",11.0],["light conditioning",11.2],["conditioning",24.8],["heavy conditioning",24.6],["individual development",22.3],["attacking ball work",25.1],["defensive ball work",24.8],["possession ball work",26.7],["press avoidance",11.7],["ball progression",11.8],["final third",10.6],["defensive block",11.8],["defensive positioning",11.6],["defensive engagement",11.2],["corners",12.1],["free kicks",10.6],["penalties",11.3],["passing style",11.3],["build up",11.7],["chance creation",11.5],["in possession shape",10.7],["line of engagement",11.8],["pressing intensity",11.8],["pressing trap",11.6],["out of possession shape",11.9],["team bonding",10.8],["community outreach",11.1],["conditioning +defensive ball work",30.2],["conditioning +defensive ball work + line of engagement",26.4],["conditioning +defensive ball work + line of engagement + in possession shape",28.6],["conditioning x2 +defensive ball work x2",27.9],["conditioning x3 +defensive ball work x3",27.5],["conditioning + defensive ball work + line of engagement +in possession shape + defensive positioning",29.0],["conditioning +defensive ball work x3",29.9],["heavy conditioning+ defensive ball work",29.1],["heavy conditioning+ attacking ball work",31.1],["conditioning + attacking ball work",30.9],["conditioning +defensive ball work + recovery",30.7],["conditioning +defensive ball work + defensive positioning + defensive block",28.6],["conditioning + attacking ball work + in possession shape",30.8],["conditioning + attacking ball work + in possession shape + recovery x7",28.3],["heavy conditioning + attacking ball work + in possession shape",31.5],["light conditioning + attacking ball work",26.9],["conditioning + attacking ball work +defensive ball work",32.6],["light conditioning + conditioning + attacking ball work +defensive ball work",32.5],["light conditioning + heavy conditioning + attacking ball work + in possession shape",30.2],["light conditioning +conditioning + attacking ball work",32.2],["attacking ball work x3",32.1],["defensive ball work x3",30.4],["Preset-football development-development focus-balanced",22.0],["Preset-football development-development focus-in possession",24.1],["Preset-football development-development focus-out of possession",29.2],["Preset-pre season-pre season-early",24.0],["Preset-pre season-pre season-mid",23.3],["Preset-pre season-pre season-late",21.4],["Preset-tactical understanding-tactical focus-balanced",20.6],["Preset-tactical understanding-tactical focus-in possession",25.3],["Preset-tactical understanding-tactical focus-out of possession",25.1],["Preset-match preparation-match focus",23.4],["conditioning + attacking ball work + recovery x7",28.3],["conditioning + attacking ball work + recovery x3 + passing style + build up + chance creation + in possession shape + line of engagement + pressing intensity +out of possession shape",25.1],["light conditioning + conditioning + attacking ball work + in possession shape + line of engagement",31.3],["heavy conditioning + conditioning + attacking ball work +in possession shape+line of engagement",29.6],["conditioning + attacking ball work + passing style + build up + chance creation + in possession shape + line of engagement +pressing intensity + out of possession shape",28.0],["conditioning + attacking ball work + line of engagement + in possession shape",30.4],["conditioning + attacking ball work + line of engagement + in possession shape + chance creation",29.5],["conditioning + attacking ball work + line of engagement + in possession shape + chance creation + pressing intensity",28.9],["conditioning + attacking ball work + line of engagement + in possession shape + chance creation + pressing intensity + build up",29.2],["conditioning + attacking ball work + line of engagement + in possession shape + chance creation + pressing intensity + build up + pressing trap",28.5],["passing style + build up + chance creation + in possession shape + line of engagement + pressing intensity + pressing trap + individual development + recovery x2",21.8],["passing style + build up + chance creation + in possession shape + line of engagement + individual development x2 + recovery x2 + press avoidance + final third",24.4],["light conditioning + conditioning + attacking ball work + passing style + build up + chance creation + in possession shape",29.9],["conditioning + attacking ball work + passing style + build up + chance creation + in possession shape",30.7],["conditioning + attacking ball work + line of engagement + pressing intensity + pressing trap + out of possession shape",29.6],["light conditioning x2 + attacking ball work + passing style + build up",25.9],["light conditioning x2 + attacking ball work + passing style + build up + chance creation + in possession shape",25.1],["light conditioning + conditioning+ attacking ball work + passing style + build up + chance creation + in possession shape + recovery x7",24.9],["light conditioning + conditioning+ attacking ball work + passing style + build up + chance creation + in possession shape + team bonding x2",29.9],["heavy conditioning + attacking ball work + defensive ball work",32.4],["conditioning + attacking ball work + passing style + build up + chance creation + in possession shape + line of engagement +pressing intensity + pressing trap + out of possession shape",25.2],["attacking ball work x5",32.3],["defensive ball work x5",32.8],["individual development x5",31.8],["possession ball work x5",32.4],["conditioning + defensive ball work x2",30.8],["conditioning + attacking ball work x2",31.8],["conditioning + attacking ball work x2 + recovery",31.4],["conditioning + attacking ball work x2 + recovery x2",32.1],["conditioning + attacking ball work x2 + recovery x3",31.0],["light conditioning + conditioning + attacking ball work + line of engagement + in possession shape + chance creation + pressing intensity + build up + pressing trap",28.7]]};
+TRAIN_TEST.schedules = TRAIN_TEST.schedules.map(([s, ca]) => [s.replace(/\s*\+\s*/g, " + "), ca]);  // "a +b" -> "a + b"
+// Squad › Training: a team schedule for each of your club's teams as the save has them (first team, under-21s,
+// under-18s, B team…; by age for a save read before teams were): what each lacks = each player's attribute gaps where
+// he plays, counted by how much training changes him (room to grow and youth up, at his ceiling or 30+ down, a poor
+// attitude down; first-team minutes, and out-of-form players a little more), physical gaps less the older he is. That
+// picks the sessions (what each grows in harvestgreen22's test). The first team also keeps its tactical effectiveness up
+// (a few tactical understanding sessions: it wins matches and wears off within weeks; harvestgreen22, 14 Nov 2026) and
+// its load decides on recovery; the youth teams get pure development weeks.
+function trainingGroups(rows) {
+  const G = TRAIN_TEST.gains, S = TRAIN_TEST.schedules, PHYS = new Set(ATTR_GROUPS.Physical);
+  const hasTeams = rows.some(r => r.q.team);
+  // two groups: the first team, and the Youth (every other team: under-21s, under-18s, a B team: young players to grow)
+  const teamOf = r => hasTeams ? (r.q.team ? (r.q.team === "First team" ? "First team" : "Youth") : null)
+    : ["Starter", "Backup"].includes(r.q.role) || (r.p.age ?? 99) > 21 ? "First team" : "Youth";
+  const order = t => t === "First team" ? 0 : 1;
+  const groups = {};
+  rows.forEach(r => { const t = teamOf(r); if (t) (groups[t] = groups[t] || []).push(r); });
+  const sessionOf = s => S.find(([x]) => x === s)?.[1];
+  const median = xs => { const s = xs.filter(v => v != null).sort((a, b) => a - b); return s.length === 5 ? s[2] : null; };
+  // a player's tactical ability: the median of Anticipation, Decisions, Composure, Concentration and Versatility (hidden)
+  const tactical = p => { const a = p.history[p.history.length - 1].attrs; return median([a.Anticipation, a.Decisions, a.Composure, a.Concentration, p.hidden?.Versatility]); };
+  return Object.entries(groups).sort((x, y) => order(x[0]) - order(y[0])).map(([label, rs]) => {
+    const first = label === "First team", youngest = false, young = !first;
+    const need = {}, why = [];
+    for (const r of rs) {
+      const p = r.p, a = p.history[p.history.length - 1].attrs, w = WEIGHTS[p.best] || {}, total = Object.values(w).reduce((s, v) => s + v, 0) || 1;
+      const room = r.room, age = p.age ?? 25, mins = p.mstats?.minutes ?? 0, form = p.mstats?.formAvg;
+      let k = 1;
+      if (room != null) k *= room <= 3 ? 0.4 : 1 + Math.min(room, 40) / 40;  // room to grow: up to twice the say
+      k *= age <= 18 ? 1.4 : age <= 21 ? 1.25 : age <= 23 ? 1.1 : age >= 32 ? 0.5 : age >= 30 ? 0.7 : 1;
+      if (r.q.dev != null && r.q.dev < 10) k *= 0.8;  // a poor attitude: training sticks less
+      if (first) k *= 0.7 + Math.min(mins, 1500) / 1500 * 0.6;  // who plays matters more
+      if (form != null && form < 6.6) k *= 1.15;  // out of form: his gaps count a little more
+      // physical attributes grow mostly with age and natural fitness, less with sessions: the younger, the more they count
+      const physK = age <= 18 ? 0.6 : age <= 21 ? 0.4 : 0.15;
+      for (const [att, v] of Object.entries(w)) if (a[att] != null) need[att] = (need[att] || 0) + k * v / total * (PHYS.has(att) ? physK : 1) * Math.max(0, 20 - a[att]);
+    }
+    const fit = Object.entries(G).map(([s, g]) => ({ s, v: Object.entries(g).reduce((t, [att, x]) => t + x * (need[att] || 0), 0) })).sort((x, y) => y.v - x.v);
+    const ball = fit.filter(f => f.s.includes("ball work")), b1 = ball[0].s, b2 = ball[1].s;
+    const gaps = Object.entries(need).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([att]) => att);
+    const avg = f => { const xs = rs.map(f).filter(v => v != null); return xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : null; };
+    const age = avg(r => r.p.age), room = avg(r => r.room), tact = avg(r => tactical(r.p));
+    why.push(`${rs.length} players, average age ${age == null ? "–" : age.toFixed(1)}${room != null ? `, ${Math.round(room)} to grow on average` : ""}`);
+    let week, test, core, tacticalS = [], busy = false;
+    if (first) {
+      const starters = rs.filter(r => r.q.role === "Starter");
+      const tired = starters.filter(r => (r.p.mstats?.recent ?? 0) >= 240 || (r.q.state && r.q.state.fitness < 90)).length;
+      busy = tired >= Math.max(3, starters.length * 0.4);
+      week = busy ? `conditioning + ${b1} + recovery + in possession shape` : `conditioning + ${b1} + in possession shape + line of engagement`;
+      test = sessionOf("conditioning + attacking ball work + line of engagement + in possession shape");
+      core = ["conditioning", b1, b2]; tacticalS = ["in possession shape", "line of engagement"];
+      why.push("two tactical understanding sessions keep the tactic's effectiveness up (it won 13% more matches at 70 than at 30 in harvestgreen22's test) and wear off within weeks; more than two slow growth and raise injuries");
+      why.push(busy ? `busy: ${tired} starters played most of their last three matches or aren't fully fit, so a recovery session goes in` : "the load is fine: no recovery needed beyond match days");
+      if (tact != null) why.push(`tactical ability ${tact.toFixed(1)} on average (the median of Anticipation, Decisions, Composure, Concentration, Versatility): ${tact >= 14 ? "quick to learn a tactic" : tact >= 11 ? "average" : "slow to learn a tactic: keep it simple"}`);
+    } else if (youngest) {
+      week = `light conditioning + conditioning + ${b1} + ${b2}`;
+      test = sessionOf(`light conditioning + conditioning + ${b1} + ${b2}`) ?? sessionOf("light conditioning + conditioning + attacking ball work + defensive ball work");
+      why.push("pure development: a full, varied week, no tactical sessions (they cost growth and the matches matter little)");
+    } else if (young) {
+      week = `light conditioning + conditioning + ${b1} + ${b2}`;
+      test = sessionOf(`light conditioning + conditioning + ${b1} + ${b2}`) ?? sessionOf("light conditioning + conditioning + attacking ball work + defensive ball work");
+      core = ["light conditioning", "conditioning", b1, b2];
+      why.push("growth first: a full development week on their two biggest gaps, no tactical sessions (they cost growth, and youth matches matter little)");
+      const teams = [...new Set(rs.map(r => r.q.team).filter(Boolean))];
+      if (teams.length > 1) why.push(`all your young teams together: ${teams.join(", ")}; give each the same week`);
+    } else {
+      week = `conditioning + ${b1} + ${b2}`;
+      test = sessionOf(`conditioning + ${b1} + ${b2}`) ?? sessionOf("conditioning + attacking ball work + defensive ball work");
+      core = ["conditioning", b1, b2];
+      why.push("full development weeks keep them growing and ready for the first team");
+    }
+    const ceiling = rs.filter(r => r.room != null && r.room <= 3).length, poor = rs.filter(r => r.q.dev != null && r.q.dev < 10).length;
+    if (ceiling) why.push(`${ceiling} at their ceiling: training keeps them sharp, it won't grow them`);
+    if (poor) why.push(`${poor} with a poor attitude: a mentor helps more than sessions`);
+    if (!core) core = ["conditioning", b1, b2];
+    return { label, week, test, gaps, fit, why, rs, core, tactical: tacticalS, busy };
+  });
+}
+// Squad › Training's week, drawn like FM's schedule screen: Mon–Sun, three sessions a day, coloured by kind. The match
+// on Saturday (and Wednesday in a two-match week); the day after it Recovery and Rest (one or two recovery sessions a
+// week cost nothing in the test); the day before it lighter; the group's sessions in turn on the other days, the first
+// team's tactical understanding sessions on its first full training days.
+const TRAIN_STORE = "fm:__SAVE__:training";
+let trainView = { team: "First team", matches: null };
+try { Object.assign(trainView, JSON.parse(localStorage.getItem(TRAIN_STORE) || "{}")); } catch (e) {}
+function trainingWeek(g, matches) {
+  const match = matches === 2 ? [2, 5] : [5], after = match.map(i => (i + 1) % 7), before = match.map(i => i - 1);
+  let k = 0, tac = [...g.tactical];
+  const next = () => g.core[k++ % g.core.length];
+  return [0, 1, 2, 3, 4, 5, 6].map(d => {
+    if (match.includes(d)) return ["rest", "match", "rest"];
+    if (after.includes(d)) return ["recovery", "rest", "rest"];
+    if (before.includes(d)) return [next(), tac.length && matches === 2 ? tac.shift() : next(), "rest"];
+    return [next(), next(), tac.length ? tac.shift() : next()];
+  });
+}
+function sessionKind(s) {
+  if (s === "match") return "match";
+  if (s === "rest" || s === "travel") return "rest";
+  if (/conditioning|recovery/.test(s)) return "phys";
+  if (/ball work|individual development/.test(s)) return "ball";
+  if (/free kicks|corners|penalties/.test(s)) return "set";
+  return "tact";
+}
+function teamSchedule(rows) {
+  const S = TRAIN_TEST.schedules, groups = trainingGroups(rows);
+  if (!groups.length) return "";
+  const g = groups.find(x => x.label === trainView.team) || groups[0];
+  const first = g.label === "First team", matches = first ? (trainView.matches || (g.busy ? 2 : 1)) : 1;
+  const week = trainingWeek(g, matches), DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const title = s => s === "match" ? "Match" : s.replace(/\b\w/g, c => c.toUpperCase()).replace(/ Of /g, " of ");  // as FM writes them
+  const ICON = { phys: "⟛", ball: "◈", tact: "⬡", set: "⚑", rest: "▬", match: "⚽" };
+  const presets = S.filter(([s]) => s.startsWith("Preset")).sort((a, b) => b[1] - a[1]);
+  const sing = n => S.find(([s]) => s === n)?.[1];
+  const tactical = S.filter(([s]) => ["press avoidance", "ball progression", "final third", "defensive block", "defensive positioning", "defensive engagement",
+    "corners", "free kicks", "penalties", "passing style", "build up", "chance creation", "in possession shape", "line of engagement", "pressing intensity",
+    "pressing trap", "out of possession shape", "team bonding", "community outreach"].includes(s)).map(x => x[1]);
+  const bar = v => `<span style="display:inline-block;width:${Math.round(v / 34 * 90)}px;height:8px;border-radius:4px;background:var(--blue,#c5f04f);opacity:.75;margin-right:6px;vertical-align:middle"></span>`;
+  const seg = (id, opts, cur) => `<span class="seg" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" class="${String(v) === String(cur) ? "on" : ""}">${l}</button>`).join("")}</span>`;
+  const counts = {};
+  week.flat().forEach(s => { if (!["rest", "match"].includes(s)) counts[s] = (counts[s] || 0) + 1; });
+  const cal = `<div class="tweek">${DAYS.map((d, i) => `<div class="tday"><div class="tdname">${d}</div>${week[i].map(s =>
+    `<div class="tses ${sessionKind(s)}" title="${esc(title(s))}"><span class="ti">${ICON[sessionKind(s)]}</span>${esc(title(s))}</div>`).join("")}</div>`).join("")}</div>`;
+  const legend = `<div class="tlegend">${[["phys", "Physical"], ["ball", "Ball work, development"], ["tact", "Tactical understanding"], ["set", "Set pieces"], ["rest", "Rest"], ["match", "Match"]]
+    .map(([k, l]) => `<span><i class="tses ${k}"></i>${l}</span>`).join("")}</div>`;
+  const notes = `<div class="tsweek">${esc(g.week)}</div>
+    ${g.test != null ? `<div class="sub" style="margin:2px 0 8px">${bar(g.test)}+${g.test.toFixed(1)} CA a season in the test for a week like this</div>` : ""}
+    <div class="sub"><b>Most needed:</b> ${g.gaps.map(esc).join(", ")}</div>
+    <ul class="tswhy">${g.why.map(w => `<li>${esc(w)}</li>`).join("")}</ul>
+    <div class="sub">This week: ${Object.entries(counts).map(([s, n]) => `${esc(title(s))} ×${n}`).join(", ")}.</div>`;
+  const overall = box("Best training overall", `<table class="dtable" style="width:100%"><tbody>
+      ${S.filter(([s]) => !s.startsWith("Preset") && !/x5/.test(s)).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([s, ca]) => `<tr><td>${esc(s[0].toUpperCase() + s.slice(1))}</td><td class="num" style="white-space:nowrap">${bar(ca)}<b>+${ca.toFixed(1)}</b></td></tr>`).join("")}
+      </tbody></table>
+      <ul class="tswhy">
+        <li>No training: +${TRAIN_TEST.base.toFixed(1)}; a tactical, set-piece or bonding session alone: at most +${Math.max(...tactical).toFixed(1)}.</li>
+        <li>Recovery: two a week cost nothing (+${(sing("conditioning + attacking ball work x2 + recovery x2") ?? 0).toFixed(1)}), three a little (+${(sing("conditioning + attacking ball work x2 + recovery x3") ?? 0).toFixed(1)}), seven a lot (+${(sing("conditioning + attacking ball work + recovery x7") ?? 0).toFixed(1)}).</li>
+        <li>Best FM preset: ${esc(presets[0][0].replace(/^Preset-/, "").replace(/-/g, " › "))} (+${presets[0][1].toFixed(1)}); FM's automatic training loses about a third of a season's growth.</li>
+      </ul>`, "a season's CA gain in the test");
+  return `<div class="tile wide"><div class="ttitle">Training schedule <span class="rankby">${seg("tteam", groups.map(x => [x.label, `${x.label} (${x.rs.length})`]), g.label)}
+      ${first ? seg("tmatches", [[1, "One match a week"], [2, "Two matches"]], matches) : ""}</span>
+      <span class="sub">a week for FM's Training → Schedule, from what your players lack, how much they can still grow, minutes, form and load</span></div>
+    <style>
+      .tweek{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.tday{display:flex;flex-direction:column;gap:5px;min-width:0}
+      .tdname{font:700 13px var(--head);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);padding:0 2px 2px}
+      .tses{display:flex;align-items:center;gap:6px;height:30px;padding:0 8px;border-radius:5px;border-left:4px solid;font-size:12px;font-weight:500;
+        color:#f2efe7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .tses .ti{flex:none;opacity:.8;font-size:12px}
+      .tses.phys{background:#5b1d1d;border-color:#e2534f}.tses.ball{background:#4d1d45;border-color:#d64fc0}.tses.tact{background:#163d2b;border-color:#2fbf86}
+      .tses.set{background:#1b3360;border-color:#4f8de2}.tses.rest{background:#33383a;border-color:#9aa49f;color:#cfd6d1}
+      .tses.match{background:linear-gradient(90deg,#2d5a3c,#1b2a22);border-color:#f2efe7;font-weight:700}
+      .tlegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--dim)}.tlegend span{display:flex;align-items:center;gap:6px}
+      .tlegend i.tses{display:inline-block;width:14px;height:14px;padding:0;border-left-width:3px}
+      .tsweek{font:600 15px/1.3 var(--body);color:var(--blue,#c5f04f);margin-bottom:2px}.tswhy{margin:6px 0;padding-left:16px;font-size:12px;color:var(--dim)}.tswhy li{margin:2px 0}
+      .tplan{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+      @media (max-width:1300px){.tplan{grid-template-columns:minmax(0,1fr)}}
+    </style>
+    <div class="tplan"><div>${cal}${legend}</div><div>${notes}</div></div>
+    <div class="boxes" style="margin-top:12px">${overall}</div></div>`;
+}
+function wireTraining() {
+  const keep = () => { try { localStorage.setItem(TRAIN_STORE, JSON.stringify(trainView)); } catch (e) {} renderTraining(); };
+  document.querySelectorAll("#tteam button").forEach(b => b.onclick = () => { trainView.team = b.dataset.v; keep(); });
+  document.querySelectorAll("#tmatches button").forEach(b => b.onclick = () => { trainView.matches = +b.dataset.v; keep(); });
+}
 function renderTraining() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA;
@@ -2486,11 +2802,21 @@ function renderTraining() {
   const info = d.people || {};
   const rows = people.map(p => {
     const q = info[p.name] || {}, rs = routinesFor(p), room = p.ca != null && p.pa > 0 ? p.pa - p.ca : null;
-    let note = ["", ""];
-    if (room != null && room <= 3) note = ["plan", "at his ceiling: keep him sharp, light training"];
+    const mins = p.mstats?.minutes ?? 0, first = rs[0]?.name || "his weak points", role = q.role || "";
+    let note;
+    if (q.dev != null && q.dev < 10 && (room ?? 0) >= 10) note = ["warn", "talent, poor attitude: a mentor first"];
+    else if (room != null && room <= 3) note = ["plan", "at his ceiling: keep him sharp, light training"];
+    else if (p.age >= 33) note = ["warn", "33+: lighter load, keep his pace and stamina up"];
     else if (p.age >= 31) note = ["warn", "31+: keep his physical side up (Endurance, Quickness)"];
+    else if (room != null && room >= 20 && p.age <= 18) note = ["young", `${room} to grow: high intensity, ${first}`];
+    else if (room != null && room >= 20 && p.age <= 23 && mins >= 450) note = ["young", `${room} to grow: growing with games, keep him playing`];
+    else if (room != null && room >= 20 && p.age <= 23 && ["Third", "Youth"].includes(role)) note = ["young", `${room} to grow: a loan with games grows him faster`];
     else if (room != null && room >= 20 && p.age <= 23) note = ["young", `${room} to grow: train hard, give him minutes`];
-    else if (q.dev != null && q.dev < 10 && (room ?? 0) >= 10) note = ["warn", "poor attitude: a mentor would help"];
+    else if (room != null && room >= 10 && p.age <= 27) note = ["plan", `still improving: work on ${first}`];
+    else if (p.age >= 29) note = ["plan", "peak years: maintain, don't overload him"];
+    else if (role === "Starter") note = ["plan", `settled starter: polish ${first}`];
+    else if (role === "Backup") note = ["plan", `stay ready: ${first}, and minutes when you rotate`];
+    else note = ["plan", `keep him ticking over: ${first}`];
     return { p, q, rs, room, note };
   }).sort((a, b) => POS_ORDER.indexOf(a.p.best) - POS_ORDER.indexOf(b.p.best) || (b.p.score ?? 0) - (a.p.score ?? 0));
   // the squad's focus: the routines that come first most often for your starters and backups
@@ -2500,22 +2826,154 @@ function renderTraining() {
   const grow = rows.filter(r => r.room != null && r.room >= 15 && r.p.age <= 23).sort((a, b) => b.room - a.room).slice(0, 8);
   const ceiling = rows.filter(r => r.room != null && r.room <= 3).length;
   const chip = r => `<span class="chip">${esc(r.name)}</span>`;
-  main.innerHTML = `<div class="tile wide"><div class="ttitle">Training plan <span class="sub">for the next month: each player's best individual routines in FM27, from his weakest attributes that count most where he plays</span></div>
-    <div class="boxes">
-      ${box("The squad's focus", `<div class="chips">${top.map(([n, v]) => `<span class="chip">${esc(n)} <b class="t4">${v}</b></span>`).join("")}</div><div class="sub" style="margin-top:6px">what your starters and backups need most (first choice 2 points, second 1)</div>`)}
-      ${box("Most room to grow", grow.length ? `<table class="dtable" style="width:100%"><tbody>${grow.map(r => `<tr><td>${pname(r.p.name)}</td><td class="num">${r.p.age}</td><td class="num t4">+${r.room}</td><td class="sub">${esc(r.rs[0].name)}</td></tr>`).join("")}</tbody></table>` : `<span class="dim">Read a save game for CA and PA.</span>`, "23 or under, PA − CA 15+")}
-      ${box("How to use it", `<div class="sub" style="line-height:1.6">In FM: <b>Training → Individual</b>, pick the player, set his <b>Individual Focus</b> to the routine here. Check again next month: a routine stops paying once its attributes catch up. ${ceiling} player${ceiling === 1 ? " is" : "s are"} at his ceiling.</div>`)}
-    </div></div>
-    <div class="tile wide"><div class="ttitle">Every player <span class="sub">back to front · click a heading to sort</span></div>
-    <table><thead><tr><th>Player</th><th class="num">Age</th><th>Position</th><th class="num">Score</th><th class="num">Room</th><th>Train first</th><th>Then</th><th>Because of</th><th>Note</th></tr></thead><tbody>
+  main.innerHTML = `${teamSchedule(rows)}
+    <div class="tile wide"><div class="ttitle">Every player <span class="sub">back to front · in FM one Training Focus at a time: set the first, switch to Next in about a month · click a heading to sort</span></div>
+    <table><thead><tr><th>Player</th><th class="num">Age</th><th>Position</th><th class="num">Score</th><th class="num">Room</th><th title="set it in FM: Training → Individual → Training Focus">Training Focus</th><th title="switch to it when the first stops paying, in about a month">Next</th><th>Because of</th><th>Note</th></tr></thead><tbody>
     ${rows.map(r => `<tr><td>${pname(r.p.name)}</td><td class="num">${r.p.age ?? "–"}</td><td>${esc(r.p.best)}</td><td class="num">${sc(r.p.score)}</td>
       <td class="num ${r.room == null ? "dim" : r.room >= 15 ? "t4" : r.room <= 3 ? "t0" : ""}">${r.room ?? "–"}</td>
       <td>${chip(r.rs[0])}</td><td>${chip(r.rs[1])}</td>
       <td class="sub">${r.rs[0].weak.map(([k, v]) => `${esc(k)} <b class="${attrTier(v)}">${v}</b>`).join(", ")}</td>
       <td>${r.note[1] ? `<span class="rec ${r.note[0]}">${esc(r.note[1])}</span>` : ""}</td></tr>`).join("")}
     </tbody></table></div>`;
+  wireTraining();
+}
+// ---- Squad › Season: DATA = season_page() in score.py: {seasons: {"2026/27": {game_date, competitions: {comp: {name: totals}}}}, players}
+// Every match of the season is in the save, so this is live as you play and the season report once it's over.
+const SEASON_STORE = "fm:__SAVE__:season";
+let seasonView = { season: null, comp: "first", per90: false };
+try { Object.assign(seasonView, JSON.parse(localStorage.getItem(SEASON_STORE) || "{}")); } catch (e) {}
+// who plays above or below his attributes: his rank by match rating against his rank by our score (270+ minutes)
+function levelBoxes(rows, rating, minMins) {
+  const rs = rows.filter(r => r.t.minutes >= minMins && rating(r) != null && r.p.score != null);
+  if (rs.length < 6) return "";
+  const byRating = [...rs].sort((a, b) => rating(b) - rating(a)), byScore = [...rs].sort((a, b) => b.p.score - a.p.score);
+  const d = r => byScore.indexOf(r) - byRating.indexOf(r);  // + : rated higher than his attributes say
+  const list = xs => `<table class="dtable" style="width:100%">${xs.map(r => `<tr><td>${pname(r.name)}</td><td class="num"><b class="${rClass(rating(r))}">${rating(r).toFixed(2)}</b></td><td class="num sub">${sc(r.p.score)}</td></tr>`).join("") || `<tr><td class="dim">nobody</td></tr>`}</table>`;
+  const above = rs.filter(r => d(r) >= 3).sort((a, b) => d(b) - d(a)).slice(0, 5), below = rs.filter(r => d(r) <= -3).sort((a, b) => d(a) - d(b)).slice(0, 5);
+  return box("Playing above his attributes", list(above), "rating rank well above his score rank: keep him in")
+    + box("Playing below his attributes", list(below), "his attributes say more: a role, a rest or a talk");
+}
+function renderSeason() {
+  input.style.display = "none"; document.getElementById("count").style.display = "none";
+  const main = document.getElementById("main"), d = DATA;
+  main.className = "tiles";
+  const names = Object.keys(d.seasons || {}).sort().reverse();
+  if (!names.length) { main.innerHTML = `<div class="tile wide"><div class="ttitle">Match stats</div>${NEED_SAVE}</div>`; return; }
+  if (!names.includes(seasonView.season)) seasonView.season = names[0];
+  const S = d.seasons[seasonView.season], youth = new Set(S.youth || []), isYouth = c => youth.has(c);
+  // this season's competitions, whatever they are (another league, other cups, a different country): first-team ones
+  // first, most minutes first, then youth ones
+  const compMins = c => Object.values(S.competitions[c]).reduce((t, p) => t + (p.minutes || 0), 0);
+  const comps = Object.keys(S.competitions).filter(c => c !== "Friendly").sort((a, b) => isYouth(a) - isYouth(b) || compMins(b) - compMins(a))
+    .concat(S.competitions.Friendly ? ["Friendly"] : []);
+  if (!["first", "youth", "all"].includes(seasonView.comp) && !comps.includes(seasonView.comp)) seasonView.comp = "first";
+  const pick = c => seasonView.comp === "all" ? c !== "Friendly" : seasonView.comp === "first" ? c !== "Friendly" && !isYouth(c)
+    : seasonView.comp === "youth" ? isYouth(c) : c === seasonView.comp;
+  const tot = {};
+  for (const c of comps.filter(pick)) for (const [n, t] of Object.entries(S.competitions[c])) {
+    const a = tot[n] = tot[n] || {};
+    for (const [k, v] of Object.entries(t)) a[k] = (a[k] || 0) + v;
+  }
+  const rows = Object.entries(tot).map(([name, t]) => ({ name, t, p: d.players[name] || {} })).filter(r => r.t.apps);
+  const per = (r, v) => seasonView.per90 ? (r.t.minutes ? v * 90 / r.t.minutes : 0) : v;
+  const n2 = (v, dp = 2) => v == null ? "–" : v.toFixed(dp);
+  const fmt = (r, v, dp = 0) => seasonView.per90 ? n2(per(r, v), 2) : (dp ? v.toFixed(dp) : v);
+  const pct = (a, b) => b ? Math.round(100 * a / b) + "%" : "–";
+  const rating = r => r.t.rated ? r.t.rating / r.t.rated : null;
+  const sum = k => rows.reduce((t, r) => t + (r.t[k] || 0), 0);
+  const top = (key, label, n = 5, min = 0) => rows.filter(r => r.t.minutes >= min && key(r) != null && key(r) > 0).sort((a, b) => key(b) - key(a)).slice(0, n)
+    .map(r => `<tr><td>${pname(r.name)}</td><td class="num"><b>${label(r)}</b></td></tr>`).join("") || `<tr><td class="dim">nobody yet</td></tr>`;
+  const compOpts = [["first", "First team competitions"], ...(youth.size ? [["youth", "Youth competitions"]] : []), ["all", "All competitions"],
+    ...comps.map(c => [c, c + (isYouth(c) ? " (youth)" : "")])];
+  const mins90 = 270;  // a rating or per-90 leader needs 3 full matches
+  main.innerHTML = `<div class="tile wide"><div class="ttitle">Match stats <span class="rankby">
+      <select id="seasonpick">${names.map(x => `<option${x === seasonView.season ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>
+      <select id="comppick">${compOpts.map(([v, t]) => `<option value="${esc(v)}"${v === seasonView.comp ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>
+      <span class="seg" id="per90"><button data-v="0" class="${seasonView.per90 ? "" : "on"}">Totals</button><button data-v="1" class="${seasonView.per90 ? "on" : ""}">Per 90</button></span></span>
+      <span class="sub">from the save game, FM's date ${esc(fmtDay(S.game_date))} · every match of the season so far</span></div>
+    <div class="bignum">
+      <div><b>${rows.length}</b><span>players used</span></div><div><b>${sum("goals")}</b><span>goals</span></div>
+      <div><b>${sum("assists")}</b><span>assists</span></div><div><b>${sum("xg").toFixed(1)}</b><span>xG</span></div>
+      <div><b>${(rows.reduce((t, r) => t + r.t.rating, 0) / Math.max(1, rows.reduce((t, r) => t + r.t.rated, 0))).toFixed(2)}</b><span>average rating</span></div>
+      <div><b>${pct(sum("passes_done"), sum("passes"))}</b><span>passes completed</span></div></div></div>
+    <div class="tile wide"><div class="boxes">
+      ${box("Top scorers", `<table class="dtable" style="width:100%">${top(r => r.t.goals, r => r.t.goals)}</table>`)}
+      ${box("Most assists", `<table class="dtable" style="width:100%">${top(r => r.t.assists, r => r.t.assists)}</table>`)}
+      ${box("Best rated", `<table class="dtable" style="width:100%">${top(r => rating(r), r => rating(r).toFixed(2), 5, mins90)}</table>`, `${mins90}+ minutes`)}
+      ${box("Beating their xG", `<table class="dtable" style="width:100%">${top(r => r.t.goals - r.t.xg, r => "+" + (r.t.goals - r.t.xg).toFixed(1))}</table>`, "goals minus xG")}
+      ${box("Most minutes", `<table class="dtable" style="width:100%">${top(r => r.t.minutes, r => r.t.minutes)}</table>`)}
+      ${levelBoxes(rows, rating, mins90)}
+      ${(() => { const gk = rows.filter(r => r.p.best === "GK" && r.t.starts); return gk.length ? box("Keepers", `<table class="dtable" style="width:100%"><thead><tr><th>Keeper</th><th class="num">Starts</th><th class="num">Clean</th><th class="num">Let in /m</th></tr></thead><tbody>${
+        gk.sort((a, b) => b.t.starts - a.t.starts).map(r => `<tr><td>${pname(r.name)}</td><td class="num">${r.t.starts}</td><td class="num"><b>${r.t.clean_sheets || 0}</b></td><td class="num">${r.t.apps ? ((r.t.conceded || 0) / r.t.apps).toFixed(2) : "–"}</td></tr>`).join("")}</tbody></table>`) : ""; })()}
+    </div></div>
+    <div class="tile wide"><div class="ttitle">Every player <span class="sub">${seasonView.per90 ? "per 90 minutes" : "totals"} · click a heading to sort · rating vs our score: who plays above or below his attributes</span></div>
+    <table><thead><tr><th>Player</th><th>Best</th><th class="num">Score</th><th class="num">Apps</th><th class="num">Min</th><th class="num">Rating</th><th>Last five</th><th class="num">Goals</th><th class="num">Assists</th>
+      <th class="num">xG</th><th class="num">G − xG</th><th class="num">Pass %</th><th class="num">Prog</th><th class="num">Crosses</th>
+      <th class="num">Headers</th><th class="num">Pressures</th><th class="num">Poss won</th><th class="num">Dribbles</th><th class="num">Km</th><th class="num">Errors</th></tr></thead><tbody>
+    ${rows.sort((a, b) => b.t.minutes - a.t.minutes).map(r => { const t = r.t, rt = rating(r);
+      return `<tr><td>${pname(r.name)}</td><td class="dim">${esc(r.p.best || "–")}</td><td class="num">${sc(r.p.score)}</td>
+      <td class="num">${t.starts}${t.apps > t.starts ? ` <span class="sub">(${t.apps - t.starts})</span>` : ""}</td><td class="num">${t.minutes}</td>
+      <td class="num">${rt == null ? "–" : `<b class="${rClass(rt)}">${rt.toFixed(2)}</b>`}</td><td>${formChips(r.p.mstats)}</td>
+      <td class="num">${fmt(r, t.goals)}</td><td class="num">${fmt(r, t.assists)}</td><td class="num">${seasonView.per90 ? n2(per(r, t.xg)) : t.xg.toFixed(2)}</td>
+      <td class="num ${t.goals - t.xg >= 0.5 ? "t4" : t.goals - t.xg <= -0.5 ? "t0" : "dim"}">${(t.goals - t.xg >= 0 ? "+" : "−") + Math.abs(t.goals - t.xg).toFixed(1)}</td>
+      <td class="num">${pct(t.passes_done, t.passes)}</td><td class="num">${fmt(r, t.prog_passes)}</td>
+      <td class="num">${seasonView.per90 ? n2(per(r, t.crosses_done)) : `${t.crosses_done}/${t.crosses}`}</td>
+      <td class="num">${seasonView.per90 ? n2(per(r, t.headers_won)) : `${t.headers_won}/${t.headers}`}</td>
+      <td class="num">${seasonView.per90 ? n2(per(r, t.pressures_done)) : `${t.pressures_done}/${t.pressures}`}</td>
+      <td class="num">${fmt(r, t.poss_won)}</td><td class="num">${fmt(r, t.dribbles)}</td>
+      <td class="num">${seasonView.per90 ? n2(per(r, t.distance / 1000), 1) : (t.distance / 1000).toFixed(1)}</td>
+      <td class="num ${t.mistakes ? "t0" : "dim"}">${t.mistakes}</td></tr>`; }).join("")}
+    </tbody></table><div class="sub">Apps: starts (and sub appearances). Prog: progressive passes. Crosses, headers and pressures: completed / attempted. Errors: mistakes leading to a goal. Friendlies count only when you pick them.
+    The competitions are whatever your club plays in that season; a youth one is told apart by its name or by the age of the players you used in it.</div></div>`;
+  const keep = () => { try { localStorage.setItem(SEASON_STORE, JSON.stringify(seasonView)); } catch (e) {} renderSeason(); };
+  document.getElementById("seasonpick").onchange = e => { seasonView.season = e.target.value; keep(); };
+  document.getElementById("comppick").onchange = e => { seasonView.comp = e.target.value; keep(); };
+  main.querySelectorAll("#per90 button").forEach(b => b.onclick = () => { seasonView.per90 = b.dataset.v === "1"; keep(); });
 }
 // ---- Club › Medical: DATA = squad_tabs() in score.py (fitness, match exercise and jadedness come from a save game) ----
+// Club › Medical's workload: minutes in the last three matches with fitness, tiredness and match sharpness: who to
+// rest, rotate, give minutes or train lighter this week
+function workload(P) {
+  const ps = P.filter(p => p.state && !p.injured);
+  if (!ps.length) return "";
+  const jads = ps.map(p => p.state.jadedness ?? 0).sort((a, b) => a - b), hiJad = jads[Math.floor(jads.length * 0.8)] || 0;
+  // one piece of advice a player, picked for his situation, then the reasons (why)
+  const rows = ps.map(p => {
+    const recent = p.mstats?.recent ?? 0, st = p.state, ip = p.traits["Injury Proneness"] ?? 0, natfit = p.natfit ?? 12;
+    const jad = st.jadedness ?? 0, fit = st.fitness, ex = st.exercise, key = ["Starter", "Backup"].includes(p.role);
+    const form = p.mstats?.formAvg, why = [];
+    let v = null;
+    if (jad >= hiJad && hiJad > 0 && recent >= 180) v = p.age >= 31 || natfit <= 10 ? ["act", "rest him: leave him out of the squad"] : recent >= 260 ? ["act", "rest him for the next match"] : ["warn", "start him on the bench"];
+    else if (fit < 80 && key) v = ["act", "not fit to start: bench him"];
+    else if (fit < 88 && recent >= 240 && key) v = ["warn", "rotate: tiring after three full matches"];
+    else if (fit < 88 && key) v = ["warn", "not fully fit: bring him on late"];
+    else if (recent >= 240 && ip >= 14) v = ["warn", "train lighter (Individual → intensity): injury-prone"];
+    else if (recent === 0 && p.role === "Starter" && ex < 70) v = ["plan", "back from a break: about 60 minutes, then sub"];
+    else if (recent === 0 && p.role === "Starter") v = ["plan", "fresh and fit: back into the XI"];
+    else if (ex < 55 && key) v = ["plan", "very rusty: a cup game or a reserves match"];
+    else if (ex < 70 && p.role === "Backup") v = ["plan", "needs minutes: 30 off the bench"];
+    else if (ex < 70 && p.role === "Starter") v = ["plan", "short of sharpness: start him in an easier game"];
+    else if (ex < 60 && ["Third", "Youth"].includes(p.role) && p.age <= 23) v = ["young", "play him for the reserves or under-21s"];
+    else if (recent === 0 && p.role === "Backup" && fit >= 95 && ex >= 80) v = ["young", "fresh and sharp: start him when you rotate"];
+    if (!v) return null;
+    why.push(`${recent} min in 3`);
+    if (fit < 92) why.push(`fitness ${fit.toFixed(0)}%`);
+    if (jad >= hiJad && hiJad > 0) why.push(`jadedness ${jad}`);
+    if (ex < 75) why.push(`sharpness ${ex.toFixed(0)}%`);
+    if (ip >= 14) why.push("injury-prone");
+    if (natfit <= 10 && p.age >= 29) why.push("low natural fitness");
+    else if (p.age >= 32) why.push("older legs");
+    if (form != null && form >= 7.2 && v[0] !== "act") why.push(`in form (${form.toFixed(2)})`);
+    return { p, recent, v, why };
+  }).filter(Boolean).sort((a, b) => ({ act: 0, warn: 1, plan: 2, young: 3 })[a.v[0]] - ({ act: 0, warn: 1, plan: 2, young: 3 })[b.v[0]] || b.recent - a.recent);
+  return `<div class="tile wide"><div class="ttitle">Workload <span class="sub">this week: minutes in his last three matches, fitness, tiredness (jadedness) and match sharpness</span></div>
+    ${rows.length ? `<table><thead><tr><th>Player</th><th>Role</th><th class="num">Last 3 matches</th><th class="num">Fitness</th><th class="num">Jadedness</th><th class="num">Match exercise</th><th>Advice</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td>${pname(r.p.name)}</td><td class="dim">${esc(r.p.role)}</td><td class="num">${r.recent} min</td><td class="num">${r.p.state.fitness.toFixed(0)}%</td>
+      <td class="num">${r.p.state.jadedness == null ? "–" : Math.max(0, r.p.state.jadedness)}</td><td class="num">${r.p.state.exercise.toFixed(0)}%</td>
+      <td class="notes"><span class="rec ${r.v[0]}">${esc(r.v[1])}</span> <span class="sub">${esc(r.why.join(" · "))}</span></td></tr>`).join("")}</tbody></table>`
+      : `<div class="sub">Nobody needs a change this week.</div>`}
+    <div class="sub">In FM: Training → Individual for a player's intensity; rest and rotation in your team selection.</div></div>`;
+}
 function renderMedical() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA;
@@ -2552,6 +3010,7 @@ function renderMedical() {
       ${box("Most tired", list(tired, p => `<tr><td>${pname(p.name)}</td><td class="dim">${esc(p.role)}</td><td class="num">${jad(p)}</td></tr>`), "jadedness, highest first")}
       ${box("Injury-prone", list(fragile, p => `<tr><td>${pname(p.name)}</td><td class="dim">${esc(p.role)}</td><td class="num ${attrTier(21 - prone(p))}">${prone(p)}</td></tr>`), "hidden in FM: 13+")}
     </div></div>
+    ${workload(P)}
     <div class="tile wide"><div class="ttitle">Everyone <span class="sub">least fit first</span></div>
     <table><thead><tr><th>Player</th><th class="num">Age</th><th>Role</th><th class="num">Fitness</th><th class="num">Match exercise</th><th class="num">Jadedness</th><th class="num" title="hidden in FM">Injury proneness</th><th class="num">Natural Fitness</th><th>Notes</th></tr></thead><tbody>
     ${[...P].sort((a, b) => (a.injured ? -1 : 0) - (b.injured ? -1 : 0) || (fit(a) ?? 100) - (fit(b) ?? 100)).map(p => `<tr><td>${pname(p.name)}</td><td class="num">${p.age ?? "–"}</td><td>${esc(p.role)}</td>
@@ -2570,12 +3029,32 @@ function renderTransfers() {
   const room = m.wage_budget != null ? m.wage_budget - m.wages : null, budget = m.transfer_budget;
   // who could go: surplus, ageing backups with value, contracts running down, loans that aren't working
   const sell = [];
+  const fullP = d.players || {}, fair = fairWages(P);
+  const cover = pos => [...f.players, ...(f.second || [])].filter(x => x.pos === pos);  // your two XIs at a slot
   for (const p of P) {
-    const left = monthsLeft(p.contract);
-    if (p.role === "Third" && p.age >= 23 && p.loan !== "out") sell.push([p, "act", "surplus: not in your best two at any slot"]);
-    else if (p.age >= 29 && p.role !== "Starter" && (p.value ?? 0) >= 5e6) sell.push([p, "plan", "a backup with value: sell before it drops"]);
-    else if (left != null && left <= 12 && p.role !== "Starter" && p.role !== "Youth") sell.push([p, "warn", "contract running down: sell now or let go"]);
-    else if (p.loan === "out" && p.age >= 21 && (p.vsAge ?? 1) < 0.95) sell.push([p, "plan", "out on loan, behind for his age"]);
+    const left = monthsLeft(p.contract), ms = (fullP[p.name] || {}).mstats || {}, wr = fair[p.name];
+    const room = p.ca != null && p.pa > 0 ? p.pa - p.ca : null;
+    let v = null;
+    if (ms.apps >= 3 && ms.rating != null && ms.rating < 6.6 && p.role !== "Starter" && p.age >= 22) v = ["warn", "not good enough: sell"];
+    else if (p.role === "Third" && p.age >= 23 && p.loan !== "out") v = ["act", "surplus: not in your best two at any slot"];
+    else if (p.age >= 29 && p.role !== "Starter" && (p.value ?? 0) >= 5e6) v = ["plan", "a backup with value: sell before it drops"];
+    else if (wr != null && wr >= 2 && p.role !== "Starter" && p.loan !== "out" && (p.wage ?? 0) >= 20000) v = ["warn", "overpaid for his role: sell, or loan him with wages paid"];
+    else if (left != null && left <= 12 && p.role !== "Starter" && p.role !== "Youth") v = ["warn", "contract running down: sell now or let go"];
+    else if (p.age >= 20 && room != null && room < 8 && (p.score ?? 0) < 11 && p.loan !== "out") v = ["plan", "low ceiling: won't make your first team"];
+    else if (p.loan === "out" && p.age >= 21 && (p.vsAge ?? 1) < 0.95) v = ["plan", "out on loan, behind for his age"];
+    else if (p.role !== "Starter" && (p.traits?.["Injury Proneness"] ?? 0) >= 15 && p.age >= 27) v = ["plan", "injury-prone: sell while he's fit"];
+    if (!v) continue;
+    const why = [];  // the reasons, and what selling him does
+    if (ms.apps) why.push(`${ms.apps} apps, ${ms.minutes} min${ms.rating != null && ms.apps >= 3 ? `, rated ${ms.rating.toFixed(2)}` : ""}`);
+    else if (p.loan !== "out") why.push("not played this season");
+    if (wr != null && wr >= 1.5) why.push(`paid ×${wr.toFixed(1)} his level`);
+    if (left != null && left <= 18) why.push(left <= 6 ? `${left} months left: his fee is falling fast` : `${left} months left`);
+    if (p.age >= 30) why.push("his value only falls from here");
+    if (room != null && room >= 15 && p.age <= 23) why.push(`but ${room} to grow: a loan may be better`);
+    const at = p.best ? cover(p.best).filter(x => x.name !== p.name) : [];
+    if (p.best && p.role !== "Third") why.push(at.length >= 2 ? `${p.best} still covered` : at.length ? `leaves one ${p.best}: buy cover` : `no other ${p.best}: replace him first`);
+    if (p.wage) why.push(`frees ${shortMoney(p.wage)} p/w`);
+    sell.push([p, v[0], v[1], why.join(" · ")]);
   }
   sell.sort((a, b) => (b[0].value ?? 0) - (a[0].value ?? 0));
   const raise = sell.reduce((t, [p]) => t + (p.value ?? 0), 0), wagesOff = sell.reduce((t, [p]) => t + (p.wage ?? 0), 0);
@@ -2589,7 +3068,21 @@ function renderTransfers() {
     const up = ts.filter(t => t.v > s.v + 0.05), cheap = ts.filter(fits);
     return { pos, s, b, up, best: up[0] || ts[0], cheap: cheap[0], gap: up[0] ? up[0].v - s.v : 0 };
   }).sort((a, z) => z.gap - a.gap);
-  const free = Object.values(d.targets).flat().filter(t => t.club === "Free agent").sort((a, b) => b.v - a.v).slice(0, 8);
+  // bargains: better than your backup at his position and cheap for you: a free agent, a contract ending within six
+  // months (a pre-contract: free next summer), or a fee within a fifth of your budget (else under 5M) and a wage you can pay
+  const cheapFee = budget != null && budget > 0 ? Math.max(budget * 0.2, 1e6) : 5e6;
+  const backupAt = pos => { const b = [...(second[pos] || [])].sort((a, z) => a.v - z.v)[0]; return b ? b.v : (xi[pos] ? Math.min(...xi[pos].map(x => x.v)) : 0); };
+  const seen = new Set(), free = [];
+  for (const pos of POS_ORDER) for (const t of d.targets[pos] || []) {
+    if (seen.has(t.name) || !(xi[pos] || second[pos]) || t.v <= backupAt(pos)) continue;
+    const left = monthsLeft(t.contract), wageOk = room == null || (t.wage ?? 0) <= room;
+    const why = t.club === "Free agent" ? ["act", "free agent"] : left != null && left <= 6 ? ["young", "pre-contract: free next summer"]
+      : (t.value ?? Infinity) <= cheapFee && wageOk ? ["plan", "cheap for you"] : null;
+    if (!why) continue;
+    seen.add(t.name);
+    free.push({ ...t, pos, why, gain: t.v - backupAt(pos) });
+  }
+  free.sort((a, b) => b.gain - a.gain).splice(10);
   const tgt = t => t ? `${esc(t.name)} <span class="sub">${esc(t.club || "")} · ${t.age ?? "–"} · ${t.value == null ? "–" : shortMoney(t.value)}${t.wage != null ? ` · ${shortMoney(t.wage)} p/w` : ""}</span> ${sc(t.v)}` : `<span class="dim">–</span>`;
   main.innerHTML = `<div class="tile wide"><div class="ttitle">Transfers <span class="sub">for ${esc(f.name)} (pick the formation on Squad › Depth)</span></div>
     <div class="bignum">
@@ -2600,14 +3093,42 @@ function renderTransfers() {
       <div><b>${shortMoney(wagesOff)}</b><span>their wages p/w</span></div></div>
     ${budget == null ? NEED_SAVE : ""}</div>
     <div class="tile wide"><div class="ttitle">Where to strengthen <span class="sub">each slot: your starter, and the best in the game who'd beat him (or your backup); biggest gain first</span></div>
-    <table><thead><tr><th>Slot</th><th>Starter</th><th class="num">Score</th><th>Backup</th><th class="num">Score</th><th>Best upgrade in the game</th><th class="num">Gain</th><th>Within your budgets</th></tr></thead><tbody>
+    <table><thead><tr><th>Slot</th><th>Starter</th><th class="num">Score</th><th>Backup</th><th class="num">Score</th><th>Best upgrade in the game</th><th class="num">Gain</th><th>Within your budgets</th><th>Advice</th></tr></thead><tbody>
     ${needs.map(n => `<tr><td><b>${esc(n.pos)}</b></td><td>${pname(n.s.name)}</td><td class="num">${sc(n.s.v)}</td><td>${n.b ? pname(n.b.name) : `<span class="t0">nobody</span>`}</td><td class="num">${n.b ? sc(n.b.v) : "–"}</td>
-      <td>${tgt(n.best)}</td><td class="num ${n.gap >= 1 ? "t4" : n.gap > 0 ? "t3" : "dim"}">${n.gap > 0 ? "+" + n.gap.toFixed(1) : "–"}</td><td>${tgt(n.cheap)}</td></tr>`).join("")}
+      <td class="wrap">${tgt(n.best)}</td><td class="num ${n.gap >= 1 ? "t4" : n.gap > 0 ? "t3" : "dim"}">${n.gap > 0 ? "+" + n.gap.toFixed(1) : "–"}</td><td class="wrap">${tgt(n.cheap)}</td><td class="notes">${needHint(n)}</td></tr>`).join("")}
     </tbody></table><div class="sub">From the best players in the game at each position (Players › Database has everyone; use its Filter for more).</div></div>
-    <div class="tile"><div class="ttitle">Could go <span class="sub">most valuable first</span></div>
-      ${sell.length ? `<table><tbody>${sell.map(([p, k, why]) => `<tr><td>${pname(p.name)}</td><td class="num">${p.age ?? "–"}</td><td class="num">${p.value == null ? "–" : shortMoney(p.value)}</td><td><span class="rec ${k}">${esc(why)}</span></td></tr>`).join("")}</tbody></table>` : `<div class="sub">Nobody stands out.</div>`}</div>
-    <div class="tile"><div class="ttitle">Free agents worth a look <span class="sub">better than a backup of yours</span></div>
-      ${free.length ? `<table><tbody>${free.map(t => `<tr><td>${esc(t.name)}</td><td class="num">${t.age ?? "–"}</td><td class="dim">${esc(POS_ORDER.find(pos => (d.targets[pos] || []).includes(t)) || "")}</td><td class="num">${sc(t.v)}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">None right now.</div>`}</div>`;
+    <div class="tile wide"><div class="ttitle">Could go <span class="sub">most valuable first · the advice, then why</span></div>
+      ${sell.length ? `<div class="advice">${sellSummary(sell, needs, budget, room)}</div>
+      <table><thead><tr><th>Player</th><th class="num">Age</th><th>Pos</th><th class="num">Score</th><th class="num">Value</th><th class="num">Wage</th><th>Advice</th></tr></thead><tbody>${sell.map(([p, k, verdict, why]) => `<tr><td>${pname(p.name)}${p.loan === "out" ? ` <span class="sub">on loan</span>` : ""}</td><td class="num">${p.age ?? "–"}</td>
+        <td class="dim">${esc(p.best || "–")}</td><td class="num">${sc(p.score)}</td><td class="num">${p.value == null ? "–" : shortMoney(p.value)}</td><td class="num">${p.wage == null ? "–" : shortMoney(p.wage)}</td>
+        <td class="notes"><span class="rec ${k}">${esc(verdict)}</span>${why ? ` <span class="sub">${esc(why)}</span>` : ""}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">Nobody stands out.</div>`}</div>
+    <div class="tile wide"><div class="ttitle">Bargains worth a look <span class="sub">better than your backup there: free agents, contracts ending within six months, or a fee within a fifth of your budget (${shortMoney(cheapFee)})</span></div>
+      ${free.length ? `<table><thead><tr><th>Player</th><th class="num">Age</th><th>Pos</th><th>Club</th><th class="num">Score</th><th class="num">vs backup</th><th class="num">Value</th><th class="num">Wage</th><th>Why</th></tr></thead><tbody>${free.map(t => `<tr><td>${esc(t.name)}</td><td class="num">${t.age ?? "–"}</td><td class="dim">${esc(t.pos)}</td><td class="dim">${esc(t.club || "–")}</td>
+        <td class="num">${sc(t.v)}</td><td class="num t4">+${t.gain.toFixed(1)}</td><td class="num">${t.value == null ? "–" : shortMoney(t.value)}</td><td class="num">${t.wage == null ? "–" : shortMoney(t.wage)}</td>
+        <td class="notes"><span class="rec ${t.why[0]}">${t.why[1]}</span>${t.contract && t.club !== "Free agent" ? ` <span class="sub">contract to ${fmtDay(t.contract)}</span>` : ""}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="sub">None right now: nobody cheap beats your backups. Players › Top lists › Top bargains has young ones with potential.</div>`}</div>`;
+}
+// Club › Transfers: what to do at a slot, from its starter, backup and the best upgrades
+function needHint(n) {
+  const sAge = (DATA.people[n.s.name] || {}).age, chip = (k, t) => `<span class="rec ${k}">${t}</span>`;
+  if (!n.b) return chip("act", "no backup: buy cover first");
+  if (n.gap >= 1 && n.cheap && n.cheap.v > n.s.v) return chip("act", "a clear upgrade you can afford");
+  if (n.gap >= 1) return chip("warn", "upgrade needed: sell to afford it");
+  if (sAge >= 31) return chip("plan", "starter ageing: plan a successor");
+  if (n.s.v - n.b.v >= 1.5) return chip("warn", "big drop to the backup: better cover");
+  if (n.gap > 0) return chip("plan", "small gain: only if cheap");
+  return chip("young", "covered");
+}
+// Club › Transfers: one paragraph over Could go: what selling brings in, what it could buy, what to do first
+function sellSummary(sell, needs, budget, room) {
+  const fee = sell.reduce((t, [p]) => t + (p.value ?? 0), 0), wages = sell.reduce((t, [p]) => t + (p.wage ?? 0), 0);
+  const urgent = sell.filter(([p]) => { const l = monthsLeft(p.contract); return l != null && l <= 6; });
+  const top = needs.filter(n => n.gap >= 0.5 && n.best).slice(0, 2);
+  const lines = [`Selling all ${sell.length} could bring in about <b>${shortMoney(fee * 0.8)}</b> (offers come in around four-fifths of value) and free <b>${shortMoney(wages)}</b> p/w.`];
+  if (budget != null) lines.push(`With your budget that's <b>${shortMoney(budget + fee * 0.8)}</b> to spend${room != null ? ` and <b>${shortMoney(room + wages)}</b> p/w of wage room` : ""}.`);
+  if (top.length) lines.push(`Spend it first at ${top.map(n => `<b>${esc(n.pos)}</b> (${esc(n.best.name)}, +${n.gap.toFixed(1)})`).join(" and ")}.`);
+  if (urgent.length) lines.push(`Act now on ${urgent.map(([p]) => esc(p.name)).join(", ")}: six months or less left, they can leave for nothing.`);
+  return lines.join(" ");
 }
 // ---- Players › Top lists: DATA = top_lists() in score.py ----
 const TOP_STORE = "fm:__SAVE__:toplists";
@@ -2639,7 +3160,7 @@ function renderTopLists() {
   main.querySelectorAll("#toplist button").forEach(b => b.onclick = () => { topView.list = b.dataset.k; keep(); });
   document.getElementById("topgroup").onchange = e => { topView.group = e.target.value; keep(); };
 }
-const DRAW = { club: renderClub, medical: renderMedical, transfers: renderTransfers, training: renderTraining, toplists: renderTopLists, depth: renderDepth, youth: renderYouth, contracts: renderContracts, staff_compare: renderStaffCompare, development: renderDevelopment, analysis: renderAnalysis,
+const DRAW = { season: renderSeason, club: renderClub, medical: renderMedical, transfers: renderTransfers, training: renderTraining, toplists: renderTopLists, depth: renderDepth, youth: renderYouth, contracts: renderContracts, staff_compare: renderStaffCompare, development: renderDevelopment, analysis: renderAnalysis,
                compare: renderCompare, formations: renderFormationsPage, attributes: renderAttributes, guide: renderGuide };
 // fold the long tables in tiles (Formations, Analysis, Development): their first rows, then "Show all (N)"
 const FOLD_AT = { formations: 10, analysis: 8, development: 15 };
@@ -2661,7 +3182,7 @@ function foldLong() {
 }
 // tables on the tile pages sort by a click on a heading (again: the other way)
 function sortableTables() {
-  if (!["depth", "youth", "contracts", "medical", "transfers", "development", "toplists", "club", "training"].includes(PAGE)) return;
+  if (!["depth", "youth", "contracts", "medical", "transfers", "development", "toplists", "club", "training", "season"].includes(PAGE)) return;
   document.querySelectorAll("#main table").forEach(t => {
     if (t.dataset.sortable || !t.tHead || !t.tBodies[0]) return;
     t.dataset.sortable = "1";

@@ -11,8 +11,8 @@ them over time. No mods, no exports. Everything runs locally; the user's data ne
 ## How it fits together
 
 - `app.py`: the window (pywebview). Read save game… (`pick_file`, key I, or a dropped .fm) → `import_now` →
-  `import_export.import_save` → `score.build` + `score.write_pages` → shows the Lineup. Also the first-run setup screen, the new-save and error screens (`screen()`; a missing page opens the error one), the Saves panel (switch, new, delete: a deleted save waits in `saves/_deleted` for 14 days, restorable, then
-  `purge_deleted` removes it), the Menu (under the logo, key M; recent save games from FM's games folder `games_dir`, switch save, Back up / Restore a backup, the update check `check_update` (the website's version.json, `PROJECT_URL`)), the save watcher (`watch_exports`: a newly saved .fm offers Read it, or is read by itself with Menu → Auto-read on, config.toml's `auto_import`), drag and drop (`on_drop`, .fm only), Menu → Theme… (five colour themes: `THEMES` in score.py, `:root[data-theme]` in
+  `import_export.import_save` → `score.build` + `score.write_pages` → shows the first tab, Club › Overview (`START_PAGE`). Also the first-run setup screen, the new-save and error screens (`screen()`; a missing page opens the error one), the Saves panel (switch, new, delete: a deleted save waits in `saves/_deleted` for 14 days, restorable, then
+  `purge_deleted` removes it), the Menu (under the logo, key M; recent save games from FM's games folder `games_dir` (found by `fm_folders`: config.toml's `games_dir`, Documents, OneDrive, Public Documents, Steam Cloud's `userdata\…emote`; the newest save wins; setup shows what it found, `folder_report`; Menu → Change FM's saves folder…), switch save, Back up / Restore a backup, the update check `check_update` (the website's version.json, `PROJECT_URL`)), the save watcher (`watch_exports`: a newly saved .fm offers Read it, or is read by itself with Menu → Auto-read on, config.toml's `auto_import`), drag and drop (`on_drop`, .fm only), Menu → Theme… (five colour themes: `THEMES` in score.py, `:root[data-theme]` in
   theme.css, config.toml's `theme`, stamped on each page's `<html>`), and the Attributes page's
   save / switch / import / export. Its title is `ElevenIndex <VERSION> — Save: <save>`.
   On start it opens last time's pages at once and rescores behind them (`rescore_on_start`, under `self.lock`), reloading
@@ -69,7 +69,8 @@ page has a line about its list at the strip's right (`with_info`).
 | 2 | depth | Squad › Depth | the two elevens, cover by line, ages, versatile players; each slot's starter, backup, drop, third choice, a better name in the game (`squad_tabs`) |
 | 2 | analysis | Squad › Analysis | the squad position by position against the game, weak spot, age profile, the Squad plan |
 | 2 | development | Squad › Development | two seasons compared (CA too); 3+ seasons side by side (`seasonTable`) |
-| 2 | training | Squad › Training | each player's next FM27 individual routines (`ROUTINES`, `routinesFor`: weak attributes that count at his position, physical ones a little) |
+| 2 | training | Squad › Training | each player's next FM27 individual routines (`ROUTINES`, `routinesFor`: weak attributes that count at his position, physical ones a little); the Team schedule (`teamSchedule`, `TRAIN_TEST`: harvestgreen22's training test ver5, `docs/training_schedule_test.csv`) |
+| 1 | season | Club › Season | your players' match stats this season by competition (`season_page`, saves/<save>/stats/<season>.json from `fm_save.match_stats`) |
 | 2 | youth | Squad › Youth | players 21 and under: CA, PA, room to grow, development factor |
 | 3 | elsewhere | Players › Database | every player in the game but yours (best `SHOW_MAX`) |
 | 3 | toplists | Players › Top lists | the best, the most promising, bargains, by position group, with the score spread (`top_lists`) |
@@ -105,7 +106,7 @@ score.py; bump `VERSION` with each release (tag `v<VERSION>`).
 
 ## Imports
 
-- **A save game** (`import_save`): the club must be the open save's club (`same_club`). Snapshot time = the .fm file's
+- **A save game** (`import_save`): the club comes from the save. A new profile has only a name (setup, Game profiles → New); its first save game read sets its club. A save of another club goes to that club's profile, made when there's none (`profile_for`); `same_club` takes partial names ("Tottenham" = "Tottenham Hotspur"). The start screen lists the newest save games with Read buttons. Snapshot time = the .fm file's
   time. The newest save's list of everyone replaces the older one; a save with an older FM date doesn't replace the
   budgets. Namesakes get " (Club)". Women's football is left out (`womens_clubs`).
 - Old exporter imports already on disk (First Team…, search-…) still count as snapshots and lists.
