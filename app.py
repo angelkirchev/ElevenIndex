@@ -1,11 +1,10 @@
-"""ElevenIndex: imports FM27 Exporter files and shows the pages.
+"""ElevenIndex: reads your FM27 save games and shows the pages.
 
     python app.py
 
-Open Menu → "Import file…" (under the logo on every page), choose an export, and it's imported straight away: dated with
-the date in the exporter's file name (export_date), as your squad if the file name
-starts with "First Team"/"Squad", else as a search named after the file. Then score.py runs and the 'last' page shows.
-Needs pywebview (pip install pywebview).
+Open Menu → "Read save game…" (under the logo on every page), choose an FM27 save (.fm), and it's read straight away:
+your club (players, staff, finances), every other player and staff member in the game. Then score.py runs and the
+Lineup shows. Needs pywebview (pip install pywebview) and Python 3.14+ (zstd).
 """
 import glob
 import html
@@ -36,11 +35,11 @@ def window_title(save=None):
 
 
 
-def exports_dir(config):
-    """FM27 Exporter's folder: config.toml's exports_dir, else found under Documents (OneDrive's too)."""
-    if config.get("exports_dir"):
-        return Path(config["exports_dir"]).expanduser()
-    tail = Path("Sports Interactive", "Football Manager 27", "exports")
+def games_dir(config):
+    """FM27's save games folder: config.toml's games_dir, else found under Documents (OneDrive's too)."""
+    if config.get("games_dir"):
+        return Path(config["games_dir"]).expanduser()
+    tail = Path("Sports Interactive", "Football Manager 27", "games")
     for docs in (score.documents(), Path.home() / "OneDrive" / "Documents", Path.home() / "Documents"):
         if (docs / tail).is_dir():
             return docs / tail
@@ -49,27 +48,6 @@ def exports_dir(config):
 
 def slug(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-
-
-def guess_source(path):
-    """None (your squad) for squad-like export names, else a search named after the file.
-
-    Each export is its own list: the exporter's time stamp ("Player Search 2026-11-13 10-35-28") goes into the name
-    (search-player-search-10-35-28), so a second search on the same day doesn't merge into the first, and the
-    'last' page shows just the list imported. Re-importing the same file updates that list."""
-    m = re.match(r"(.*?)\s*\d{4}-\d{2}-\d{2}[ _](\d{2}-\d{2}-\d{2})$", path.stem)
-    name, stamp = (m.group(1), m.group(2)) if m else (path.stem, "")
-    if re.match(r"(first team|squad)\b", name, re.I):
-        return None
-    return "search-" + "-".join(filter(None, (slug(name) or "file", stamp)))
-
-
-def export_date(path):
-    """The date an export is filed under: the one in FM27 Exporter's file name ("Player Search 2026-11-13 10-35-28"),
-    else the file's own date. It's the real-world date, not FM's (an export doesn't say FM's), but it keeps imports in
-    the order they were made, which is what tracking players over time needs."""
-    m = re.search(r"(\d{4}-\d{2}-\d{2})[ _]\d{2}-\d{2}-\d{2}$", path.stem)
-    return m.group(1) if m else time.strftime("%Y-%m-%d", time.localtime(path.stat().st_mtime))
 
 
 class App:
@@ -81,7 +59,7 @@ class App:
             if (score.ROOT / "saves" / self.config.get("active_save", "") / "save.toml").is_file():
                 self.save = self.config["active_save"]
                 self.save_dir = score.ROOT / "saves" / self.save
-        self.exports = exports_dir(self.config)
+        self.games = games_dir(self.config)
         self.notice = None  # (text, is_error) to show once the page has reloaded
         self.lock = threading.Lock()  # one import at a time
         try:
@@ -92,52 +70,39 @@ class App:
     # --- importing ------------------------------------------------------------------------------------------------
 
     def pick_file(self):
-        """Menu → Import file…: choose an export and import it straight away."""
+        """Menu → Read save game…: choose an FM27 save (.fm) and read it straight away."""
         if self.save is None:  # still on the setup page
             return
-        folder = self.exports if self.exports.is_dir() else Path.home()
+        folder = self.games if self.games.is_dir() else Path.home()
         chosen = self.window.create_file_dialog(webview.FileDialog.OPEN, directory=str(folder),
-                                                file_types=("Exports (*.csv;*.html;*.htm)", "All files (*.*)"))
+                                                file_types=("FM save games (*.fm)", "All files (*.*)"))
         if chosen:
             path = Path(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)
             threading.Thread(target=self.import_now, args=(path,), daemon=True).start()
 
+    pick_save_game = pick_file
+
     def import_now(self, path):
-        date = export_date(path)
-        source = guess_source(path)
-        if source is None and (m := re.search(r"[ _](\d{2})-(\d{2})-\d{2}$", path.stem)):
-            date += f"T{m.group(1)}{m.group(2)}"  # a squad export: its own snapshot, even beside another from the same day
-        self.show_notice(f"Importing {path.name}…")
+        """Read an FM27 save game: your club, everyone else, the club's money (import_export.import_save)."""
+        self.show_notice(f"Reading {path.name}… (about half a minute)")
         try:
             with self.lock:
-                save, written, skipped, kind = import_export.import_file(path, date, source, save=self.save)
+                save, written, skipped, _ = import_export.import_save(path, save=self.save)
                 cfg, pages = score.build(save, self.config)
                 out = score.write_pages(save, self.config, cfg, pages)
-                # the list's name as saved (a staff search is renamed search-staff-…), without date and _gk/_outfield
-                listed = re.sub(r"^\d{4}-\d{2}-\d{2}(T\d{4})?_|(_gk|_outfield)?\.csv$", "", written[0][0])
-                self.commit(f"{save}: {listed} {date} (export)")
+                self.commit(f"{save}: {path.stem} (save game)")
         except (Exception, SystemExit) as e:  # score.py stops with SystemExit on bad data
-            return self.show_notice(f"Couldn't import {path.name}: {e}", error=True)
-        who = "staff" if kind == "staff" else "players"
-        label = f"your {'staff' if kind == 'staff' else 'squad'}" if source is None else listed
-        text = f"Imported {sum(n for _, n in written)} {who} from {path.name} as {label}."
-        if skipped:
-            text += (f" {len(skipped)} skipped, not enough attributes to score: "
-                     + ", ".join(skipped[:5]) + (f" and {len(skipped) - 5} more" if len(skipped) > 5 else "") + ".")
-        # your club's staff screen (its 4 tabs, one export each): which tabs are in, which are still to export
-        club_staff = kind == "staff" and written and written[0][0].endswith("-staff.csv") and "_search-" not in written[0][0]
-        if club_staff:
-            text = text.replace(f" as {label}.", " as your staff.")
-            t = score.staff_tabs(self.save_dir / "staff", self.club_name())
-            left = [tab for tab, ok in t["tabs"].items() if not ok]
-            text += (f" Your staff is complete: {t['people']} people, every job scored." if not left else
-                     f" Your staff: {', '.join(tab + ' ✓' for tab, ok in t['tabs'].items() if ok)}; still to export: {', '.join(left)}.")
-        self.notice = (text, False)  # shown by on_load after the reload
+            log_error(f"reading the save game {path.name}")
+            return self.show_notice(f"Couldn't read {path.name}: {e}", error=True)
+        mine = sum(n for name, n in written if "search-save-game" not in name and "-staff" not in name)
+        staff = sum(n for name, n in written if name.endswith("-staff.csv") and "search-save-game" not in name)
+        rest = sum(n for name, n in written if "search-save-game" in name and "-staff" not in name)
+        rest_staff = sum(n for name, n in written if "search-save-game-staff" in name)
+        text = (f"Read {path.name}: your {mine} players and {staff} staff"
+                + (f", and {rest:,} other players and {rest_staff:,} other staff in the game." if rest else "."))
+        self.notice = (text, False)
         self.mark_imported(path)
-        # where the import shows: your squad on Squad › Lineup, a player search on Players › Latest list, your club's
-        # staff on Staff › Your staff, other staff on Staff › Latest list
-        page = "team_staff.html" if club_staff else "last_staff.html" if kind == "staff" else "squad.html" if source is None else "last.html"
-        url = (out / page).resolve().as_uri()
+        url = (out / "squad.html").resolve().as_uri()
         try:
             here = (self.window.get_current_url() or "").split("?")[0].split("#")[0]
         except Exception:
@@ -288,87 +253,91 @@ class App:
             shutil.rmtree(src, onerror=writable)
             self.commit(f"{folder}: deleted for good (Delete now)")
 
-    # --- the menu's quick actions: recent exports, a watcher for new ones, drag and drop, backups, the update check --
+    # --- the menu's quick actions: recent saves, a watcher for new ones, drag and drop, backups, the update check ---
 
-    IMPORTABLE = (".csv", ".html", ".htm")
+    IMPORTABLE = (".fm",)
+
+    @staticmethod
+    def save_key(path):
+        """A save game as read: its name and the time it was saved (FM writes the same file again on each save)."""
+        f = Path(path)
+        return f"{f.stem}@{int(f.stat().st_mtime)}" if f.exists() else f.stem
 
     def imported_list(self):
         f = self.save_dir / "imported.txt" if self.save_dir else None
-        return f, (set(f.read_text(encoding="utf-8").split("\n")) - {""} if f and f.exists() else set())
+        return f, (set(f.read_text(encoding="utf-8").splitlines()) - {""} if f and f.exists() else set())
 
     def mark_imported(self, path):
-        """Note an export as imported into this save (by its name without extension: the exporter writes .csv and .html)."""
+        """Note a save game as read into this save (its name and when FM saved it)."""
         f, done = self.imported_list()
         if f:
-            f.write_text("\n".join(sorted(done | {Path(path).stem})) + "\n", encoding="utf-8")
+            f.write_text("".join(f"{k}\n" for k in sorted(done | {self.save_key(path)})), encoding="utf-8")
 
-    def export_files(self):
-        """The exports folder's exports, one per name (its .csv, else its .html), newest first."""
-        if not self.exports.is_dir():
+    def save_files(self):
+        """FM's save games, newest first (FM's own backup copy left out)."""
+        if not self.games.is_dir():
             return []
-        best = {}
-        for f in self.exports.iterdir():
-            if f.is_file() and f.suffix.lower() in self.IMPORTABLE:
-                cur = best.get(f.stem)
-                if cur is None or (f.suffix.lower() == ".csv" and cur.suffix.lower() != ".csv"):
-                    best[f.stem] = f
-        return sorted(best.values(), key=lambda f: f.stat().st_mtime, reverse=True)
+        found = [f for f in self.games.iterdir() if f.is_file() and f.suffix.lower() == ".fm"
+                 and not f.stem.lower().startswith("last save overwrite backup")]
+        return sorted(found, key=lambda f: f.stat().st_mtime, reverse=True)
 
     def menu_data(self):
-        """What the menu shows: this save, the others, the newest exports, a newer version."""
+        """What the menu shows: this save, the others, the newest save games, a newer version."""
         _, done = self.imported_list()
-        recent = [{"name": f.stem, "path": str(f), "imported": f.stem in done,
-                   "when": time.strftime("%d %b %H:%M", time.localtime(f.stat().st_mtime))} for f in self.export_files()[:5]]
+        recent = [{"name": f.stem, "path": str(f), "imported": self.save_key(f) in done,
+                   "when": time.strftime("%d %b %H:%M", time.localtime(f.stat().st_mtime))} for f in self.save_files()[:5]]
         return {"current": self.club_name() or self.save, "save": self.save, "saves": self.saves(), "recent": recent,
                 "update": getattr(self, "update", None), "auto": self.auto_import()}
 
     def import_path(self, path):
-        """Import an export picked in the menu, offered by the watcher or dropped on the window."""
+        """Read a save game picked in the menu, offered by the watcher or dropped on the window."""
         f = Path(path)
         if f.suffix.lower() not in self.IMPORTABLE or not f.is_file():
-            raise ValueError(f"Not an FM27 Exporter file: {f.name}")
+            raise ValueError(f"Not an FM27 save game: {f.name}")
         threading.Thread(target=self.import_now, args=(f,), daemon=True).start()
 
     def auto_import(self):
-        return bool(self.config.get("auto_import", False))
+        return bool(self.config.get("auto_import", True))  # on unless turned off
 
     def set_auto_import(self, on):
-        """Menu → Auto-import: on, every new export (F8 in FM) is imported as soon as it's saved. config.toml keeps it."""
+        """Menu → Auto-read: on, every time FM saves your game it's read here by itself. config.toml keeps it."""
         score.set_setting("auto_import", bool(on))
         self.config["auto_import"] = bool(on)
 
     def watch_exports(self):
-        """Every few seconds: a new export in the folder (F8 in FM) is imported straight away when Auto-import is on,
-        else it gets a notice with an Import button."""
-        seen = {f.stem for f in self.export_files()}
+        """Every few seconds: when FM saves a game (a new or newer .fm), it's read straight away with Auto-read on,
+        else it gets a notice with a Read button. Waits until FM has finished writing the file."""
+        seen = {f: f.stat().st_mtime for f in self.save_files()}
         while True:
-            time.sleep(3)
+            time.sleep(5)
             try:
                 if self.save is None or self.window is None:
                     continue
-                new = [f for f in self.export_files() if f.stem not in seen]
-                if not new:
-                    continue
-                time.sleep(1.5)  # the exporter writes a .csv, an .rtf and an .html: let it finish
-                for f in self.export_files():
-                    if f.stem not in seen:
-                        seen.add(f.stem)
-                        if self.auto_import():
-                            self.import_now(f)  # one after another: each import waits for the one before
-                            continue
+                for f in self.save_files():
+                    mtime = f.stat().st_mtime
+                    if seen.get(f) == mtime:
+                        continue
+                    size = f.stat().st_size
+                    time.sleep(3)  # FM writes the save in parts: wait until it stops growing
+                    if f.stat().st_size != size or f.stat().st_mtime != mtime:
+                        continue
+                    seen[f] = mtime
+                    if self.auto_import():
+                        self.import_now(f)  # one after another: each read waits for the one before
+                    else:
                         self.window.evaluate_js(f"window.fmNewExport && fmNewExport({json.dumps(f.stem)}, {json.dumps(str(f))})")
             except Exception:
-                log_error("watching the exports folder")
+                log_error("watching the save games folder")
 
     def on_drop(self, e):
-        """A file dropped on the window: import it (the page shows "Drop to import" while dragging)."""
+        """A save game dropped on the window: read it (the page shows "Drop to read" while dragging)."""
         try:
             files = (e.get("dataTransfer") or {}).get("files") or []
             path = next((f.get("pywebviewFullPath") for f in files if f.get("pywebviewFullPath")), None)
         except Exception:
             path = None
         if not path or Path(path).suffix.lower() not in self.IMPORTABLE:
-            return self.show_notice("Drop an FM27 Exporter file (.csv or .html) to import it.", True)
+            return self.show_notice("Drop an FM27 save game (.fm) to read it.", True)
         last, when = getattr(self, "last_drop", (None, 0))
         if last == path and time.time() - when < 3:  # the same drop, reported twice
             return
@@ -376,12 +345,12 @@ class App:
         threading.Thread(target=self.import_now, args=(Path(path),), daemon=True).start()
 
     def latest_release(self):
-        """GitHub's latest release: (version, page). Only its version number and link are fetched; nothing is sent."""
-        req = urllib.request.Request("https://api.github.com/repos/angelkirchev/ElevenIndex/releases/latest",
-                                     headers={"User-Agent": "ElevenIndex", "Accept": "application/vnd.github+json"})
+        """The latest version, from the website's version.json: (version, page). Only that small file is fetched;
+        nothing is sent."""
+        req = urllib.request.Request(score.PROJECT_URL + "/version.json", headers={"User-Agent": "ElevenIndex"})
         with urllib.request.urlopen(req, timeout=8) as r:
             data = json.load(r)
-        return str(data.get("tag_name", "")).lstrip("v"), data.get("html_url") or score.PROJECT_URL + "/releases/latest"
+        return str(data.get("version", "")).lstrip("v"), data.get("url") or score.PROJECT_URL + "/#download"
 
     @staticmethod
     def newer(tag):
@@ -480,7 +449,7 @@ class App:
             raise ValueError(f"There's already a save called {name}: give this one another name, e.g. {name}-2.")
         score.new_save(name, club, division)
         self.commit(f"{name}: new save")
-        self.switch_save(name, f"{club} ({name}) is ready. Now import your squad: press F8 on it in FM, then Menu → Import file…",
+        self.switch_save(name, f"{club} ({name}) is ready. Now read your game: save it in FM, then Menu → Read save game…",
                          title="Save created")
 
     # --- weights (the Attributes page) ----------------------------------------------------------------------------
@@ -570,8 +539,8 @@ class App:
         return {"title": f"ElevenIndex {score.VERSION}", "html": tile["text"]}
 
     def open_exports(self):
-        if self.exports.is_dir() and sys.platform == "win32":
-            os.startfile(self.exports)
+        if self.games.is_dir() and sys.platform == "win32":
+            os.startfile(self.games)
 
     # --- the window -------------------------------------------------------------------------------------------------
 
@@ -707,7 +676,7 @@ class App:
     # --- first run: the setup page ------------------------------------------------------------------------------
 
     def setup_page(self):
-        data = {"exports": str(self.exports), "home": str(score.ROOT), "shortcut": bool(getattr(sys, "frozen", False))}
+        data = {"exports": str(self.games), "home": str(score.ROOT), "shortcut": bool(getattr(sys, "frozen", False))}
         body = SETUP_HTML.replace("__DATA__", json.dumps(data)).replace("__PROJECT__", score.PROJECT_URL)
         return screen("setup", body=body)
 
@@ -719,15 +688,15 @@ class App:
         name = slug(name) or slug(club)
         if not (score.ROOT / "saves" / name / "save.toml").is_file():
             score.new_save(name, club, division)
-        score.write_config(name, currency, exports_dir=exports or None)
+        score.write_config(name, currency, games_dir=exports or None)
         if shortcut:
             desktop_shortcut()
         self.config = score.load_config()
-        self.exports = exports_dir(self.config)
+        self.games = games_dir(self.config)
         self.save, self.save_dir = name, score.ROOT / "saves" / name
         self.commit(f"{name}: new save")
         self.window.set_title(window_title(name))
-        self.notice = (f"All set up for {club}. Now import your squad: press F8 on it in FM, then Menu → Import file…", False, "Save created")
+        self.notice = (f"All set up for {club}. Now read your game: save it in FM, then Menu → Read save game…", False, "Save created")
         self.show_soon(html=screen('start', self.club_name()))
 
     def browse_folder(self, current):
@@ -793,13 +762,16 @@ def desktop_shortcut():
 
 
 class MainApi:
-    """Called from the page's Import file… button."""
+    """Called from the page's Read save game… button."""
 
     def __init__(self, app):
         self._app = app
 
     def pick_file(self):
         self._app.pick_file()
+
+    def pick_save_game(self):
+        self._app.pick_save_game()
 
     def saves(self):
         return self._app.saves()
@@ -971,27 +943,28 @@ SETUP_HTML = """<style>
 </style>
 <div class="title"><span class="tag">Welcome</span>
 <h1>Welcome to ElevenIndex</h1><p>Every player scored at every position, every staff member for every job, and your best
-eleven: from the lists you export in Football Manager 27. All on your computer.</p></div>
+eleven: read straight from your Football Manager 27 save games. All on your computer.</p></div>
 <div class="setup"><h2>Your save</h2>
-<div class="hint">A few details and you're ready. More saves later: Menu → <b>Saves…</b></div>
+<div class="hint">A few details and you're ready. More clubs later: Menu → <b>Game profiles…</b></div>
 <label for="club">Club you manage</label>
 <input id="club" placeholder="e.g. Man Utd" autofocus>
 <div class="hint">Exactly as FM writes it in its player lists: "Man Utd", not "Manchester United".</div>
 <label for="currency">Currency FM shows wages in</label>
 <select id="currency"><option>£</option><option>€</option><option>$</option></select>
-<label for="exports">FM27 Exporter's folder</label>
+<label for="exports">FM27's save games folder</label>
 <div class="row"><input id="exports"><button id="browse">Browse…</button></div>
-<div class="hint">Where FM27 Exporter saves the lists you export with F8. It's usually found for you.</div>
+<div class="hint">Where FM keeps your saves (Documents › Sports Interactive › Football Manager 27 › games). It's usually found for you.</div>
 <div class="check" id="shortcut-row"><input type="checkbox" id="shortcut" checked><label for="shortcut">Put a shortcut on the desktop</label></div>
 <div class="error" id="error"></div>
 <button class="go" id="go">Start</button>
 <div class="home" id="home"></div>
 </div>
 <div class="card"><h2>What it needs from FM</h2><ol>
-<li><b>BepInEx 6</b> and the <b>FM27 Exporter</b> plugin in FM's folder: they add the <span class="k">F8</span> export (how: the <a href="__PROJECT__" target="_blank" rel="noopener">project page</a>).</li>
-<li><b>Our views and filters:</b> extract <b>ElevenIndex-FM27-views-and-filters.zip</b> into Documents\\Sports Interactive\\Football Manager 27.</li>
 <li>Fill in <b>Your save</b> and press <b>Start</b>.</li>
-<li>In FM, your squad with the view <b>Squad - All Players View</b>, press <span class="k">F8</span>, then here Menu → <b>Import file…</b></li>
+<li>In FM, <b>save your game</b>.</li>
+<li>Here: Menu → <b>Read save game…</b> and pick it (or drop the .fm file on the window): your club, every player
+and every staff member in the game come in at once.</li>
+<li>With Menu → <b>Auto-read</b> on, every later save in FM is read by itself.</li>
 </ol><div class="more"><b>Private:</b> nothing leaves your computer; your saves and pages stay in the folder shown under Start.</div></div>
 <script>
 const d = __DATA__, $ = id => document.getElementById(id);
@@ -1076,21 +1049,19 @@ def screen(kind, club="", detail="", body=""):
 <h1>This page couldn't open</h1><p>Your saves and imports are safe; only the page that shows them is missing or broken.</p>
 {f'<code>{esc(detail)}</code>' if detail else ''}</div>
 <div class="card"><h2>What to do</h2><ol>
-<li><b>Open the save again:</b> Menu → <b>Saves…</b>, pick it: every page is rebuilt from your data.</li>
-<li><b>Import again</b> if it happened after an import: Menu → <b>Import file…</b> (re-importing the same file just updates it).</li>
+<li><b>Open the save again:</b> Menu → <b>Game profiles…</b>, pick it: every page is rebuilt from your data.</li>
+<li><b>Read your save again</b> if it happened after reading one: Menu → <b>Read save game…</b>.</li>
 <li><b>Restart ElevenIndex.</b> It rescores everything when it starts.</li>
 <li><b>Still wrong?</b> Report it on the project page (Menu → <b>About</b>) and attach <b>app.log</b> from <b>{esc(score.ROOT)}</b>.</li>
-</ol><div class="more">Nothing is deleted when this happens: your exports stay in FM27 Exporter's folder and your data in <b>{esc(score.ROOT)}</b>.</div></div>"""
+</ol><div class="more">Nothing is deleted when this happens: your FM saves are only ever read, and your data stays in <b>{esc(score.ROOT)}</b>.</div></div>"""
     else:
         body = f"""<div class="title"><span class="tag">New save</span>
-<h1>{esc(club) + ': n' if club else 'N'}o players yet</h1><p>Import your squad and every player gets a score at every position, your best eleven, and what to do next.</p></div>
-<div class="card"><h2>Get your squad in</h2><ol>
-<li>In FM, open your squad and pick the view <b>Squad - All Players View</b> (the view menu at the top of the list).</li>
-<li>Point at the list and press <span class="k">F8</span>: FM27 Exporter saves it to its exports folder.</li>
-<li>Here: Menu → <b>Import file…</b> and choose the newest <b>First Team …</b> file.</li>
-</ol><div class="more"><b>Scouting:</b> Player Search with <b>Search - Outfield Players View</b> (or <b>Goalkeepers</b>) and a position
-filter, then F8 and import the same way. <b>No such view in FM?</b> Extract <b>ElevenIndex-FM27-views-and-filters.zip</b> into
-Documents\\Sports Interactive\\Football Manager 27, then in FM's view menu: <b>Custom → Import view</b>.</div></div>"""
+<h1>{esc(club) + ': n' if club else 'N'}o players yet</h1><p>Read your save game and every player gets a score at every position, your best eleven, and what to do next.</p></div>
+<div class="card"><h2>Read your game</h2><ol>
+<li>In FM, <b>save your game</b>.</li>
+<li>Here: Menu → <b>Read save game…</b> and pick it, or drop the <b>.fm</b> file on this window.</li>
+<li>Your club, every player and every staff member in the game come in at once (about half a minute).</li>
+</ol><div class="more"><b>Auto-read:</b> turn it on in the Menu and every later save in FM is read by itself.</div></div>"""
     theme = (score.APP / "theme.css").read_text(encoding="utf-8") if (score.APP / "theme.css").exists() else ""
     i, j = theme.find("  /* the banner at the right of the top bar"), theme.find("  .bar #filter {")
     promo_css = theme[i:j] if 0 <= i < j else ""  # the banner's own rules (score.PROMO), as on every page
@@ -1104,8 +1075,8 @@ TOOLBAR_JS = """(() => {
     "padding:6px;border-radius:8px;background:#121815;box-shadow:0 2px 8px #0008;font:14px Inter,'Segoe UI',system-ui,sans-serif";
   const BUTTON = "padding:7px 16px;border:0;border-radius:6px;font:600 14px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer;";
   // Menu: a button at the left of the strip under the top bar (where the sub-tabs are; pages without sub-tabs get an
-  // empty strip), its list opening downwards: this save, the newest exports, Import file…, the exports folder, your
-  // saves, Theme…, Back up this save…, About, and a newer version when there is one. Keys: M opens it, I imports.
+  // empty strip), its list opening downwards: this save, the newest save games, Read save game…, FM's saves folder, your
+  // saves, Theme…, Back up this save…, About, and a newer version when there is one. Keys: M opens it, I reads a save.
   let strip = document.querySelector(".subnav");
   if (!strip) {
     strip = document.createElement("div"); strip.className = "subnav";
@@ -1114,7 +1085,7 @@ TOOLBAR_JS = """(() => {
   }
   strip.style.paddingLeft = "14px";
   const m = document.createElement("button");
-  m.id = "fm-import"; m.title = "Menu (M): import, recent exports, saves, theme, backup, about";
+  m.id = "fm-import"; m.title = "Menu (M): read a save game, recent saves, saves, theme, backup, about";
   m.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">' +
     '<path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="#0f1412" stroke-width="2" stroke-linecap="round"/></svg>Menu';
   m.style.cssText = "flex:none;align-self:center;display:flex;gap:7px;align-items:center;margin:4px 16px 4px 0;padding:4px 12px;border:0;" +
@@ -1124,9 +1095,12 @@ TOOLBAR_JS = """(() => {
   list.id = "fm-menu";
   list.style.cssText = "position:fixed;display:none;z-index:10000;width:320px;max-height:calc(100vh - 110px);overflow:auto;padding:6px;" +
     "border:1px solid var(--line,#2a332f);border-radius:10px;background:var(--pop,#121815);box-shadow:0 12px 30px #000c";
+  // the logo, large and faint, in the menu's corner
+  const mark = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 70"><text x="2" y="62" font-family="Arial Black,Arial" font-weight="900" font-size="72" fill="#f2efe7" fill-opacity=".05">X</text><text x="62" y="62" font-family="Arial Black,Arial" font-weight="900" font-size="72" fill="#c5f04f" fill-opacity=".07">I</text></svg>';
+  list.style.background = `var(--pop,#121815) url("data:image/svg+xml,${encodeURIComponent(mark)}") no-repeat right -14px bottom -10px / 170px auto`;
   document.body.append(list);
-  // main: the one used most (Import file…), in the accent, lighter than the rest
-  // keep: the menu stays open after the click (a switch, like Auto-import)
+  // main: the one used most (Read save game…), in the accent, lighter than the rest
+  // keep: the menu stays open after the click (a switch, like Auto-read)
   const item = (text, hint, run, main, keep) => {
     const it = document.createElement("button");
     const rest = main ? "color-mix(in srgb, var(--blue,#c5f04f) 16%, transparent)" : "transparent";
@@ -1143,10 +1117,10 @@ TOOLBAR_JS = """(() => {
   const label = t => { const l = document.createElement("div"); l.textContent = t;
     l.style.cssText = "padding:6px 12px 3px;color:#9aa49f;font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase"; return l; };
   const escH = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  // Auto-import: a switch; a click flips it in place (ON / OFF), the menu stays open
-  const autoText = on => `Auto-import <span style="margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;${on
+  // Auto-read: a switch; a click flips it in place (ON / OFF), the menu stays open
+  const autoText = on => `Auto-read <span style="margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;${on
     ? 'color:#0f1412;background:#c5f04f">ON' : 'color:#cfd6d1;background:#2a332f">OFF'}</span>`;
-  const autoHint = on => on ? "every new export (F8 in FM) is imported by itself · click to turn off" : "import each new export (F8 in FM) by itself · click to turn on";
+  const autoHint = on => on ? "every time you save in FM it's read by itself · click to turn off" : "read every new save of your game by itself · click to turn on";
   const autoItem = d => item(autoText(d.auto), autoHint(d.auto), async it => {
     const r = await pywebview.api.set_auto_import(!d.auto);
     if (r && r.error) return window.fmNotice(r.error, true);
@@ -1165,36 +1139,11 @@ TOOLBAR_JS = """(() => {
         "background:color-mix(in srgb, var(--blue,#c5f04f) 10%, transparent)";
       list.append(cur);
     }
-    if (d.recent && d.recent.length) {
-      // the newest export; ▾ shows the last five, ▴ folds them up again
-      const head = document.createElement("div");
-      head.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding-right:6px";
-      head.append(label("Recent exports"));
-      list.append(head);
-      const exp = f => item(`<span style="display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;vertical-align:1px;background:${f.imported ? "#5a645f" : "var(--blue,#c5f04f)"}"></span>${escH(f.name)}`,
-        `${f.when} · ${f.imported ? "imported" : "<b style='color:var(--blue,#c5f04f)'>new</b>"} · click to import`, () => pywebview.api.import_path(f.path));
-      const first = document.createElement("div");
-      first.style.cssText = "display:flex;align-items:center;gap:4px";
-      const top = exp(d.recent[0]); top.style.flex = "1"; top.style.minWidth = "0";
-      first.append(top);
-      list.append(first);
-      if (d.recent.length > 1) {
-        const more = document.createElement("div");
-        more.style.display = window.fmRecentOpen ? "block" : "none";
-        d.recent.slice(1).forEach(f => more.append(exp(f)));
-        const tog = document.createElement("button");
-        const mark = () => { tog.textContent = window.fmRecentOpen ? "▴" : "▾"; tog.title = window.fmRecentOpen ? "Show only the newest" : `Show the last ${d.recent.length}`; };
-        tog.style.cssText = "flex:none;width:30px;height:30px;border:1px solid var(--line,#2a332f);border-radius:6px;background:transparent;color:#cfd6d1;font:14px/1 Inter,sans-serif;cursor:pointer";
-        tog.onclick = e => { e.stopPropagation(); window.fmRecentOpen = !window.fmRecentOpen; more.style.display = window.fmRecentOpen ? "block" : "none"; mark(); };
-        mark();
-        first.append(tog);
-        list.append(more);
-      }
-    }
-    list.append(item("Import file…", "an FM27 Exporter file (F8 in FM), or drop one on the window · key I", () => window.pywebview && pywebview.api.pick_file(), true),
-      item("Open the exports folder", "where FM27 Exporter saves its files", () => window.pywebview && pywebview.api.open_exports()),
-      autoItem(d), line(),
-      item("Saves…", "switch, start, delete, back up or restore a save", () => window.fmSaves()), line(),
+    list.append(label("Your game"),
+      item("Read save game…", "your club, every player and staff member, from an FM27 save (.fm), or drop one on the window · key I", () => window.pywebview && pywebview.api.pick_file(), true),
+      item("Open FM's saves folder", "where FM keeps your save games", () => window.pywebview && pywebview.api.open_exports()),
+      autoItem(d), line(), label("Game profiles"),
+      item("Game profiles…", "switch, start, delete, back up or restore one (one per club you manage)", () => window.fmSaves()), line(), label("ElevenIndex"),
       item("Theme…", "the app's colours", () => window.fmTheme()),
       item("Check for updates", "is there a newer ElevenIndex?", async () => {
         window.fmNotice("Checking for a new version…", false);
@@ -1224,11 +1173,11 @@ TOOLBAR_JS = """(() => {
   }, true);
   window.addEventListener("scroll", () => list.style.display = "none");
 
-  // Drag and drop: "Drop to import" while a file is dragged over the window; the app imports it (on_drop)
+  // Drag and drop: "Drop to read" while a save game is dragged over the window; the app reads it (on_drop)
   const dropHint = document.createElement("div");
   dropHint.style.cssText = "position:fixed;inset:12px;z-index:10001;display:none;align-items:center;justify-content:center;pointer-events:none;" +
     "border:3px dashed var(--blue,#c5f04f);border-radius:16px;background:#0f1412cc;color:#f2efe7;font:600 26px 'Barlow Condensed','Bahnschrift SemiCondensed',sans-serif;letter-spacing:.04em";
-  dropHint.textContent = "Drop the file to import it";
+  dropHint.textContent = "Drop the save game to read it";
   document.body.append(dropHint);
   let depth = 0;
   const isFile = e => [...(e.dataTransfer?.types || [])].includes("Files");
@@ -1237,8 +1186,8 @@ TOOLBAR_JS = """(() => {
   document.addEventListener("dragover", e => { if (isFile(e)) e.preventDefault(); });
   document.addEventListener("drop", e => { depth = 0; dropHint.style.display = "none"; if (isFile(e)) e.preventDefault(); });
 
-  // a new export in the folder (the app's watcher), and a newer version on GitHub
-  window.fmNewExport = (name, path) => window.fmNotice(name, false, { title: "New export found", label: "Import", run: () => pywebview.api.import_path(path) });
+  // a newer save of your game in FM's folder (the app's watcher), and a newer version on GitHub
+  window.fmNewExport = (name, path) => window.fmNotice(name, false, { title: "New save game", label: "Read it", run: () => pywebview.api.import_path(path) });
   window.fmUpdate = (u, show) => { if (show) window.fmNotice(`ElevenIndex ${u.version} is out (you have """ + VERSION + """).`, false,
     { title: "New version", label: "Download", run: () => window.fmOpen(u.url) }); };
 
@@ -1270,7 +1219,7 @@ TOOLBAR_JS = """(() => {
     const error = css(make("div"), "color:#f87171;min-height:1.2em;margin-top:8px");
     const run = async (call) => { error.textContent = "Working…"; const r = await call(); if (r && r.error) error.textContent = r.error; else shade.remove(); };
 
-    box.append(css(make("h3", "Your saves"), "margin:0 0 10px;font-size:16px"));
+    box.append(css(make("h3", "Game profiles"), "margin:0 0 10px;font-size:16px"));
     box.append(window.fmPanelX(shade));
     for (const s of saves) {
       const line = css(make("div"), "display:flex;gap:6px;align-items:stretch;margin:4px 0");
@@ -1444,7 +1393,7 @@ TOOLBAR_JS = """(() => {
   window.fmNotice = (text, error, action) => {
     document.getElementById("fm-notice")?.remove();
     clearInterval(window.fmNoticeTimer);
-    const busy = !error && /^Importing|…$/.test(text), done = !error && !busy;
+    const busy = !error && /^(Importing|Reading)|…( |$)/.test(text), done = !error && !busy;
     // lighter tones than the pages' red and lime; drawn icons: a tick in a circle, a warning triangle
     const ICON_OK = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity=".14"/><path d="M7.5 12.3l3 3 6-6.3"/></svg>';
     const ICON_ERR = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 2.6 19.6h18.8Z" fill="currentColor" fill-opacity=".14"/><path d="M12 9.5v4.6M12 17.2v.1"/></svg>';

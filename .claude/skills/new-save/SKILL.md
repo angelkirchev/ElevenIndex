@@ -7,13 +7,11 @@ description: Help someone get ElevenIndex going for an FM save (first time, or a
 
 Talk plainly and do the typing for them; README.md is what they've seen.
 
-1. **The app.** Usually they run `ElevenIndex.exe` from the latest GitHub release: its first start shows a setup screen
-   (club exactly as FM writes it, currency, FM27 Exporter's folder) and makes the save itself. From source it's
-   `ElevenIndex.bat` (or `python app.py`), which needs Python 3.11+ and pywebview.
-2. **Another save.** The app's **Saves** button makes one; `score.new_save(name, club)` does the same from code. Every save
-   scores with the same attribute weights: `weights/default.toml`'s, or yours from the Attributes page (`saves/attributes.toml`).
-3. **FM27 Exporter.** BepInEx 6 and the plugin in FM's game folder (README step 1). F8 exports the list under the mouse.
-4. **Views.** With FM closed, copy the files from `views/` into the `views` folder in FM's data folder (`Documents\Sports Interactive\Football Manager 27`,
-   possibly under OneDrive), never replacing a file of theirs without asking. The squad view needs every attribute
-   (Ctrl + F8 on the list adds them) and, ideally, FM's **Position** column.
-5. **First import.** F8 on their squad screen, then **Import file…** in the app.
+1. **The app.** Usually they run `ElevenIndex.exe` from the website (elevenindex.pages.dev): its first start shows a
+   setup screen (club exactly as FM writes it, currency; FM's save games folder is found by itself) and makes the save.
+   From source it's `ElevenIndex.bat` (or `python app.py`), which needs Python 3.14+ and pywebview.
+2. **Another club.** **Menu → Game profiles… → New** makes one; `score.new_save(name, club)` does the same from code. Every
+   game profile scores with the same attribute weights: `weights/default.toml`'s, or theirs from the Attributes page
+   (`saves/attributes.toml`).
+3. **First read.** In FM, save the game; in the app, **Menu → Read save game…** (or drop the `.fm` on the window). The
+   save's club must be the game profile's club. Auto-read (on by default) reads every later save by itself.

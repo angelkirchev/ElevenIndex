@@ -112,7 +112,7 @@ __THEME__
 </div>
 <!-- Research's choices, in the strip under the bar (where Squad, Players and Staff have their sub-tabs) -->
 <div class="subnav rctl">
-  <span class="ctl"><span class="name">compare with</span><select id="against"></select></span>
+  <span class="ctl" style="display:none"><span class="name">compare with</span><select id="against"></select></span>
   <span class="ctl" id="positions"><span class="name">position</span></span>
   <span class="key"><span class="them"><i></i><span id="themName"></span> <span id="themCount"></span></span><span class="us"><i></i><span id="usName"></span> <span id="usCount"></span></span></span>
 </div>
@@ -125,6 +125,8 @@ __THEME__
 </div>
 <div id="tip"></div>
 <script>
+try { history.scrollRestoration = "manual"; } catch (e) {}
+scrollTo(0, 0);
 // ---- the data: every player (yours flagged squad), each position's most important attributes ----
 const MARKET = __DATA__, SITE = __SITE__;
 const POSITIONS = MARKET.positions, PLAYERS = MARKET.players, CLUB = MARKET.managed;
@@ -163,7 +165,7 @@ try {
 } catch (e) {}
 if (choice.pos === "DC") choice.pos = "CD";  // the centre-back used to be called DC
 if (!POSITIONS.includes(choice.pos)) choice.pos = POSITIONS[0];
-if (!CHOICES.includes(choice.against)) choice.against = CHOICES[0];
+choice.against = CHOICES.includes(EVERYONE) ? EVERYONE : CHOICES[0];  // always against the whole database
 function choose(key, value) {
   choice[key] = value;
   try { localStorage.setItem(KEPT, JSON.stringify(choice)); } catch (e) {}
@@ -454,17 +456,17 @@ function draw() {
       `the white mark and number are the middle player. ${us} are on the lower lane, your best at each position big and named; the number at the far right is your best minus their ` +
       `middle (<span class="good">green</span> = you're ahead).` });
   const staffCharts = {
-    score: { name: "Job score by job", sub: "How good your staff are at each job, against the staff on your lists",
+    score: { name: "Job score by job", sub: "How good your staff are at each job, against the staff in the game",
       draw: () => byPosition("chartBox", (p, at) => p.scores[at], "job score", atBest, undefined, true, 5),
       how: `Each row is a job (hover its name for the full one). The bar in the accent colour is ${them}: the line runs from the worst to the best, the box holds the middle half, ` +
         `and the white mark and number are the middle one. <span class="us">◆ your staff</span> are on the lower lane, the one who covers the job (one person per job) big and named. ` +
         `The number at the far right is him minus their middle (<span class="good">green</span> = you're ahead). Click a job to pick it.` },
-    age: { name: `${JOB(pos)}: score vs age`, sub: `Every staff member on your lists at ${JOB(pos)}: who's good and still young`,
+    age: { name: `${JOB(pos)}: score vs age`, sub: `Every staff member in the game at ${JOB(pos)}: who's good and still young`,
       draw: () => plot({ x: p => p.age, y: scoreOf, xTitle: "age", yTitle: `${pos} score`, who: p => !p.squad && compared(p) && p.scores[pos] != null,
                          zones: ["better and younger", "worse and older"], spreadX: 0.6 }),
       how: `<b>Higher = better</b>, <b>further left = younger</b>. The dashed lines are the middle of them. <span class="good">Top left</span>: better and younger than most, ` +
-        `worth a look for a long stay. Your own staff aren't on it: FM's club staff screen doesn't export their age. Pick the job at the top; hover a mark for the person.` },
-    personality: { name: `${JOB(pos)}: by personality`, sub: `The staff on your lists at ${JOB(pos)}, grouped by personality: which kinds score best`,
+        `worth a look for a long stay. Pick the job at the top; hover a mark for the person.` },
+    personality: { name: `${JOB(pos)}: by personality`, sub: `The staff in the game at ${JOB(pos)}, grouped by personality: which kinds score best`,
       draw: () => byPersonality(pos),
       how: `Each row is a personality, best first by its middle score. The line runs from the worst to the best with it, the box holds the middle half, ` +
         `the white mark and number are the middle one, and the number at the right is how many. Hover a mark for the person.` },
@@ -495,11 +497,11 @@ function draw() {
     wages: { name: "Your squad: wage vs score", sub: "What you pay for what you get: every player of yours at his best position",
       draw: () => plot({ x: p => p.wage || null, y: p => p.scores[p.best], xTitle: "wage p/w (log)", yTitle: "best score", wages: true, who: p => p.squad }),
       how: (() => { const sq = people.filter(p => p.squad && p.wage && p.scores[p.best] != null);
-        if (!sq.length) return "Your squad export needs a wage (Salary) column for this graph.";
+        if (!sq.length) return "Read a save game for wages: this graph needs them.";
         const dear = sq.slice().sort((a, b) => b.wage / b.scores[b.best] - a.wage / a.scores[a.best])[0];
         const alt = people.filter(p => !p.squad && p.best === dear.best && p.wage && p.scores[dear.best] >= dear.scores[dear.best] && p.wage < dear.wage).sort((a, b) => a.wage - b.wage)[0];
         return `<b>Higher</b> = better, <b>further right</b> = dearer. Most expensive for his score: <b>${dear.name}</b> (${dear.best} ${dear.scores[dear.best].toFixed(1)}, ${wageText(dear.wage)} p/w)` +
-          (alt ? `; on your lists <b>${alt.name}</b> is as good for ${wageText(alt.wage)} p/w.` : "."); })() },
+          (alt ? `; in the game <b>${alt.name}</b> is as good for ${wageText(alt.wage)} p/w.` : "."); })() },
     ...(rated ? {
       rating: { name: `${pos} score vs average rating`, sub: "Whether the score matches how players do in matches",
         draw: () => plot({ x: p => p.rating, y: scoreOf, xTitle: "average rating", yTitle: `${pos} score` }),

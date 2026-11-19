@@ -12,3 +12,5 @@ __pycache__/
 .claude/settings.local.json
 .DS_Store
 ~$*
+# the app writes its log here when run from source
+app.log

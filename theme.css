@@ -37,7 +37,7 @@
          color: var(--club-ink); background: linear-gradient(180deg, var(--club-top), var(--club)); border-bottom: 1px solid var(--club-dark);
          box-shadow: 0 2px 10px #0008; }
   .pages { display: flex; flex-wrap: nowrap; gap: 2px; align-items: stretch; align-self: stretch; }
-  .pages a { display: flex; align-items: center; padding: 14px 7px 11px; color: var(--club-ink); font: 700 15px/1 var(--head);
+  .pages a { display: flex; align-items: center; padding: 13px 10px 10px; color: var(--club-ink); font: 700 19px/1 var(--head);
              letter-spacing: .02em; text-transform: uppercase; text-decoration: none; white-space: nowrap;
              border-bottom: 3px solid transparent; transition: background .12s; }
   .pages a b { margin-right: 5px; color: var(--club-num); font-weight: 700; }
@@ -63,27 +63,16 @@
   .subnav .info { margin-left: auto; align-self: center; padding: 0 2px; color: var(--sub-ink); font-size: 12px; white-space: nowrap;
                   overflow: hidden; text-overflow: ellipsis; }
   /* the search box and count, on the bar: light, like FM's search */
-  /* the banner at the right of the top bar (score.PROMO): fixed colours, the same in every theme, with an FM Scout tab
-     on its top-right edge */
-  .bar .promo { position: relative; display: flex; gap: 9px; align-items: center; margin: 12px 0 6px auto;
-                padding: 6px 13px 6px 6px; color: #f2efe7; text-decoration: none; background: #14181a;
-                border: 1px solid #3a4246; border-radius: 8px; white-space: nowrap; transition: border-color .12s, background .12s; }
-  .bar .promo:hover { background: #1b2124; border-color: #c5f04f; }
-  .bar .promo svg { flex: none; width: 28px; height: 28px; filter: drop-shadow(0 1px 2px #0008); }
-  .bar .promo svg .tile { stroke: #7fe0a6; stroke-opacity: .45; stroke-width: 1; }
-  .bar .promo svg .shine { fill: none; stroke: #ffffff; stroke-opacity: .22; stroke-width: 1.2; stroke-linecap: round; }
-  .bar .promo svg .frame { fill: none; stroke: #f2efe7; stroke-opacity: .28; stroke-width: .8; }  /* the inner frame */
-  .bar .promo svg .shirt { stroke-linejoin: round; }
-  .bar .promo svg .shirt.side { fill: #f2efe7; fill-opacity: .4; stroke: #f2efe7; stroke-opacity: .55; stroke-width: 1; }
-  .bar .promo svg .shirt.main { fill: #f2efe7; stroke: #124a28; stroke-width: 1.1; }
-  .bar .promo span { display: flex; flex-direction: column; font: 600 13px/1.15 var(--body); }
-  .bar .promo small { color: #c5f04f; font: 700 9px/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; }
-  .bar .promo em { font-style: normal; } .bar .promo em b { color: #c5f04f; }
-  .bar .promo .promo-tab { position: absolute; top: -10px; right: 9px; padding: 1px 5px 0; background: #f2efe7; border-radius: 3px;
-                           color: #e3262f; font: 900 9px/1.25 "Arial Black", "Segoe UI Black", "Segoe UI", sans-serif;
-                           font-style: normal; letter-spacing: -.02em; box-shadow: 0 1px 3px #0006; }
-  .bar .promo .promo-tab b { color: #111; font-weight: 900; }
-  .bar #filter { color: #fff; background: #ffffff1f; border-color: #ffffff3d; }
+  /* the banner at the right of the top bar (score.PROMO): SI's logo, then the words; fixed colours in every theme, as tall
+     as the app's logo (40px) and the search box */
+  .bar .promo { display: flex; gap: 10px; align-items: center; box-sizing: border-box; height: 40px; margin: 0 0 0 auto;
+                padding: 4px 14px 4px 5px; color: var(--club-ink); text-decoration: none; background: var(--club-dark);
+                border: 1px solid color-mix(in srgb, var(--club-ink) 22%, transparent); border-radius: 8px; white-space: nowrap; transition: border-color .12s, background .12s; }
+  .bar .promo:hover { background: color-mix(in srgb, var(--club-dark) 80%, #000); border-color: var(--blue); }
+  .bar .promo span { display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+  .bar .promo small { color: var(--blue); font: 600 10px/1 var(--head); letter-spacing: .12em; text-transform: uppercase; }
+  .bar .promo em { font: 600 16px/1 var(--head); font-style: normal; letter-spacing: .02em; } .bar .promo em b { color: var(--blue); font-weight: 700; }
+  .bar #filter { box-sizing: border-box; height: 40px; margin: 0; color: #fff; background: #ffffff1f; border-color: #ffffff3d; }
   .bar #filter::placeholder { color: var(--sub-ink); }
   .bar #filter:focus { background: #ffffff2e; border-color: #fff; }
 
@@ -112,3 +101,6 @@
            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c5f04f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); }
   select:hover, select:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 35%, transparent); }
   select option { color: var(--fg); background-color: color-mix(in srgb, var(--fg) 14%, var(--bg)); }
+  #fm-subnav-src { display: none !important; }  /* the sub-tabs until NAV_SCRIPT moves them under the bar */
+  .bar .promo .promo-si { flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: 50%; }  /* SI's round badge */
+  .bar .promo .promo-si img { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(1.1); }

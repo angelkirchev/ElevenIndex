@@ -1,88 +1,25 @@
-"""Turn an FM27 Exporter file (F8: .csv or .html) into ElevenIndex observation CSVs. No screenshots, no AI.
+"""Read an FM27 save game (fm_save) into ElevenIndex's observation CSVs: your club's players and staff, every other
+player and staff member in the game, the club's budgets. import_save is what the app's Read save game… runs.
 
-    python import_export.py EXPORT --date 2026-07-15                    a squad screen of your club
-    python import_export.py EXPORT --date 2026-07-15 --source search-cb a player search
-    python import_export.py EXPORT --date 2026-07-15 --score            ...then run score.py and open the 'last' page
-
-Goalkeepers and outfielders are split into _gk and _outfield files automatically (export with all attributes:
-Ctrl+F8 in FM). Rows merge into an existing file with the same date/source/view. save.toml's last_batch is updated.
+Goalkeepers and outfielders go to separate _gk and _outfield files; save.toml's last_batch names the newest.
 """
-import argparse
 import csv
-import html
 import re
-import subprocess
-import sys
+import time
 import tomllib
-from html.parser import HTMLParser
 from pathlib import Path
 
 import score  # the data folder (ROOT), the weights and the scoring rules
 
 HERE = Path(__file__).parent
 
-# Export header -> ElevenIndex column. Anything not listed keeps its name.
-RENAME = {
-    "Player": "Name", "Salary": "Wage", "Team Work": "Teamwork",
-    "Command Of Area": "Command of Area", "One On Ones": "One on Ones",
-    "Average Rating": "Rating", "Av Rat": "Rating", "Mins": "Minutes",
-}
-META_ORDER = ["Name", "Club", "Age", "Position", "Preferred Foot", "Left Foot", "Wage", "Transfer Value", "Loan", "Minutes", "Rating"]
+META_ORDER = ["Name", "Club", "Age", "Position", "Preferred Foot", "Left Foot", "Wage", "Transfer Value", "Loan", "Contract", "Height", "Minutes", "Rating"]
 GK_CHECK = ["Handling", "Reflexes", "One on Ones", "Aerial Reach", "Command of Area"]  # outfielders show 1-5 here
 GK_ATTRS = set(GK_CHECK) | {"Communication", "Eccentricity", "Kicking", "Punching", "Rushing Out (Tendency)", "Throwing"}
 OUTFIELD_ONLY = {"Finishing", "Tackling", "Marking", "Heading", "Dribbling", "Crossing", "Long Shots", "Penalty Taking",
                  "Corners", "Free Kick Taking", "Long Throws", "Off The Ball"}
-# An export needs some of these to be scored (a scouting view with only Recommendation etc. has none)
-ATTRIBUTE_CHECK = GK_ATTRS | OUTFIELD_ONLY | {"Acceleration", "Pace", "Passing", "Decisions", "Composure", "Strength"}
-
-# Staff exports (the Search - Staff View): FM's abbreviated headers -> the attribute names in the weights file.
-# The exporter names staff files "Player Search ..." too, so a staff export is told apart by its Person/Preferred Job columns.
-STAFF_RENAME = {
-    "Person": "Name", "Preferred Job": "Job", "Club Job": "Job",
-    "Det": "Determination", "Mot": "Motivating", "JCA": "Judging Player Ability", "Mgm": "People Management",
-    "Auth": "Authority", "TCo": "Tactical Knowledge", "JPA": "Judging Player Potential", "Tec": "Technical",
-    "Yng": "Working With Youngsters", "Pos": "Possession", "Tct": "Tactical", "Att": "Attacking", "Def": "Defending",
-    "Phy": "Physiotherapy", "Fit": "Fitness", "SpS": "Sports Science", "Ana D": "Analysing Data", "Set": "Set Pieces",
-    "GK": "Goalkeeping",
-}
-STAFF_META_ORDER = ["Name", "Club", "Age", "Job", "Personality"]
-
-
-class _Table(HTMLParser):
-    """Rows of the first <table>: a list of lists of cell text."""
-
-    def __init__(self):
-        super().__init__()
-        self.rows, self._cell = [], None
-
-    def handle_starttag(self, tag, attrs):
-        if tag == "tr":
-            self.rows.append([])
-        elif tag in ("td", "th"):
-            self._cell = []
-
-    def handle_endtag(self, tag):
-        if tag in ("td", "th") and self._cell is not None:
-            self.rows[-1].append(html.unescape("".join(self._cell)).strip())
-            self._cell = None
-
-    def handle_data(self, data):
-        if self._cell is not None:
-            self._cell.append(data)
-
-
-def read_export(path):
-    """(headers, rows as dicts) from an exporter .csv (any delimiter) or .html."""
-    text = path.read_text(encoding="utf-8-sig")
-    if path.suffix.lower() in (".html", ".htm"):
-        p = _Table()
-        p.feed(text)
-        table = [r for r in p.rows if r]
-    else:
-        dialect = csv.Sniffer().sniff(text.split("\n", 1)[0], delimiters=",;\t")
-        table = [r for r in csv.reader(text.splitlines(), dialect) if r]
-    headers = [RENAME.get(h, h) for h in table[0]]
-    return headers, [dict(zip(headers, r)) for r in table[1:]]
+STAFF_META_ORDER = ["Name", "Club", "Age", "Job", "Personality", "Born", "Wage", "Contract", "Reputation",
+                    "Current Ability", "Potential Ability", "Tactical style"]
 
 
 def is_keeper(row):
@@ -104,6 +41,7 @@ def convert(rows, headers, club):
     known_meta = set(META_ORDER) | {"Best Pos", "Nation", "Ability", "Potential", "Height", "Inf", "Weight", "DoB",
                                    "DOB", "Date Of Birth", "Date of Birth", "Nationality", "Personality", "Division", "Based",
                                    "Picked", "Best Role", "Playing Time", "Club"}  # not attributes (most aren't used)
+    known_meta |= score.META  # what a save game adds (contract, ability, familiarity, hidden attributes…)
     attrs = [h for h in headers if h not in known_meta and h]
     out = {"outfield": [], "gk": []}
     for r in rows:
@@ -116,6 +54,12 @@ def convert(rows, headers, club):
         for foot in ("Preferred Foot", "Left Foot"):  # the views now show Preferred Foot; older ones Left Foot
             if (r.get(foot) or "").strip() not in ("", "-"):
                 new[foot] = r[foot].strip()
+        for extra in ("Height", "Contract", "Familiarity", "Current Ability", "Potential Ability", "Reputation",
+                      "Match Exercise", "Fitness", "Jadedness", "Injured until", "Traits", "Moves", "Born", "Left Foot Rating", "Right Foot Rating",
+                      "Home Reputation", "World Reputation", *score.HIDDEN_COLS):
+            # read from a save game: height in cm, the contract's end date, FM's hidden ability and attributes
+            if (r.get(extra) or "").strip() not in ("", "-") or extra in ("Injured until", "Traits") and extra in r:
+                new[extra] = (r[extra] or "").strip()  # a blank injury or trait list is news too (he's fit now)
         if (r.get("Position") or "").strip() not in ("", "-"):  # FM's own positions, e.g. "D/WB (R), M (RC)"
             new["Position"] = r["Position"].strip()
         if new["Club"] in ("-", ""):
@@ -169,97 +113,101 @@ def set_last_batch(save_toml, files, key="last_batch", names_key="last_names"):
     save_toml.write_text(text, encoding="utf-8")
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("export", type=Path, help="the .csv or .html file FM27 Exporter wrote")
-    ap.add_argument("--date", required=True, help="FM's game date, YYYY-MM-DD (the exporter can't read it)")
-    ap.add_argument("--source", help="club slug for a squad screen (default), or search-<what> for a search")
-    ap.add_argument("--club", help="club for rows without a Club column (default: your managed club)")
-    ap.add_argument("--save", help="save folder (default: config.toml's active_save)")
-    ap.add_argument("--score", action="store_true", help="run score.py afterwards and open the 'last' page")
-    a = ap.parse_args()
-
-    try:
-        save, written, skipped, kind = import_file(a.export, a.date, a.source, a.club, a.save)
-    except ValueError as e:
-        sys.exit(str(e))
-    for name, count in written:
-        print(f"{count:>4} -> saves/{save}/{'staff' if kind == 'staff' else 'obs'}/{name}")
-    if skipped:
-        print(f"Skipped, not enough attributes to score: {', '.join(skipped)}")
-    if a.score:
-        page = "last_staff" if kind == "staff" else "last"
-        subprocess.run([sys.executable, str(HERE / "score.py"), "--save", save, "--open", page], check=True)
+def same_club(a, b):
+    slug = lambda s: re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+    return slug(a) == slug(b)
 
 
-def import_file(export, date, source=None, club=None, save=None):
-    """Import one export (players or staff) into a save and set last_batch / last_staff_batch.
-    Returns (save, [(file name, row count)], [names skipped], "players" or "staff")."""
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(T\d{4})?", date):
-        raise ValueError("The date must be YYYY-MM-DD (or YYYY-MM-DDThhmm), e.g. 2026-07-15")
+SAVE_LIST = "search-save-game"  # every other player in a save game: one list, the newest save's only
+
+
+def import_save(path, save=None, everyone=None):
+    """An FM27 save game (.fm): your club's players (first team, youth teams, loans) and staff, read straight from it
+    (fm_save), filed like a squad export and a staff screen export of the save file's date and time; with everyone
+    (config.toml's save_everyone, on by default) also every other player in the save, as one list (SAVE_LIST).
+    Returns (save, [(file name, row count)], [names skipped], "save")."""
+    import fm_save  # needs Python 3.14+ (zstd); only a save import loads it
+    path = Path(path)
     config = score.load_config()
     save = save or config["active_save"]
     save_toml = score.ROOT / "saves" / save / "save.toml"
     cfg = tomllib.loads(save_toml.read_text(encoding="utf-8"))
-    club = club or cfg["managed_club"]
-    source = source or re.sub(r"[^a-z0-9]+", "-", club.lower()).strip("-")
-    obs_dir = save_toml.parent / "obs"
-    obs_dir.mkdir(parents=True, exist_ok=True)
-
-    headers, rows = read_export(Path(export))
-    # staff: the staff search (Person, Preferred Job) or your club's staff screen (Club Job)
-    if {"Person", "Preferred Job", "Club Job"} & set(headers):
-        return (save, *import_staff(headers, rows, date, source, club, save_toml, cfg), "staff")
-    if not set(headers) & ATTRIBUTE_CHECK:
-        raise ValueError("This export has no player attributes, so there's nothing to score. In FM, point at the "
-                         "list and press Ctrl+F8 to add every attribute to the view, then export again with F8.")
-    converted = convert(rows, headers, club)
-    if not any(converted.values()):
-        raise ValueError("No players found in the export.")
-    converted, skipped = drop_unscorable(converted, obs_dir, cfg)
-    if not any(converted.values()):
-        raise ValueError(f"None of the {len(skipped)} players have enough attributes to be scored: over 15% of "
-                         "each position's weight is unknown (FM shows '-'). Scout them first, or add attributes (Ctrl+F8).")
-    written = []
-    for view, vrows in converted.items():
-        if vrows:
-            path = write_obs(obs_dir, f"{date}_{source}_{view}.csv", vrows)
-            written.append((path.name, len(vrows)))
-    set_last_batch(save_toml, [name for name, _ in written])
-    return save, written, skipped, "players"
-
-
-def import_staff(headers, rows, date, source, club, save_toml, cfg):
-    """A staff export -> staff/<date>_<source>.csv, attributes as FM's words (score.py turns them into numbers with
-    the weights file's [staff_words]). Returns ([(file name, count)], [names skipped])."""
-    words = score.load_weights(cfg, save_toml.parent).get("staff_words", {})
-    # a search named after "Player Search ..." is a staff search here
-    source = source.replace("search-player-search", "search-staff") if source.startswith("search-") else source
-    if "Club" not in headers:  # your club's staff screen: everyone on it works for you, like a squad screen
-        source = re.sub(r"[^a-z0-9]+", "-", club.lower()).strip("-") + "-staff"
-    out, skipped = [], []
-    for r in rows:
-        r = {STAFF_RENAME.get(k, k): (v or "").strip() for k, v in r.items()}
-        if not r.get("Name"):
-            continue
-        # with a Club column, blank or '-' is a free agent; without one (your own staff screen), it's your club
-        new = {"Name": r["Name"], "Club": r["Club"] if "Club" in r else club, "Age": r.get("Age", ""),
-               "Job": r.get("Job", ""), "Personality": r.get("Personality", "")}
-        if new["Club"] in ("-", ""):
-            new["Club"] = "Free agent"
-        attrs = {a: r[a] for a in STAFF_RENAME.values() if a in r and a not in STAFF_META_ORDER}
-        new.update({a: v if v in words else "" for a, v in attrs.items()})  # '-' or anything else unknown: blank
-        if any(new[a] for a in attrs):
-            out.append(new)
-        else:
-            skipped.append(new["Name"])
-    if not out:
-        raise ValueError("No staff with attributes found in the export: use the Search - Staff View in FM.")
-    staff_dir = save_toml.parent / "staff"
-    staff_dir.mkdir(exist_ok=True)
-    path = write_obs(staff_dir, f"{date}_{source}.csv", out, STAFF_META_ORDER, add_columns=True)
-    set_last_batch(save_toml, [path.name], "last_staff_batch", "last_staff_names")
-    return [(path.name, len(out))], skipped
+    club = cfg["managed_club"]
+    everyone = config.get("save_everyone", True) if everyone is None else everyone
+    got = fm_save.read(path, config.get("currency", "£"), everyone=everyone)
+    if not (same_club(club, got["club"]) or same_club(club, got["long"])):
+        raise ValueError(f"This FM save is {got['long']}'s, but the save open here is {club}'s. "
+                         f"Start a new save for {got['club']} (Menu → Saves… → New), then import it there.")
+    stamp = time.strftime("%Y-%m-%dT%H%M", time.localtime(path.stat().st_mtime))
+    source = re.sub(r"[^a-z0-9]+", "-", club.lower()).strip("-")
+    for r in got["players"] + got["staff"]:
+        r["Club"] = club  # the club as this save names it
+    written, skipped = [], []
+    if got["players"]:
+        headers = list(dict.fromkeys(k for r in got["players"] for k in r))
+        obs_dir = save_toml.parent / "obs"
+        obs_dir.mkdir(parents=True, exist_ok=True)
+        converted, skipped = drop_unscorable(convert(got["players"], headers, club), obs_dir, cfg)
+        for view, vrows in converted.items():
+            if vrows:
+                p = write_obs(obs_dir, f"{stamp}_{source}_{view}.csv", vrows)
+                written.append((p.name, len(vrows)))
+        set_last_batch(save_toml, [name for name, _ in written])
+    if got.get("others"):  # everyone else: replaces the previous save game's list (it's all in the newer one)
+        obs_dir = save_toml.parent / "obs"
+        newest = max((p.name[:15] for p in obs_dir.glob(f"*_{SAVE_LIST}_*.csv")), default="")
+        if stamp >= newest[:15]:
+            for old in obs_dir.glob(f"*_{SAVE_LIST}_*.csv"):
+                old.unlink()
+            # the app tells players apart by name: a namesake (of yours, or of another in the list) gets his club added
+            from collections import Counter
+            mine, seen = {r["Name"] for r in got["players"]}, Counter(r["Name"] for r in got["others"])
+            for r in got["others"]:
+                if r["Name"] in mine or seen[r["Name"]] > 1:
+                    r["Name"] = f"{r['Name']} ({r['Club']})"
+            headers = list(dict.fromkeys(k for r in got["others"] for k in r))
+            for view, vrows in convert(got["others"], headers, club).items():
+                if vrows:
+                    p = write_obs(obs_dir, f"{stamp}_{SAVE_LIST}_{view}.csv", vrows)
+                    written.append((p.name, len(vrows)))
+    if got["staff"]:
+        staff_dir = save_toml.parent / "staff"
+        staff_dir.mkdir(exist_ok=True)
+        # the save file's time in the name: two saves read the same day stay two snapshots (the later one wins)
+        p = write_obs(staff_dir, f"{stamp}_{source}-staff.csv", got["staff"], STAFF_META_ORDER, add_columns=True)
+        written.append((p.name, len(got["staff"])))
+        set_last_batch(save_toml, [p.name], "last_staff_batch", "last_staff_names")
+    if got.get("others_staff"):  # every other club's staff (and coaches out of work): one list, the newest save's only
+        staff_dir = save_toml.parent / "staff"
+        staff_dir.mkdir(exist_ok=True)
+        newest = max((p.name[:15] for p in staff_dir.glob(f"*_{SAVE_LIST}-staff.csv")), default="")
+        if stamp >= newest[:15]:
+            for old in staff_dir.glob(f"*_{SAVE_LIST}-staff.csv"):
+                old.unlink()
+            from collections import Counter
+            mine, seen = {r["Name"] for r in got["staff"]}, Counter(r["Name"] for r in got["others_staff"])
+            for r in got["others_staff"]:
+                if r["Name"] in mine or seen[r["Name"]] > 1:
+                    r["Name"] = f"{r['Name']} ({r['Club']})"
+            p = write_obs(staff_dir, f"{stamp}_{SAVE_LIST}-staff.csv", got["others_staff"], STAFF_META_ORDER)
+            written.append((p.name, len(got["others_staff"])))
+    import json
+    dates_file = save_toml.parent / score.FM_DATES  # FM's date in each save game read: the seasons it falls in
+    try:
+        dates = json.loads(dates_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        dates = {}
+    dates[stamp] = got["date"].isoformat()
+    dates_file.write_text(json.dumps(dates, indent=1, sort_keys=True), encoding="utf-8")
+    money_file = save_toml.parent / "finances.json"
+    newest = score.read_finances(save_toml.parent).get("game_date", "")
+    if got.get("finances") and got["date"].isoformat() >= newest:  # the club's budgets; an older save doesn't replace them
+        import json
+        money_file.write_text(
+            json.dumps({"date": stamp, "game_date": got["date"].isoformat(), **got["finances"]}, indent=1), encoding="utf-8")
+    if not written:
+        raise ValueError(f"No players or staff of {club} found in {path.name}.")
+    return save, written, skipped, "save"
 
 
 def drop_unscorable(converted, obs_dir, cfg):
@@ -284,6 +232,3 @@ def drop_unscorable(converted, obs_dir, cfg):
                 skipped.append(r["Name"])
     return kept, skipped
 
-
-if __name__ == "__main__":
-    main()

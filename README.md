@@ -4,178 +4,84 @@
 
 <p align="center">
   <b>ElevenIndex</b> · Squad &amp; staff scoring for Football Manager 27<br>
-  Every player you look at, scored at every position: plan your lineup, find better signings,<br>
-  hire better staff and follow how your players develop.
+  Reads your FM27 save game and scores every player at every position and every staff member for every job:<br>
+  plan your lineup, find better signings, hire better staff, train and develop your players.
 </p>
 
 <p align="center">
-  <a href="https://github.com/angelkirchev/ElevenIndex/releases/latest/download/ElevenIndex.exe"><img alt="Download ElevenIndex.exe" src="https://img.shields.io/badge/Download-ElevenIndex.exe-c5f04f?style=for-the-badge&logo=windows&logoColor=0f1412&labelColor=0f1412"></a>
+  <a href="https://elevenindex.pages.dev"><img alt="Download ElevenIndex" src="https://img.shields.io/badge/Download-ElevenIndex-c5f04f?style=for-the-badge&logo=windows&logoColor=0f1412&labelColor=0f1412"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/angelkirchev/ElevenIndex/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/angelkirchev/ElevenIndex?color=1b6b3a&label=version"></a>
   <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-1b6b3a">
   <img alt="Free" src="https://img.shields.io/badge/price-free-1b6b3a">
   <img alt="Local" src="https://img.shields.io/badge/your%20data-stays%20on%20your%20PC-1b6b3a">
+  <img alt="No mods" src="https://img.shields.io/badge/mods-none-1b6b3a">
 </p>
 
 <p align="center">
-  Press <b>F8</b> on a list in FM, choose <b>Menu → Import file…</b> in the app, and every page updates.<br>
-  No typing, no screenshots. Everything is explained in the app's own <b>Guide</b> (key <b>G</b>).
+  Save your game in FM, then <b>Menu → Read save game…</b> in the app (or drop the <b>.fm</b> file on its window).<br>
+  No mods, no exports, no typing. FM's save is only ever read, never changed.
 </p>
 
 ---
 
 <p align="center">
-  <img src="docs/screenshots/squad.png" alt="Squad › Lineup: your best eleven on a pitch; click a position for everyone who plays it">
-  <br><sub><b>Lineup</b>: your best eleven for any formation; click a position for everyone who plays it and who on your lists would beat them</sub>
+  <img src="docs/screenshots/squad.png" alt="Squad › Lineup">
+  <br><sub><b>Lineup</b>: your best eleven for any formation; click a position for everyone who plays it and who in the game would beat them</sub>
 </p>
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/formations.png" alt="Formations"><br><sub><b>Formations</b>: 26 formations ranked by how well your squad fits them, each with its numbers</sub></td>
-    <td width="50%" valign="top"><img src="docs/screenshots/profile.png" alt="A player's profile"><br><sub><b>Profiles</b>: what he's good for, strengths, weaknesses, what to train first</sub></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/profile.png" alt="A player's profile"><br><sub><b>Profiles</b>: personal details, contract, attributes like FM's, a scout report, CA/PA, personality and hidden attributes</sub></td>
+    <td width="50%" valign="top"><img src="docs/screenshots/filter.png" alt="Filter"><br><sub><b>Players database</b>: every player in the game, with a Filter for anything: position, contract, ability, attributes, personality</sub></td>
   </tr>
   <tr>
-    <td valign="top"><img src="docs/screenshots/compare.png" alt="Compare players"><br><sub><b>Compare</b>: two players side by side, at any position</sub></td>
-    <td valign="top"><img src="docs/screenshots/research.png" alt="Research"><br><sub><b>Research › Players</b>: your best at each position against everyone you've imported</sub></td>
+    <td valign="top"><img src="docs/screenshots/club.png" alt="Club overview"><br><sub><b>Club</b>: budgets, squad, best eleven, injuries, contracts ending, youngsters; plus Contracts, Medical and Transfers</sub></td>
+    <td valign="top"><img src="docs/screenshots/formations.png" alt="Formations"><br><sub><b>Formations</b>: 26 shapes ranked by how well your squad fits them, with a scout's view of the good and the bad</sub></td>
   </tr>
   <tr>
-    <td valign="top"><img src="docs/screenshots/analysis.png" alt="Analysis"><br><sub><b>Analysis</b>: your team position by position, and a Squad plan: what to do, most urgent first</sub></td>
-    <td valign="top"><img src="docs/screenshots/development.png" alt="Development"><br><sub><b>Development</b>: how your players changed between two squad exports</sub></td>
+    <td valign="top"><img src="docs/screenshots/depth.png" alt="Depth"><br><sub><b>Depth</b>: starter, backup and third choice at every position, and who in the game would do better</sub></td>
+    <td valign="top"><img src="docs/screenshots/training.png" alt="Training"><br><sub><b>Training</b>: each player's next individual training routine in FM, from his weak points where he plays</sub></td>
   </tr>
   <tr>
-    <td valign="top"><img src="docs/screenshots/staff-compare.png" alt="Compare staff"><br><sub><b>Compare staff</b>: two staff side by side, every job and attribute</sub></td>
-    <td valign="top"><img src="docs/screenshots/staff.png" alt="Staff"><br><sub><b>Staff</b>: every staff member scored for every job</sub></td>
+    <td valign="top"><img src="docs/screenshots/development.png" alt="Development"><br><sub><b>Development</b>: how your players changed between checkpoints (31 Dec, 30 Jun, now)</sub></td>
+    <td valign="top"><img src="docs/screenshots/toplists.png" alt="Top lists"><br><sub><b>Top lists</b>: the best, the most promising and the bargains in the game, by position</sub></td>
   </tr>
   <tr>
-    <td valign="top"><img src="docs/screenshots/your-staff.png" alt="Your staff"><br><sub><b>Your staff</b>: your club's staff, one person per job, against the best on your lists, with a Staff plan</sub></td>
-    <td valign="top"><img src="docs/screenshots/research-staff.png" alt="Research › Staff"><br><sub><b>Research › Staff</b>: every job, the staff on your lists against the one who covers it</sub></td>
-  </tr>
-  <tr>
-    <td valign="top"><img src="docs/screenshots/profile-attributes.png" alt="A player's attributes, like FM's"><br><sub><b>Attributes in a profile</b>: laid out like FM's, with the Key and Preferable ones at any position</sub></td>
-    <td valign="top"><img src="docs/screenshots/attributes.png" alt="Attributes"><br><sub><b>Attribute weights</b>: one weight per attribute (1–20) for every save, to tune the scoring your way</sub></td>
+    <td colspan="2" valign="top"><img src="docs/screenshots/staff.png" alt="Your staff"><br><sub><b>Staff</b>: your staff, one person per job, against every staff member in the game, with a Staff plan</sub></td>
   </tr>
 </table>
 
-<p align="center"><sub>Screens from a demo save: your club and players will differ.</sub></p>
+<p align="center"><sub>Screens from a test save.</sub></p>
 
 ---
 
 ## Get started
 
-About 15 minutes, once. Nothing here changes your FM saves. Quit FM before steps 1–3.
+1. Download **ElevenIndex.exe** from **[elevenindex.pages.dev](https://elevenindex.pages.dev)**, put it somewhere permanent
+   (e.g. **Documents**) and double-click it. If Windows says *Windows protected your PC*, click **More info → Run anyway**.
+2. The first time it asks for the **club you manage** and the **currency** FM shows wages in, then **Start**.
+3. In FM, **save your game**. In the app, **Menu → Read save game…** (or drop the `.fm` file on the window). About a minute
+   later every page is up to date. **Auto-read** (on by default) reads each new save by itself.
 
-> **FM's game folder:** in Steam, right-click **Football Manager 27** → **Manage → Browse local files**.
-> It's the folder with **`fm.exe`** in it.
-
-### 1 · Install BepInEx 6 (the mod loader)
-
-BepInEx lets FM load the small export mod in step 2. You need the **Unity IL2CPP, Windows x64** build of BepInEx 6.
-
-1. Open **[BepInEx's builds page](https://builds.bepinex.dev/projects/bepinex_be)** and download the newest
-   **`BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.…zip`**
-   (currently [`BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.793+dbc82f0.zip`](https://builds.bepinex.dev/projects/bepinex_be/793/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.793%2Bdbc82f0.zip)).
-   Not the *Unity.Mono* or *NET* builds: FM needs **Unity.IL2CPP** and **win-x64**.
-2. Right-click the zip → **Extract All…** and extract it **into FM's game folder**, so the BepInEx files sit next to
-   `fm.exe`:
-
-   ```
-   Football Manager 27\          ← FM's game folder
-   ├── BepInEx\
-   ├── dotnet\
-   ├── doorstop_config.ini
-   ├── winhttp.dll
-   └── fm.exe
-   ```
-3. Start FM once and wait: the first start with BepInEx takes a few minutes (a black console window may open). When the
-   main menu shows, quit FM. `BepInEx` now has `plugins`, `config` and a `LogOutput.log`: BepInEx works.
-
-### 2 · Install FM27 Exporter (the F8 export)
-
-1. Download **`FM27Exporter-…-plugin-only.zip`** from
-   **[FM27 Exporter's releases](https://github.com/v1adicke/fm27-exporter/releases)** (a free mod, not made by Sports
-   Interactive or this project).
-2. Extract it and copy its **`BepInEx`** folder into FM's game folder, onto the one from step 1 (Windows merges them).
-   The exporter ends up in `BepInEx\plugins\FM27Exporter`.
-3. Start FM: **F8** now exports the list under the mouse to `Documents\Sports Interactive\Football Manager 27\exports`.
+Everything else is explained in the app's **Guide** (key **G**).
 
 <details>
-<summary>Shortcut: steps 1 and 2 in one go</summary>
+<summary>Run it from source, with Python</summary>
 
-FM27 Exporter's full **`FM27Exporter-….zip`** (without *plugin-only*) includes BepInEx 6: extract it and copy
-everything in its **`payload`** folder into FM's game folder. Then start FM and wait the few minutes.
-
-</details>
-
-| Key in FM | What it does |
-|---|---|
-| **F8** | exports the list under the mouse (every row) |
-| **Ctrl + F8** | adds all attribute columns to the current view |
-
-### 3 · Add the views and search filters
-
-1. Download **[`ElevenIndex-FM27-views-and-filters.zip`](https://github.com/angelkirchev/ElevenIndex/releases/latest/download/ElevenIndex-FM27-views-and-filters.zip)**.
-2. Right-click it → **Extract All…** and extract it into **`Documents\Sports Interactive\Football Manager 27`**
-   (inside OneDrive if your Documents are there). It already has FM's folders, so everything lands in place:
-
-   ```
-   Football Manager 27\          ← in Documents\Sports Interactive
-   ├── views\                    4 views
-   ├── player search filters\    GK, FB, WB, DM, MC, MLR, AMC, AMLR, ST
-   └── staff search filters\     one per job: Assistant Manager … U18 Manager
-   ```
-   If Windows asks about replacing files of yours, choose **Skip**.
-3. In FM, pick the view that fits each screen (the view menu at the top of the list):
-
-   | Screen in FM | View | Filter |
-   |---|---|---|
-   | Your squad | **`Squad - All Players View`** (the one to export) | |
-   | Player search, outfield | **`Search - Outfield Players View`** | the position: FB, WB, DM, MC, MLR, AMC, AMLR, ST |
-   | Player search, goalkeepers | **`Search - Goalkeepers View`** | GK |
-   | Staff search | **`Search - Staff View`** | the job: Assistant Manager, Coach, Director of Football… |
-
-### 4 · Start ElevenIndex
-
-1. Download **[`ElevenIndex.exe`](https://github.com/angelkirchev/ElevenIndex/releases/latest/download/ElevenIndex.exe)**,
-   put it somewhere permanent (e.g. **Documents**) and double-click it. If Windows says *Windows protected your PC*,
-   click **More info → Run anyway** (it asks once).
-2. The first time it asks for the **club you manage** (exactly as FM writes it, e.g. "Man Utd"), the **currency** FM
-   shows wages in, and **FM27 Exporter's folder** (usually found for you). Tick **Desktop shortcut** if you want one,
-   then click **Start**.
-
-<details>
-<summary>Or run it from source, with Python</summary>
-
-Install [Python](https://www.python.org/downloads/) 3.11+ (tick **Add python.exe to PATH**), download this project
-(green **Code** button → **Download ZIP**), extract it, and double-click **`ElevenIndex.bat`**. The first time it installs
-pywebview, which the app needs.
+Python 3.14+ (it reads the save with the standard library's `compression.zstd`). Double-click **`ElevenIndex.bat`**:
+the first time it installs pywebview, which the window needs. `python build.py` builds the .exe (PyInstaller).
 
 </details>
-
-### 5 · Import your squad
-
-In FM, open your squad screen with **`Squad - All Players View`**, point at the list and press **F8**. In the app,
-open **Menu** (under the logo) → **Import file…** and choose the export, or just drop the file on the window. Done: your Lineup and Formations are ready.
-
-From then on, press **F8** on any player search, shortlist or staff search and import it the same way. Everything else
-is explained in the app's **Guide** (key **G**).
-
-
----
 
 <details>
 <summary><b>Good to know</b></summary>
 
-- **Your data** is in `Documents\ElevenIndex`. To update the app, replace `ElevenIndex.exe` with the newest one: your
-  data stays.
-- **Several saves:** **Menu → Saves** switches between them, starts a new one or deletes one (restorable there for 14 days).
-- **Players left out of an import** have too many unscouted attributes to score: scout them more and export again.
-- **"The export has no attributes":** press **Ctrl + F8** on the list in FM, then **F8** again.
-- **F8 does nothing:** check that FM's game folder has `BepInEx`, `winhttp.dll` and `BepInEx\plugins\FM27Exporter`;
-  `BepInEx\LogOutput.log` says whether the exporter loaded.
-- **The window stays blank:** install Microsoft's **WebView2 Evergreen Runtime** from the
-  [WebView2 page](https://developer.microsoft.com/microsoft-edge/webview2/).
+- **Your data** is in `Documents\ElevenIndex`. To update, replace `ElevenIndex.exe` with the newest one: your data stays.
+- **Another club:** **Menu → Game profiles… → New** (one game profile per club you manage).
+- **The window stays blank:** install Microsoft's **WebView2 Evergreen Runtime**
+  ([WebView2 page](https://developer.microsoft.com/microsoft-edge/webview2/)).
 - **Something else:** `app.log` in your data folder says what happened.
 
 </details>
@@ -187,14 +93,14 @@ A position score is the weighted average of a player's attributes on FM's 1–20
 (1–20), multiplied at each position by FM's own CA cost there. The default weights come from **harvestgreen22**'s FM27
 attribute test, measuring how much each attribute wins matches
 ([sortitoutsi](https://sortitoutsi.net/content/78219/fm27-attribute-test-tactical-understanding-training-system-preset-tactics-ai-reverse-engineering-engine-for-test#comment_910309),
-tabled by squirrel_plays on [FM-Arena](https://fm-arena.com/threads/player-attributes.59/)), and the CA costs from
-FM Scout's table. Change them on the **Attributes** page: one table for every save.
+tabled by squirrel_plays on [FM-Arena](https://fm-arena.com/threads/player-attributes.59/)). Change them on the
+**Attributes** page. The save game reader (`fm_save.py`) is our own, written from the file itself.
 
 </details>
 
 ---
 
 <p align="center">
-  <sub>Imports use <a href="https://github.com/v1adicke/fm27-exporter">FM27 Exporter</a> · © 2026 Angel Kirchev, all rights reserved: free to download and use, not to copy, modify or republish (see <a href="LICENSE">LICENSE</a>) ·
+  <sub>© 2026 Angel Kirchev, all rights reserved: free to download and use, not to copy, modify or republish (see <a href="LICENSE">LICENSE</a>) ·
   not affiliated with Sports Interactive or SEGA</sub>
 </p>

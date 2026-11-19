@@ -1,4 +1,5 @@
 # ElevenIndex's settings for this computer, normally written by the app's setup screen (config.toml, in the data folder).
 active_save = "my-club"   # the save in use: saves/<this>/
 currency = "£"            # the money sign FM shows
-# exports_dir = "C:/Users/me/Documents/Sports Interactive/Football Manager 27/exports"   # FM27 Exporter's folder, if not found by itself
+# games_dir = "C:/Users/me/Documents/Sports Interactive/Football Manager 27/games"   # FM27's save games, if not found by itself
+# auto_import = true      # read each new save game by itself (Menu → Auto-read)
