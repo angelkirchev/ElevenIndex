@@ -1410,7 +1410,7 @@ def settings_tile(config, cfg, save):
     table += (f'<tr><td class="text">Created by</td><td><b>{CREATOR}</b> · <a href="{CREATOR_URL}" target="_blank" '
               f'rel="noopener">profile on the official FM forum</a> (Sports Interactive Community)</td></tr>')  # the last line
     return {"key": "", "title": "About and your settings",
-            "text": f"<table>{table}</table>Switch, start or delete saves with <b>Menu → Saves</b> (under the logo). Everything else is in "
+            "text": f"<table>{table}</table>Switch, start or delete game profiles with <b>Menu → Manage…</b> (under the logo). Everything else is in "
                     f"<b>config.toml</b> (this computer) and <b>saves\\{html.escape(save)}\\save.toml</b> (this save) in the data "
                     f"folder: edit them with Notepad, then restart the app."}
 
@@ -2009,8 +2009,9 @@ GUIDE = [
      "text": "Type a name or club in <b>Search</b> (<b>/</b> jumps there, <b>Esc</b> clears it), or conditions like "
              "<b>age&lt;=21</b> <b>best=CD</b> <b>pa&gt;=160</b>. Click any heading to sort; again to reverse."},
     {"key": "", "title": "Menu",
-     "text": "<b>Menu</b> (key <b>M</b>): Read save game…, FM's saves folder, Auto-read, <b>Game profiles…</b> (one per club "
-             "you manage: switch, new, delete, back up, restore), Theme…, Check for updates, About. Your data stays in "
+     "text": "<b>Menu</b> (key <b>M</b>): your game profile with <b>Manage…</b> (one per club you manage, the club read from your "
+             "save game: switch, new, delete, back up, restore), Read save game…, Auto-read, FM's saves folder (Open, Change…), "
+             "Theme, Updates, About. Your data stays in "
              "<b>Documents\\ElevenIndex</b> when you update the app."},
     {"key": "", "title": "Keys",
      "text": "<b>1</b>–<b>4</b>, <b>a</b>, <b>g</b>: the menu (a number again: the next sub-tab) · <b>arrows</b> move · <b>Enter</b> "

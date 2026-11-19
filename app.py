@@ -303,7 +303,7 @@ class App:
         if not was_open:
             return
         others = [s["name"] for s in self.saves()]
-        note = f"{name} is deleted. You can restore it from Saves… for 14 days."
+        note = f"{name} is deleted. You can restore it from Menu → Manage… for 14 days."
         if others:  # the one with the newest data
             newest = max(others, key=lambda n: max((f.name[:10] for f in (score.ROOT / "saves" / n / "obs").glob("*.csv")), default=""))
             self.switch_save(newest, notice=f"{note} Now on {newest}.", title="Save deleted")
@@ -1089,7 +1089,7 @@ SETUP_HTML = """<style>
 <h1>Welcome to ElevenIndex</h1><p>Every player scored at every position, every staff member for every job, and your best
 eleven: read straight from your Football Manager 27 save games. All on your computer.</p></div>
 <div class="setup"><h2>Your save</h2>
-<div class="hint">A few details and you're ready. More clubs later: Menu → <b>Game profiles…</b></div>
+<div class="hint">A few details and you're ready. More clubs later: Menu → <b>Manage…</b></div>
 <label for="pname">Profile name: your club's name</label>
 <input id="pname" placeholder="e.g. Man Utd" autofocus>
 <div class="hint">One profile a club you manage. The club itself is read from your save game, so a typo does no harm.</div>
@@ -1204,7 +1204,7 @@ def screen(kind, club="", detail="", body="", saves=None, folder=None):
 <h1>This page couldn't open</h1><p>Your saves and imports are safe; only the page that shows them is missing or broken.</p>
 {f'<code>{esc(detail)}</code>' if detail else ''}</div>
 <div class="card"><h2>What to do</h2><ol>
-<li><b>Open the save again:</b> Menu → <b>Game profiles…</b>, pick it: every page is rebuilt from your data.</li>
+<li><b>Open the profile again:</b> Menu → <b>Manage…</b>, pick it: every page is rebuilt from your data.</li>
 <li><b>Read your save again</b> if it happened after reading one: Menu → <b>Read save game…</b>.</li>
 <li><b>Restart ElevenIndex.</b> It rescores everything when it starts.</li>
 <li><b>Still wrong?</b> Report it on the project page (Menu → <b>About</b>) and attach <b>app.log</b> from <b>{esc(score.ROOT)}</b>.</li>
@@ -1452,7 +1452,7 @@ TOOLBAR_JS = """(() => {
           if (r && r.error) { error.textContent = r.error; del.textContent = "Delete"; return; }
           if (s.current) { shade.remove(); return; }  // the app moves on to another save (or the setup page)
           await window.fmSaves();
-          window.fmNotice(`${s.club} (${s.name}) is deleted. You can restore it from Saves… for 14 days.`, false, { title: "Save deleted" });
+          window.fmNotice(`${s.club} (${s.name}) is deleted. You can restore it from Menu → Manage… for 14 days.`, false, { title: "Save deleted" });
         };
         line.append(del);
       }
