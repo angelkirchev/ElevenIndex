@@ -391,6 +391,10 @@ __THEME__
              border: 1px solid var(--line); border-radius: 5px; }
   input.wt:focus { outline: none; border-color: var(--blue); }
   td.barcell { width: 220px; }
+  /* a profile's boxes: tables fit the box, bars shrink with it (no sideways scrolling) */
+  .ppgrid .dtable { width: 100%; min-width: 0; box-sizing: border-box; } .ppgrid td.barcell { width: auto; }
+  .ppgrid .panel { overflow-x: clip; }  /* a pixel of rounding mustn't bring up a scrollbar; the tables shrink to fit */ .ppgrid .dbar { width: 100%; min-width: 36px; max-width: 140px; }
+  .ppgrid td:first-child { white-space: nowrap; }
   .wfill { display: block; height: 8px; background: var(--blue); border-radius: 4px; }
 
 
@@ -591,9 +595,11 @@ function shortMoney(v) {  // 1500 -> £1.5K, 2100000 -> £2.1M
   const [size, unit] = Math.abs(v) >= 1e9 ? [1e9, "B"] : Math.abs(v) >= 1e6 ? [1e6, "M"] : Math.abs(v) >= 1e3 ? [1e3, "K"] : [1, ""];
   return SITE.currency + +(v / size).toFixed(2) + unit;
 }
+// scores show on a 1-100 scale (more room between players than 1-20); everything inside stays 1-20, attributes too
+const SC = 5, s1 = v => (v * SC).toFixed(1);
 const FMT = {
-  f1: v => v.toFixed(1), f2: v => v.toFixed(2), pct: v => `${Math.round(v * 100)}%`, money: shortMoney,
-  delta: v => Math.abs(v) < 0.05 ? "0.0" : `${v > 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`,
+  f1: v => s1(v), f2: v => v.toFixed(2), pct: v => `${Math.round(v * 100)}%`, money: shortMoney,
+  delta: v => Math.abs(v) < 0.05 ? "0.0" : `${v > 0 ? "+" : "−"}${s1(Math.abs(v))}`,
 };
 const RANGE = { f1: [6, 13], f2: [6.5, 7.1], pct: [0.6, 1.0], attr: [5, 15] };  // each format's weak..strong span (f2: match rating)
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
@@ -653,8 +659,15 @@ function readNumber(text, col) {  // "10k", "£500k", "90%" or "90" (a percentag
   const m = /^[^\d.]?([\d.]+)([km]?)%?$/i.exec(text);
   if (!m) return null;
   const n = parseFloat(m[1]) * ({ k: 1e3, m: 1e6 }[m[2].toLowerCase()] || 1);
+  if (col.fmt === "f1") return n / SC;  // a score is typed as shown (1-100): back to the 1-20 inside
   return col.fmt === "pct" && (text.endsWith("%") || n > 1.5) ? n / 100 : n;
 }
+// a name without its accents and special letters, to match however it's typed (Lourenço = Lourenco, Ødegaard = Odegaard)
+const FOLD = { "ø": "o", "Ø": "o", "ł": "l", "Ł": "l", "đ": "d", "Đ": "d", "ß": "ss", "æ": "ae", "Æ": "ae", "œ": "oe", "ı": "i", "þ": "th", "ð": "d" };
+const fold = s => String(s).replace(/[øØłŁđĐßæÆœıþð]/g, c => FOLD[c]).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+// "within reach": a free agent, or a fee within your transfer budget and a wage no higher than your best-paid player's
+const reachable = r => !!SITE.reach && r.club !== SITE.club && (r.club === "Free agent" ||
+  ((SITE.reach.budget == null || (r.value ?? Infinity) <= SITE.reach.budget) && (SITE.reach.maxWage == null || (r.wage ?? 0) <= SITE.reach.maxWage)));
 // the search as tests a row must all pass; ok = false when part of it couldn't be read (the box turns red)
 function compileSearch(text) {
   let ok = true;
@@ -667,12 +680,13 @@ function compileSearch(text) {
       wonderkid: r => r.age != null && r.age <= 19 && (r.pa ?? 0) >= 150,
       bargain: r => r.age != null && r.age <= 24 && (r.pa ?? 0) >= 140 && (r.club === "Free agent" || (r.value != null && r.value <= 1.5e6)),
       injured: r => !!r.injured,
+      reach: reachable,
     };
     if (!parts && KEYWORDS[word.toLowerCase()]) return KEYWORDS[word.toLowerCase()];
     if (!parts && word.startsWith("!") && KEYWORDS[word.slice(1).toLowerCase()]) { const k = KEYWORDS[word.slice(1).toLowerCase()]; return r => !k(r); }
     if (!parts) {
-      const needle = word.replace(/"/g, "").toLowerCase();
-      return r => [r.name, r.club || "", r.loan ? loanLabel(r).replace(" ", "-") : ""].join(" ").toLowerCase().includes(needle);
+      const needle = fold(word.replace(/"/g, ""));
+      return r => fold([r.name, r.club || "", r.loan ? loanLabel(r).replace(" ", "-") : ""].join(" ")).includes(needle);
     }
     const col = columnFor(parts[1]), op = parts[2], value = parts[3].replace(/"/g, "");
     if (!col || !value) return unreadable();
@@ -713,6 +727,7 @@ function cellHtml(r, c, marks) {
   return `<td ${cls(c.num ? "num" : "text")}${c.num ? "" : ` title="${esc(String(v))}"`}>${v}</td>`;
 }
 function render() {
+  if (!Array.isArray(DATA)) return;  // a page of tiles has its own drawing; Escape in the search box lands here too
   const { tests, ok } = compileSearch(input.value);
   input.classList.toggle("bad", !ok);
   const before = view.length;
@@ -807,14 +822,14 @@ function scoutReport(r, H) {
   const article = w => /^[aeiou]/i.test(w) ? "An" : "A";
   const who = [traits.length ? traits.join(", ") : "", ROLE_NAME[pos] || pos].filter(Boolean).join(" ");
   const list = ks => ks.map(k => `${k} <b>${a[k]}</b>`).join(", ");
-  const s1 = `${article(who)} ${who}${r.plays ? "" : " by his attributes"}, ${lvl} (${pos} score <b>${last.score.toFixed(1)}</b>).`;
+  const first1 = `${article(who)} ${who}${r.plays ? "" : " by his attributes"}, ${lvl} (${pos} score <b>${s1(last.score)}</b>).`;
   const s2 = [strong.length ? `Strengths: ${list(strong)}` : "", weak.length ? `weaknesses: ${list(weak)}` : ""].filter(Boolean).join("; ");
   const v = last.vsAge, age = last.age;
   let s3 = v == null ? "" : v >= 1.05 ? `Well ahead of his age (${FMT.pct(v)} at ${age})` : v >= 0.97 ? `On track for his age (${FMT.pct(v)} at ${age})`
     : v >= 0.9 ? `A little behind for his age (${FMT.pct(v)} at ${age})` : `Behind for his age (${FMT.pct(v)} at ${age})`;
   if (s3) s3 += age <= 21 ? ", with time to grow" : age >= 31 ? ", and may start to decline" : "";
-  if (H.length > 1) { const d = last.score - first.score; s3 += `${s3 ? "; " : ""}${Math.abs(d) < 0.05 ? "no change" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`} since ${first.season ? first.season.split(" · ")[0] : fmtDate(first.date)}`; }
-  return [s1, s2 && s2[0].toUpperCase() + s2.slice(1) + ".", s3 && s3 + "."].filter(Boolean).join(" ");
+  if (H.length > 1) { const d = last.score - first.score; s3 += `${s3 ? "; " : ""}${Math.abs(d) < 0.05 ? "no change" : `${d > 0 ? "+" : "−"}${s1(Math.abs(d))}`} since ${first.season ? first.season.split(" · ")[0] : fmtDate(first.date)}`; }
+  return [first1, s2 && s2[0].toUpperCase() + s2.slice(1) + ".", s3 && s3 + "."].filter(Boolean).join(" ");
 }
 // HTML-safe text
 const esc = text => String(text).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
@@ -867,9 +882,9 @@ function fitForYou(r, s, fm) {
   const options = Object.entries(SITE.squadBest).filter(([pos]) => s[pos] != null && (!fm.length || fm.includes(pos)))
     .map(([pos, [who, v]]) => ({ pos, who, gap: s[pos] - v })).sort((a, b) => b.gap - a.gap);
   if (!options.length) return "";
-  const o = options[0], last = o.who.split(" ").pop(), g = Math.abs(o.gap).toFixed(1);
+  const o = options[0], last = o.who.split(" ").pop(), g = s1(Math.abs(o.gap));
   return o.gap >= 0.05
-    ? `<div class="fit up"><b>For you:</b> he'd start at <b>${esc(o.pos)}</b> over ${esc(last)} (<b>+${g}</b>).${options[1] && options[1].gap >= 0.05 ? ` Also better than your best at ${esc(options[1].pos)} (+${options[1].gap.toFixed(1)}).` : ""}</div>`
+    ? `<div class="fit up"><b>For you:</b> he'd start at <b>${esc(o.pos)}</b> over ${esc(last)} (<b>+${g}</b>).${options[1] && options[1].gap >= 0.05 ? ` Also better than your best at ${esc(options[1].pos)} (+${s1(options[1].gap)}).` : ""}</div>`
     : `<div class="fit"><b>For you:</b> a backup at <b>${esc(o.pos)}</b>, ${g} below ${esc(last)}; he wouldn't start anywhere in your best eleven.</div>`;
 }
 // a player under 24 (the age curve's top): his score at 24 if he keeps his pace for his age (vs Age × what's expected at 24)
@@ -884,14 +899,14 @@ function playerOverview(r, s, groups, snaps, scored) {
   const fm = r.plays || [];
   // good for: his best positions, the ones FM lists for him marked
   // good for: the positions FM lists for him first (when known), then up to three more his attributes suit, dimmed
-  const chipFor = ([pos, v], extra) => `<span class="chip ${stier(v)}${extra ? " also" : ""}" title="${extra ? "by his attributes; FM doesn't list it for him" : fm.length ? "FM lists this position for him" : ""}">${pos}${fm.includes(pos) ? " ✓" : ""} <b>${v.toFixed(1)}</b> <i>${levelWord(v)}</i></span>`;
+  const chipFor = ([pos, v], extra) => `<span class="chip ${stier(v)}${extra ? " also" : ""}" title="${extra ? "by his attributes; FM doesn't list it for him" : fm.length ? "FM lists this position for him" : ""}">${pos}${fm.includes(pos) ? " ✓" : ""} <b>${s1(v)}</b> <i>${levelWord(v)}</i></span>`;
   const listed = fm.length ? scores.filter(([pos]) => fm.includes(pos)) : scores.slice(0, 5);
   const also = fm.length ? scores.filter(([pos, v]) => !fm.includes(pos) && v >= (listed[0]?.[1] ?? 0) - 0.5).slice(0, 3) : [];
   const goodFor = listed.map(x => chipFor(x, false)).join("") + (also.length ? `<span class="sub" style="align-self:center">by attributes also:</span>` + also.map(x => chipFor(x, true)).join("") : "");
   // FM's groups at his best position, weighted by it (as on Research)
   const gv = g => { let t = 0, k = 0, sum = 0; for (const x of ATTR_GROUPS[g]) { if (!w[x]) continue; t += w[x]; if (a[x] != null) { k += w[x]; sum += a[x] * w[x]; } } return t && k >= t / 2 ? sum / k : null; };
   const groupRows = Object.keys(ATTR_GROUPS).filter(g => g !== "Goalkeeping" || best === "GK").map(g => [g, gv(g)]).filter(([, v]) => v != null)
-    .map(([g, v]) => `<tr><td>${g}</td><td class="num ${stier(v)}"><b>${v.toFixed(1)}</b></td><td class="barcell">${bar(v)}</td></tr>`).join("");
+    .map(([g, v]) => `<tr><td>${g}</td><td class="num ${stier(v)}"><b>${s1(v)}</b></td><td class="barcell">${bar(v)}</td></tr>`).join("");
   // strengths, weaknesses, what to train, what's still unscouted: among what counts at his best position
   const weighted = known.slice().sort((x, y) => w[y] - w[x]);
   const strengths = weighted.filter(k => a[k] >= 13).sort((x, y) => a[y] - a[x] || w[y] - w[x]).slice(0, 5);
@@ -921,21 +936,21 @@ function playerPositions(r, s, groups) {
     CD: [[50, 79, "CD"]], GK: [[50, 93, "GK"]] };
   const pitch = `<div class="panel"><div class="bh">Our scores on the pitch</div><div class="mpitch"><i class="mhalf"></i><i class="mcircle"></i><i class="mbox top"></i><i class="mbox bottom"></i>
     ${rows.flatMap(([pos, v]) => (SPOTS[pos] || []).map(([x, y, lab]) => `<div class="mp ${stier(v)}${pos === s.best ? " best" : ""}${fm.includes(pos) ? " fm" : ""}"
-      style="left:${x}%;top:${y}%" title="${esc(pos)}: ${v.toFixed(1)}, ${levelWord(v)}"><span>${lab}</span><b>${v.toFixed(1)}</b></div>`)).join("")}</div>
+      style="left:${x}%;top:${y}%" title="${esc(pos)}: ${s1(v)}, ${levelWord(v)}"><span>${lab}</span><b>${s1(v)}</b></div>`)).join("")}</div>
     <div class="mlegend"><span><i class="lb"></i>best</span>${fm.length ? `<span><i class="lf"></i>FM lists it</span>` : ""}</div></div>`;
   const yours = SITE.club && r.club === SITE.club, sb = SITE.squadBest || {};
   const vs = [...rows].sort((a, b) => POS_ORDER.indexOf(a[0]) - POS_ORDER.indexOf(b[0])).filter(([pos]) => sb[pos]).map(([pos, v]) => {
     const [who, top] = sb[pos], him = who === r.name, d = v - top;
-    return `<tr><td><b>${pos}</b></td><td class="num ${stier(v)}">${v.toFixed(1)}</td><td class="text">${him ? `<span class="t4">him</span>` : esc(surnameOf(who))} <span class="${stier(top)}">${top.toFixed(1)}</span></td>
-      <td class="num ${him ? "dim" : d >= 0.05 ? "t4" : d <= -0.05 ? "t0" : "dim"}">${him ? "–" : (d >= 0 ? "+" : "−") + Math.abs(d).toFixed(1)}</td></tr>`; }).join("");
+    return `<tr><td><b>${pos}</b></td><td class="num ${stier(v)}">${s1(v)}</td><td class="text">${him ? `<span class="t4">him</span>` : esc(surnameOf(who))} <span class="${stier(top)}">${s1(top)}</span></td>
+      <td class="num ${him ? "dim" : d >= 0.05 ? "t4" : d <= -0.05 ? "t0" : "dim"}">${him ? "–" : (d >= 0 ? "+" : "−") + s1(Math.abs(d))}</td></tr>`; }).join("");
   const starts = rows.filter(([pos, v]) => sb[pos] && (sb[pos][0] === r.name || v > sb[pos][1] + 0.05)).map(([pos]) => pos);
   const vsTable = vs ? `<div class="panel"><div class="bh">Against your best <span class="sub">at each position</span></div>
     <table class="dtable"><thead><tr><th>Position</th><th class="num">His</th><th>Your best</th><th class="num">±</th></tr></thead><tbody>${vs}</tbody></table>
     <div class="sub">${starts.length ? `${yours ? "He's" : "He'd be"} your best at <b>${starts.join(", ")}</b>.` : `${yours ? "He isn't" : "He wouldn't be"} your best anywhere: ${yours ? "a backup" : "depth"} at <b>${esc(s.best || rows[0][0])}</b>.`}</div></div>` : "";
-  return `<div class="ppgrid"><div class="panel"><div class="bh">Every position <span class="sub">best score first</span></div><table class="dtable wide"><thead><tr><th>Position</th><th class="num">Score</th><th></th><th>Level</th><th>FM</th></tr></thead><tbody>${rows.map(([pos, v]) =>
-    `<tr class="${pos === s.best ? "on" : ""}"><td><b>${pos}</b>${pos === s.best ? ` <span class="sub">best</span>` : ""}</td><td class="num ${stier(v)}"><b>${v.toFixed(1)}</b></td>
-     <td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td><td>${fm.length ? (fm.includes(pos) ? `<span class="t4">plays it</span>` : `<span class="dim">–</span>`) : ""}</td></tr>`).join("")}</tbody></table>
-    <div class="sub">${fm.length ? "Best = his highest score among the positions FM lists for him." : "No FM positions known: best = his highest score anywhere."}</div></div>
+  return `<div class="ppgrid"><div class="panel"><div class="bh">Every position <span class="sub">best score first</span></div><table class="dtable"><thead><tr><th>Position</th><th class="num">Score</th><th></th><th>Level</th></tr></thead><tbody>${rows.map(([pos, v]) =>
+    `<tr class="${pos === s.best ? "on" : ""}"><td><b>${pos}</b>${fm.includes(pos) ? ` <span class="t4" title="FM lists it for him">✓</span>` : ""}${pos === s.best ? ` <span class="sub">best</span>` : ""}</td><td class="num ${stier(v)}"><b>${s1(v)}</b></td>
+     <td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td></tr>`).join("")}</tbody></table>
+    <div class="sub">${fm.length ? "✓ = FM lists it for him; best = his highest score among those." : "No FM positions known: best = his highest score anywhere."}</div></div>
     ${pitch}${vsTable}</div>`;
 }
 // The Attributes tab, laid out like FM's: players in three columns (Technical | Mental | Physical; keepers Goalkeeping |
@@ -975,7 +990,7 @@ function profileAttributes(r, s, groups, isStaff, at, tab) {
       return `<tr class="${tierOf(k)}"><td>${esc(k)}</td><td class="num ${cls}">${word}</td></tr>`; };
     const table = (title, ks) => { ks = ks.filter(k => a[k] != null);  // only what the exports showed
       return ks.length ? `<table class="atable"><thead><tr><th>${title}</th><th class="num">Ability</th></tr></thead><tbody>${ks.map(cell).join("")}</tbody></table>` : ""; };
-    const jobs = scores.map(([k, v]) => `<button class="ajob${k === at ? " on" : ""}" data-job="${esc(k)}"><span>${esc(colLabel(k) || k)}</span><b class="${stier(v)}">${v.toFixed(1)}</b></button>`).join("");
+    const jobs = scores.map(([k, v]) => `<button class="ajob${k === at ? " on" : ""}" data-job="${esc(k)}"><span>${esc(colLabel(k) || k)}</span><b class="${stier(v)}">${s1(v)}</b></button>`).join("");
     return `<div class="astaff"><div class="ajobs"><div class="dhead">Jobs <span class="sub">best first; pick one</span></div>${jobs}</div>
       <div>
         <div class="acols2">${tab ? table(`${STAFF_TABS[tab]} Attributes`, STAFF_GROUPS[STAFF_TABS[tab]]) : ""}
@@ -1001,7 +1016,7 @@ function staffForYou(r, jobs) {
     .sort((a, b) => b.d - a.d);
   const none = jobs.filter(([k]) => !best[k] && k !== SITE.staffYou).map(([k]) => k);
   if (!gains.length && !none.length) return `<div class="fit"><b>For you:</b> he wouldn't beat the one covering any job.</div>`;
-  const parts = gains.slice(0, 3).map(g => `<b>${esc(colLabel(g.k))}</b> over ${esc(g.who.split(" ").pop())} (<b>+${g.d.toFixed(1)}</b>)`);
+  const parts = gains.slice(0, 3).map(g => `<b>${esc(colLabel(g.k))}</b> over ${esc(g.who.split(" ").pop())} (<b>+${s1(g.d)}</b>)`);
   return `<div class="fit up"><b>For you:</b> ${parts.length ? `he'd beat who covers ${parts.join(", ")}` : ""}${parts.length && none.length ? "; " : ""}${
     none.length ? `you have nobody scored at ${none.slice(0, 3).map(k => esc(colLabel(k))).join(", ")}` : ""}.</div>`;
 }
@@ -1012,16 +1027,16 @@ function staffOverview(r, s, groups) {
   const strengths = ks.filter(k => a[k] >= 14).sort((x, y) => a[y] - a[x]).slice(0, 6);
   const weaknesses = ks.filter(k => w[k] && a[k] <= 8).sort((x, y) => w[y] - w[x]).slice(0, 4);
   const chip = k => `<span class="chip">${esc(k)} <b class="${attrTier(a[k])}">${a[k]}</b></span>`;
-  return `<div class="dcards">${card("Best job", best ? `${esc(colLabel(best))} <b class="${stier(jobs[0][1])}">${jobs[0][1].toFixed(1)}</b>` : "–", best ? levelWord(jobs[0][1]) : "")}
+  return `<div class="dcards">${card("Best job", best ? `${esc(colLabel(best))} <b class="${stier(jobs[0][1])}">${s1(jobs[0][1])}</b>` : "–", best ? levelWord(jobs[0][1]) : "")}
       ${card("Job", esc(r.job || "–"))}${card("Club", esc(r.club || "–"))}${card("Born", r.born ? fmtDay(r.born) : "–", r.age != null ? `${r.age} years old` : "")}
-      ${r.contract || r.wage != null ? card("Contract to", r.contract ? fmtDay(r.contract) : "–", r.wage != null ? `${FMT.money(r.wage)} p/w` : "") : ""}
+      ${r.contract || r.wage != null ? card("Contract to", dealText(r), r.wage != null ? `${FMT.money(r.wage)} p/w` : "") : ""}
       ${r.reputation != null ? card("Reputation", (r.reputation / 1000).toFixed(1).replace(/\.0$/, "") + "k") : ""}${r.personality ? card("Personality", esc(r.personality)) : ""}
       ${r.ca != null ? card("Ability", `<b>${r.ca}</b> <span class="sub">/ ${r.pa ?? "–"}</span>`, "current / potential, hidden in FM") : ""}</div>
     ${r.style ? `<div class="dhead">Tactical style <span class="sub">hidden in FM: how he'd set up a team (as an assistant, his advice leans this way)</span></div>
       <div class="chips">${Object.entries(r.style).map(([k, v]) => `<span class="chip">${esc(k)} <b class="${attrTier(v)}">${v}</b></span>`).join("")}</div>` : ""}
     ${staffForYou(r, jobs)}
     <div class="dgrid"><div><div class="dhead">Every job, best first</div><table class="dtable wide">${jobs.map(([k, v]) =>
-      `<tr class="${k === best ? "on" : ""}"><td>${esc(colLabel(k))}</td><td class="num ${stier(v)}"><b>${v.toFixed(1)}</b></td><td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td></tr>`).join("")}</table></div>
+      `<tr class="${k === best ? "on" : ""}"><td>${esc(colLabel(k))}</td><td class="num ${stier(v)}"><b>${s1(v)}</b></td><td class="barcell">${bar(v)}</td><td>${levelWord(v)}</td></tr>`).join("")}</table></div>
       <div><div class="dhead">Strengths <span class="sub">(14+)</span></div><div class="chips">${strengths.length ? strengths.map(chip).join("") : `<span class="dim">none stand out</span>`}</div>
         <div class="dhead">Weaknesses <span class="sub">(8 or less, for ${esc(colLabel(best || ""))})</span></div><div class="chips">${weaknesses.length ? weaknesses.map(chip).join("") : `<span class="dim">none</span>`}</div></div></div>`;
 }
@@ -1052,9 +1067,9 @@ function staffProfile(r, s, groups) {
   const personal = kv([["Born", r.born ? `${fmtDay(r.born)}<span class="sub">${r.age ?? "–"} years old</span>` : r.age != null ? `${r.age} years old` : "–"],
     ["Reputation", repK(r.reputation)], ["Personality", esc(r.personality || "–")]]);
   const contract = kv([["Club", esc(r.club || "–")], ["Job", esc(r.job || (r.club === "Free agent" ? "out of work" : "–"))],
-    ["Wage", r.wage != null ? `${FMT.money(r.wage)} p/w` : "–"], ["Contract to", r.contract ? `${fmtDay(r.contract)}<span class="sub">${leftText(months)}</span>` : "–"]]);
-  const ability = abilityBars(r.ca, r.pa) + kv([["Best job", best ? `${esc(colLabel(best))}<span class="sub"><b class="${stier(jobs[0][1])}">${jobs[0][1].toFixed(1)}</b> ${levelWord(jobs[0][1])}</span>` : "–"]]);
-  const top = jobs.slice(0, 6).map(([k, v]) => `<tr class="${k === best ? "on" : ""}"><td>${esc(colLabel(k))}</td><td class="num ${stier(v)}"><b>${v.toFixed(1)}</b></td></tr>`).join("");
+    ["Wage", r.wage != null ? `${FMT.money(r.wage)} p/w` : "–"], ["Contract to", r.contract ? `${fmtDay(r.contract)}<span class="sub">${leftText(months)}</span>` : r.deal ? "no end date" : dealText(r)], ...(r.deal ? [["Type", esc(r.deal)]] : [])]);
+  const ability = abilityBars(r.ca, r.pa) + kv([["Best job", best ? `${esc(colLabel(best))}<span class="sub"><b class="${stier(jobs[0][1])}">${s1(jobs[0][1])}</b> ${levelWord(jobs[0][1])}</span>` : "–"]]);
+  const top = jobs.slice(0, 6).map(([k, v]) => `<tr class="${k === best ? "on" : ""}"><td>${esc(colLabel(k))}</td><td class="num ${stier(v)}"><b>${s1(v)}</b></td></tr>`).join("");
   return `${staffForYou(r, jobs)}
     <div class="pgrid">
       <div class="pcol">${box("Personal", personal)}${box("Contract", contract)}
@@ -1142,7 +1157,7 @@ function playerProfile(r, s, groups) {
   const contract = kv([
     ["Club", `${esc(r.club || "–")}${r.loan ? `<span class="sub">${esc(loanLabel(r))}</span>` : ""}`],
     ["Wage", r.wage != null ? `${FMT.money(r.wage)} p/w` : "–"], ["Value", value],
-    ["Contract to", r.contract ? `${fmtDay(r.contract)}<span class="sub">${leftText(months)}</span>` : "–"]]);
+    ["Contract to", r.contract ? `${fmtDay(r.contract)}<span class="sub">${leftText(months)}</span>` : r.deal ? "no end date" : dealText(r)], ...(r.deal ? [["Type", esc(r.deal)]] : [])]);
   const condition = st || r.injured ? kv([
     ["Fitness", st ? `<span class="${st.fitness >= 90 ? "t4" : st.fitness >= 80 ? "t2" : "t0"}">${st.fitness.toFixed(0)}%</span>` : "–"],
     ["Match exercise", st ? `${st.exercise.toFixed(0)}%` : "–"], ["Jadedness", st?.jadedness ?? "–"],
@@ -1152,7 +1167,7 @@ function playerProfile(r, s, groups) {
     ["Best position", `${esc(s.best || "–")} <b class="${stier(s.score)}">${FMT.f1(s.score)}</b><span class="sub">${levelWord(s.score)}</span>`],
     ["vs Age", s.vsAge == null ? "–" : `<b class="${tier(s.vsAge, RANGE.pct)}">${FMT.pct(s.vsAge)}</b><span class="sub">at ${s.age ?? "–"}</span>`],
     r.rank ? ["In the game", `${ordinal(r.rank[1])} of ${r.rank[2].toLocaleString()}<span class="sub">${POS_WORDS[r.rank[0]] || r.rank[0]}s</span>`] : null,
-    a24 != null ? ["At 24", `~<b class="${stier(a24)}">${a24.toFixed(1)}</b><span class="sub">if he keeps his pace</span>`] : null]);
+    a24 != null ? ["Potential at 24", `~<b class="${stier(a24)}">${s1(a24)}</b><span class="sub">if he keeps growing</span>`] : null]);
   const person = miniTable(h, PERSON_KEYS, LOW_GOOD);
   const hidden = miniTable(h, HIDDEN_KEYS, LOW_GOOD);
   const moves = r.traits && r.traits.length ? `<div class="chips">${r.traits.map(t => `<span class="chip">${esc(t)}</span>`).join("")}</div>` : "";
@@ -1193,7 +1208,15 @@ function scoutReportFull(r, s) {
   const listAnd = xs => xs.length > 1 ? xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1] : xs.join("");
   const strengths = (top.length ? `His ${listAnd(top.map(k => `${k.toLowerCase()} (${a[k]})`))} stand${top.length === 1 ? "s" : ""} out where he plays best.` : "") + steady + bigGames;
   const fragile = h["Injury Proneness"] >= 14 ? " He picks up injuries easily." : "";
-  const weaknesses = (weak.length ? `For a ${POS_WORDS[best] || best}, his ${weak.map(k => `${k.toLowerCase()} (${a[k]})`).join(" and ")} hold${weak.length === 1 ? "s" : ""} him back.` : "") + fragile;
+  // harvestgreen22's FM27 attribute test (20 Nov 2026): pace below 15 costs about 2 points of win rate a point; Work Rate
+  // or Concentration at 4 or less costs matches; a weaker foot only matters at 1 to 3
+  const outfield = best && best !== "GK", slow = ["Pace", "Acceleration"].filter(k => a[k] != null && a[k] < 15);
+  const tooLow = ["Work Rate", "Concentration"].filter(k => a[k] != null && a[k] <= 4);
+  const pf = r.personal || {}, weakFoot = pf.leftFoot != null && pf.rightFoot != null ? Math.min(pf.leftFoot, pf.rightFoot) : null;
+  const tested = (outfield && slow.length ? ` Short of pace (${slow.map(k => `${k.toLowerCase()} ${a[k]}`).join(", ")}): each point below 15 costs about 2 points of win rate.` : "")
+    + (tooLow.length ? ` His ${tooLow.map(k => `${k.toLowerCase()} (${a[k]})`).join(" and ")} is low enough to cost matches.` : "")
+    + (outfield && weakFoot != null && weakFoot <= 3 ? ` His weaker foot is almost unusable (${weakFoot}): that costs matches, though anything from 4 up barely matters.` : "");
+  const weaknesses = (weak.length ? `For a ${POS_WORDS[best] || best}, his ${weak.map(k => `${k.toLowerCase()} (${a[k]})`).join(" and ")} hold${weak.length === 1 ? "s" : ""} him back.` : "") + fragile + tested;
   let transfer = r.value === 0 && r.club === "Free agent" ? "He's a free agent: you can sign him now." : r.value != null ? `He's valued at ${FMT.money(r.value)}` : r.club && r.club !== "Free agent" ? "His club won't sell him" : "";
   if (r.value) transfer += r.wage != null ? `, on ${FMT.money(r.wage)} a week.` : ".";
   else if (transfer && !transfer.endsWith(".")) transfer += ".";
@@ -1267,7 +1290,7 @@ function profileHeader(r, s, isStaff, about) {
   const stat = (label, value, sub = "") => `<div class="pstat"><span>${label}</span><b>${value}</b>${sub ? `<i>${sub}</i>` : ""}</div>`;
   const months = r.contract && DATA_TODAY ? monthsTo(r.contract) : null;
   const ability = r.ca != null ? stat("CA / PA", `${r.ca}<em> / ${r.pa == null ? "–" : r.pa > 0 ? r.pa : "range"}</em>`) : "";
-  const money = (r.wage != null ? stat("Wage", FMT.money(r.wage), "per week") : "") + (r.contract ? stat("Contract", fmtDay(r.contract), leftText(months)) : "");
+  const money = (r.wage != null ? stat("Wage", FMT.money(r.wage), "per week") : "") + (r.contract ? stat("Contract", fmtDay(r.contract), leftText(months)) : r.wage === 0 ? stat("Contract", dealText(r)[0].toUpperCase() + dealText(r).slice(1), "no end date") : "");
   const stats = isStaff
     ? stat("Best job", s.best ? `<span class="${stier(s.score)}">${FMT.f1(s.score)}</span>` : "–", esc(s.best ? colLabel(s.best) : "")) + ability
       + (r.reputation != null ? stat("Reputation", repK(r.reputation)) : "") + money
@@ -1364,8 +1387,8 @@ const groupName = (pos, lead) => `${lead} ${GROUP_NAMES[pos] || pos}`;
 function weakSpot(weak, team) {
   const gap = team != null ? team - weak.v : null;
   const tone = gap == null || gap < 0.3 ? "wk0" : gap < 1 ? "wk1" : "wk2";
-  return `<span class="weakspot ${tone}" title="${esc(weak.pos)}: its starters and backups averaged${gap != null ? `, ${gap.toFixed(1)} below the eleven's average` : ""}">` +
-    `${groupName(weak.pos, "Weak")} <b>${weak.v.toFixed(1)}</b>${gap != null && gap >= 0.05 ? ` <small>−${gap.toFixed(1)}</small>` : ""}</span>` +
+  return `<span class="weakspot ${tone}" title="${esc(weak.pos)}: its starters and backups averaged${gap != null ? `, ${s1(gap)} below the eleven's average` : ""}">` +
+    `${groupName(weak.pos, "Weak")} <b>${s1(weak.v)}</b>${gap != null && gap >= 0.05 ? ` <small>−${s1(gap)}</small>` : ""}</span>` +
     (weak.missing ? ` <span class="t0">no backup</span>` : "");
 }
 
@@ -1383,7 +1406,7 @@ function researchLink(pos, text) {  // Research, opened at a position
 function lineupVerdict(f, weak) {
   const head = `Your eleven is <b>${levelWord(f.xi)}</b> (${f.xi.toFixed(2)}).`;
   if (!weak || f.xi - weak.v < 0.3) return `${head} No position is well below the rest: strengthen where you have no backup, or keep developing your youngsters (Analysis).`;
-  return `${head} The weak spot is <b>${GROUP_NAMES[weak.pos] || weak.pos}</b> (${weak.v.toFixed(1)}, ${(f.xi - weak.v).toFixed(1)} below the eleven)` +
+  return `${head} The weak spot is <b>${GROUP_NAMES[weak.pos] || weak.pos}</b> (${s1(weak.v)}, ${s1(f.xi - weak.v)} below the eleven)` +
     `${weak.missing ? ", with no backup" : ""}: search FM for a ${esc(weak.pos)}, then see who's worth it on ${researchLink(weak.pos, "Research › " + esc(weak.pos))}.`;
 }
 function renderLineup() {
@@ -1412,7 +1435,7 @@ function renderLineup() {
     // a save game: FM's rating of him there when under 15 (his score counts a little lower), and hidden-attribute warnings
     const fam = s.xi.fam != null && s.xi.fam < 15 ? ` <span class="offside" title="FM rates him ${s.xi.fam} here (15+ = he plays it): his score counts a little lower">${s.xi.fam}</span>` : "";
     const warn = s.xi.warn && s.xi.warn.length ? ` <span class="offside" title="${esc(s.xi.warn.join(", "))}">!</span>` : "";
-    return { cls: stier(s.xi.v), html: `<div class="plab">${s.label}${off ? ` <span class="offside" title="${esc(sideWhy(s.xi, s.pos))}: not his side">⚠</span>` : ""}${fam}${warn}${ageTag(s.xi)}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${s.xi.v.toFixed(1)}</div>` };
+    return { cls: stier(s.xi.v), html: `<div class="plab">${s.label}${off ? ` <span class="offside" title="${esc(sideWhy(s.xi, s.pos))}: not his side">⚠</span>` : ""}${fam}${warn}${ageTag(s.xi)}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div><div class="pval">${s1(s.xi.v)}</div>` };
   };
   const weak = f.weak;  // the position whose starters + backups average lowest (one without a backup first)
   document.getElementById("lineup").innerHTML = `<div class="ttitle lhead">Lineup
@@ -1443,12 +1466,12 @@ function renderLineup() {
       <td class="num dim">${i + 1}</td><td><span class="pl" data-name="${esc(r.name)}">${esc(r.name)}</span>${cmpIcon(r)}${r.age <= d.youthAge ? ` <span class="ytag">youth</span>` : ""}${
         onSide(r, slot) ? "" : ` <span class="ytag offtag" title="not his side">${esc(sideWhy(r, pos, d.sides[r.name]))}</span>`}</td>
       <td class="text">${role(r)}</td><td class="text">${esc(r.position || "–")}</td>${slot.side ? `<td class="text">${esc(r.foot || "–")}</td>` : ""}<td class="num">${r.age ?? "–"}</td>
-      <td class="num ${stier(r[pos])}"><b>${r[pos].toFixed(1)}</b></td><td class="num ${tier(r.vsAge, RANGE.pct)}">${FMT.pct(r.vsAge)}</td>
+      <td class="num ${stier(r[pos])}"><b>${s1(r[pos])}</b></td><td class="num ${tier(r.vsAge, RANGE.pct)}">${FMT.pct(r.vsAge)}</td>
       <td class="num">${r.wage == null ? "–" : FMT.money(r.wage)}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">No player of yours plays ${esc(pos)}.</div>`}
-    <div class="ttitle" style="margin-top:14px">Better in the game <span class="sub">players best at ${esc(pos)}${starter != null ? `, above ${starter.toFixed(1)}` : ""}</span></div>
-    ${targets.length ? `<table class="plist"><tbody>${targets.map(t => `<tr><td>${esc(t.name)}${cmpIcon(t)}</td><td class="text">${esc(t.club || "–")}</td>
+    <div class="ttitle" style="margin-top:14px">Better in the game <span class="sub">players best at ${esc(pos)}${starter != null ? `, above ${s1(starter)}` : ""}</span></div>
+    ${targets.length ? `<table class="plist"><tbody>${targets.map(t => `<tr><td>${xp(t.name)}${cmpIcon(t)}</td><td class="text">${esc(t.club || "–")}</td>
       <td class="num">${t.age ?? "–"}</td><td class="num">${t.wage == null ? "–" : FMT.money(t.wage) + " p/w"}</td>
-      <td class="num ${stier(t.v)}"><b>${t.v.toFixed(1)}</b></td>${starter != null ? `<td class="num t4">+${(t.v - starter).toFixed(1)}</td>` : ""}</tr>`).join("")}</tbody></table>`
+      <td class="num ${stier(t.v)}"><b>${s1(t.v)}</b></td>${starter != null ? `<td class="num t4">+${s1(t.v - starter)}</td>` : ""}</tr>`).join("")}</tbody></table>`
       : `<div class="sub">${(d.targets[pos] || []).length ? "No one in the game beats your starter here." : "Nobody in the game is best here yet."}</div>`}`;
   // the controls
   document.getElementById("lshape").onchange = e => { keep(SHAPE_STORE, e.target.value); renderLineup(); };
@@ -1487,7 +1510,7 @@ function renderFormationsPage() {
         weakSpot(x.weak, x.xi) : "–"}${x.short ? ` <span class="t0">${x.short} empty</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   // the chosen shape: its eleven, the backup under each, and the numbers
   const box = s => s.xi ? { cls: stier(s.xi.v), html: `<div class="plab">${s.label}${ageTag(s.xi)}</div><div class="pname">${esc(surnameOf(s.xi.name))}</div>
-      <div class="pval">${s.xi.v.toFixed(1)}</div><div class="psec">${s.sec ? `${esc(surnameOf(s.sec.name))} ${s.sec.v.toFixed(1)}` : "no backup"}</div>` }
+      <div class="pval">${s1(s.xi.v)}</div><div class="psec">${s.sec ? `${esc(surnameOf(s.sec.name))} ${s1(s.sec.v)}` : "no backup"}</div>` }
     : { cls: "empty", html: `<div class="plab">${s.label}</div><div class="pname dim">nobody</div>` };
   const slots = pitchSlots(f), xi = f.players, out = xi.filter(p => p.pos !== "GK");
   const strong = f.strong, weak = f.weak;  // by position group: starters + backups averaged
@@ -1514,12 +1537,12 @@ function renderFormationsPage() {
       row("Good · average · weak", `<b class="t4">${counts.good}</b> · <b class="t2">${counts.average}</b> · <b class="t0">${counts.weak}</b>`));
   const good = [], bad = [], link = (page, text) => `<a class="flink" data-go="${page}">${text}</a>`;
   const lines = Object.entries(f.lines).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
-  if (strong) good.push(`${groupName(strong.pos, "Strong")} (${strong.v.toFixed(1)}).`);
+  if (strong) good.push(`${groupName(strong.pos, "Strong")} (${s1(strong.v)}).`);
   if (lines.length > 1) { good.push(`The ${lines[0][0].toLowerCase()} is the best line (${lines[0][1].toFixed(2)}).`);
     bad.push(`The ${lines[lines.length - 1][0].toLowerCase()} is the weakest line (${lines[lines.length - 1][1].toFixed(2)}): ${link("analysis", "Squad › Analysis")}.`); }
   if (f.depth != null) (f.xi - f.depth <= 1 ? good : bad).push(f.xi - f.depth <= 1 ? `Good depth: the second eleven is only ${(f.xi - f.depth).toFixed(2)} behind.`
     : `A big drop to the second eleven (${(f.xi - f.depth).toFixed(2)}): ${link("depth", "Squad › Depth")}.`);
-  if (weak) bad.push(`Weakest at ${esc(weak.pos)} (${weak.v.toFixed(1)}): who would improve it, ${link("transfers", "Club › Transfers")}.`);
+  if (weak) bad.push(`Weakest at ${esc(weak.pos)} (${s1(weak.v)}): who would improve it, ${link("transfers", "Club › Transfers")}.`);
   if (thin.length) bad.push(`No real backup at ${thin.map(s => s.label).join(", ")}: ${link("depth", "Squad › Depth")}.`);
   const xiAge = xi.length ? xi.reduce((a, p) => a + (p.age || 0), 0) / xi.length : null;
   if (xiAge != null) (xiAge >= 29 ? bad : good).push(xiAge <= 26 ? `A young eleven (${xiAge.toFixed(1)}): it can grow together.`
@@ -1546,8 +1569,8 @@ try { rankBy = localStorage.getItem(ANALYSIS_STORE) || rankBy; } catch (e) {}
 // a youngster (21 or under) ready for minutes or worth developing (what to train first, by the position's weights).
 const AGE_OLD = 30, AGE_YOUNG = 21;
 function recommendations(g) {
-  const sc = p => p.score ?? -1, last = n => esc(n.split(" ").pop()), f1 = v => v.toFixed(1);
-  const who = m => `${esc(m.name)} ${m.age} (${esc(m.club)}) ${f1(m.score)}${m.wage != null ? `, ${FMT.money(m.wage)}` : ""}`;
+  const sc = p => p.score ?? -1, last = n => esc(n.split(" ").pop()), f1 = v => s1(v);
+  const who = m => `${xp(m.name)} ${m.age} (${esc(m.club)}) ${f1(m.score)}${m.wage != null ? `, ${FMT.money(m.wage)}` : ""}`;
   const starters = g.players.filter(p => p.role === "Starter" && p.score != null), rest = g.players.filter(p => p.role !== "Starter" && p.score != null);
   if (!starters.length) return [];
   const out = [], weakest = Math.min(...starters.map(sc));
@@ -1589,11 +1612,11 @@ function squadWide(ps, shape) {
   if (shape && shape.weak && shape.xi - shape.weak.v >= 0.5)
     out.push({ cls: shape.weak.missing || shape.xi - shape.weak.v >= 1 ? "act" : "warn", pos: "Shape",
       text: `Your best shape is <b>${esc(shape.name)}</b> (${shape.xi.toFixed(2)}); its weak spot is <b>${GROUP_NAMES[shape.weak.pos] || shape.weak.pos}</b> ` +
-        `(${shape.weak.v.toFixed(1)}, ${(shape.xi - shape.weak.v).toFixed(1)} below)${shape.weak.missing ? " with no backup" : ""}: that's the signing that lifts the whole eleven.` });
+        `(${s1(shape.weak.v)}, ${s1(shape.xi - shape.weak.v)} below)${shape.weak.missing ? " with no backup" : ""}: that's the signing that lifts the whole eleven.` });
   for (const g of ps) {  // the market: what you've imported there is clearly better than your group
     const avg = g.players.length ? g.players.filter(p => p.score != null).reduce((t, p) => t + p.score, 0) / g.players.filter(p => p.score != null).length : null;
     if (g.importedScore != null && avg != null && g.importedScore - avg >= 1.5)
-      out.push({ cls: "warn", pos: g.pos, text: `The ${esc(g.pos)}s you've imported average ${g.importedScore.toFixed(1)}, ${(g.importedScore - avg).toFixed(1)} above yours: depth there is cheap to improve.` });
+      out.push({ cls: "warn", pos: g.pos, text: `The ${esc(g.pos)}s you've imported average ${s1(g.importedScore)}, ${s1(g.importedScore - avg)} above yours: depth there is cheap to improve.` });
   }
   const starters = ps.flatMap(g => g.players.filter(p => p.role === "Starter"));
   const old = [...new Map(starters.filter(p => p.age >= 30).map(p => [p.name, p])).values()];
@@ -1612,12 +1635,12 @@ function renderAnalysis() {
   const mean = vs => { vs = vs.filter(v => v != null); return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null; };
   // Speed: Pace and Acceleration together; Score: the position score; else one attribute
   const val = (p, attrs, score) => rankBy === "Speed" ? mean([attrs.Pace, attrs.Acceleration]) : rankBy === "Score" ? score : attrs[rankBy] ?? null;
-  const fmt = v => v == null ? "–" : rankBy === "Score" || !Number.isInteger(v) ? v.toFixed(1) : String(v);
-  const avg1 = v => v == null ? "–" : v.toFixed(1);  // averages: always one decimal
+  const fmt = v => v == null ? "–" : rankBy === "Score" ? s1(v) : !Number.isInteger(v) ? v.toFixed(1) : String(v);
+  const avg1 = v => v == null ? "–" : rankBy === "Score" ? s1(v) : v.toFixed(1);  // averages: always one decimal
   const cls = v => v == null ? "dim" : rankBy === "Score" ? stier(v) : attrTier(v);
   const label = rankBy === "Speed" ? "Speed (Pace + Acceleration)" : rankBy === "Score" ? "Position score" : rankBy;
   const diff = (a, b) => a == null || b == null ? `<td class="num dim">–</td>` :
-    `<td class="num ${a - b >= 0 ? "t4" : "t0"}">${a - b >= 0 ? "+" : "−"}${Math.abs(a - b).toFixed(1)}</td>`;
+    `<td class="num ${a - b >= 0 ? "t4" : "t0"}">${a - b >= 0 ? "+" : "−"}${rankBy === "Score" ? s1(Math.abs(a - b)) : Math.abs(a - b).toFixed(1)}</td>`;
   const ps = d.positions.map(g => {
     const players = g.players.map(p => ({ ...p, v: val(p, p.attrs, p.score) }))
       .sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
@@ -1656,7 +1679,7 @@ function renderAnalysis() {
       ${rankBy === "Score" ? "" : `<th class="num">${esc(g.pos)} score</th>`}<th title="his weakest of the position's most weighted attributes">Weak spot</th></tr></thead><tbody>${g.players.map((p, i) => `<tr><td class="num dim">${i + 1}</td>
       <td><span class="pl" data-name="${esc(p.name)}">${esc(p.name)}</span></td><td class="text">${esc(p.role)}${p.from ? ` <span class="sub">↑${esc(p.from)}</span>` : ""}</td>
       <td class="num">${p.age}</td><td class="num ${cls(p.v)}">${fmt(p.v)}</td>
-      ${rankBy === "Score" ? "" : `<td class="num ${p.score == null ? "dim" : stier(p.score)}">${p.score == null ? "–" : p.score.toFixed(1)}</td>`}
+      ${rankBy === "Score" ? "" : `<td class="num ${p.score == null ? "dim" : stier(p.score)}">${p.score == null ? "–" : s1(p.score)}</td>`}
       <td>${p.weak ? `${esc(p.weak[0])} <b class="${attrTier(p.weak[1])}">${p.weak[1]}</b>` : "–"}</td></tr>`).join("")}</tbody></table>`
       : `<div class="sub">No one here on the Lineup.</div>`}</div>`).join("");
   // the squad plan: every position's recommendations as one list, most urgent first (act, weak backup, plan, youngsters)
@@ -1688,7 +1711,7 @@ let devFrom = null, devTo = null;
 try { [devFrom, devTo] = JSON.parse(localStorage.getItem(DEV_STORE) || "[null,null]"); } catch (e) {}
 // 1-2 sentences: how the youngsters and the 30+ players moved, and who to give minutes or replace
 function devAdvice(both) {
-  const avg = ps => ps.length ? ps.reduce((t, p) => t + p.ds, 0) / ps.length : null, sg = v => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`;
+  const avg = ps => ps.length ? ps.reduce((t, p) => t + p.ds, 0) / ps.length : null, sg = v => `${v >= 0 ? "+" : "−"}${s1(Math.abs(v))}`;
   const young = both.filter(p => p.b.age <= 21), old = both.filter(p => p.b.age >= 30);
   const rise = both.filter(p => p.b.age <= 23 && p.ds > 0.3).sort((a, b) => b.ds - a.ds).slice(0, 3).map(p => esc(p.name.split(" ").pop()));
   const fall = old.filter(p => p.ds < -0.2).sort((a, b) => a.ds - b.ds).slice(0, 3).map(p => esc(p.name.split(" ").pop()));
@@ -1705,7 +1728,7 @@ function seasonTable(d, S, name) {
   const cell = (p, x, i) => { const now = p.at[x], before = p.at[S[i - 1]];
     if (!now) return `<td class="num dim">–</td>`;
     const ch = before ? now.score - before.score : null;
-    return `<td class="num"><b class="${stier(now.score)}">${now.score.toFixed(1)}</b>${ch != null && Math.abs(ch) >= 0.05 ? `<span class="chg ${ch > 0 ? "t4" : "t0"}">${ch > 0 ? "+" : "−"}${Math.abs(ch).toFixed(1)}</span>` : ""}${now.ca != null ? ` <span class="sub">CA ${now.ca}</span>` : ""}</td>`; };
+    return `<td class="num"><b class="${stier(now.score)}">${s1(now.score)}</b>${ch != null && Math.abs(ch) >= 0.05 ? `<span class="chg ${ch > 0 ? "t4" : "t0"}">${ch > 0 ? "+" : "−"}${s1(Math.abs(ch))}</span>` : ""}${now.ca != null ? ` <span class="sub">CA ${now.ca}</span>` : ""}</td>`; };
   return `<div class="tile wide"><div class="ttitle">Checkpoint by checkpoint <span class="sub">score at his best position at each (and CA), with the change from the one before</span></div>
     <table><thead><tr><th>Player</th>${S.map(x => `<th class="num">${esc(x)}</th>`).join("")}</tr></thead><tbody>${ps.map(p =>
       `<tr><td>${name(p)}</td>${S.map((x, i) => cell(p, x, i)).join("")}</tr>`).join("")}</tbody></table></div>`;
@@ -1730,7 +1753,7 @@ function renderDevelopment() {
   if (!fromS || SP.indexOf(fromS) > SP.indexOf(toS)) fromS = SP.find(x => x.start !== toS.end && SP.indexOf(x) <= SP.indexOf(toS)) || toS;
   devFrom = fromS.season; devTo = toS.season;
   const fromLabel = fromS.start, toLabel = toS.end;
-  const sign = v => (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v).toFixed(1);
+  const sign = v => (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v).toFixed(1), signS = v => (v > 0 ? "+" : v < 0 ? "−" : "±") + s1(Math.abs(v));
   const cls = v => v > 0.05 ? "t4" : v < -0.05 ? "t0" : "dim";
   const both = [], joined = [], left = [];
   for (const p of d.players) {
@@ -1798,7 +1821,7 @@ function renderDevelopment() {
   const opt = (sel, to) => SP.map(x => `<option value="${esc(x.season)}"${x.season === sel ? " selected" : ""}>${esc(x.season)}${to ? ` (${x.state})` : ""}</option>`).join("");
   const top = (title, ps) => `<div class="tile"><div class="ttitle">${title}</div>${ps.length ? `<table><tbody>${ps.map(p =>
     `<tr><td>${name(p)}</td><td class="num dim">${p.b.age}y</td><td class="text">${esc(p.b.best)}</td>
-     <td class="num">${p.a.score.toFixed(1)} → ${p.b.score.toFixed(1)}</td><td class="num ${cls(p.ds)}">${sign(p.ds)}</td></tr>`).join("")}</tbody></table>`
+     <td class="num">${s1(p.a.score)} → ${s1(p.b.score)}</td><td class="num ${cls(p.ds)}">${signS(p.ds)}</td></tr>`).join("")}</tbody></table>`
     : `<div class="sub">No one.</div>`}</div>`;
   main.innerHTML = `<div class="tile wide"><div class="ttitle">Development <span class="devrange"><span class="dlab">From</span>
       <select id="devfrom" class="snapsel" title="from the start of this season">${opt(devFrom, false)}</select><span class="darr">→</span><span class="dlab">To</span>
@@ -1806,7 +1829,7 @@ function renderDevelopment() {
       <span class="sub">${esc(fromLabel.split(" · ")[0])} → ${esc(toLabel.split(" · ")[0])} · a season runs to 30 Jun; while it's on, to 31 Dec, then now</span></div>
     <div class="devsum">
       <div><b>${both.length}</b><span>players compared</span></div>
-      <div><b class="${cls(avg)}">${sign(avg)}</b><span>average score change</span></div>
+      <div><b class="${cls(avg)}">${signS(avg)}</b><span>average score change</span></div>
       <div><b class="t4">${both.filter(p => p.ds > 0.05).length}</b><span>improved</span></div>
       <div><b class="t0">${both.filter(p => p.ds < -0.05).length}</b><span>declined</span></div>
       <div><b>${joined.length}</b><span>joined${joined.length ? ": " + joined.map(p => esc(p.name.split(" ").pop())).join(", ") : ""}</span></div>
@@ -1821,7 +1844,7 @@ function renderDevelopment() {
     <table><thead><tr><th>Player</th><th class="num">Age</th><th>Best</th><th class="num">Score</th><th class="num">±</th>
       <th class="num">vs Age ±</th>${hasCa ? `<th class="num" title="current ability (hidden in FM), from save games">CA</th>` : ""}${catsUsed.map(g => `<th>${g}</th>`).join("")}</tr></thead><tbody>${both.map(p =>
       `<tr><td>${name(p)}</td><td class="num">${p.b.age}</td><td class="text">${esc(p.b.best)}${p.a.best !== p.b.best ? ` <span class="sub">was ${esc(p.a.best)}</span>` : ""}</td>
-       <td class="num">${p.a.score.toFixed(1)} → ${p.b.score.toFixed(1)}</td><td class="num ${cls(p.ds)}">${sign(p.ds)}</td>
+       <td class="num">${s1(p.a.score)} → ${s1(p.b.score)}</td><td class="num ${cls(p.ds)}">${signS(p.ds)}</td>
        <td class="num ${cls(p.dv)}">${sign(p.dv)}%</td>${hasCa ? `<td class="num">${p.a.ca != null && p.b.ca != null ? `${p.a.ca} → ${p.b.ca} <span class="${cls(p.b.ca - p.a.ca)}">${p.b.ca - p.a.ca >= 0 ? "+" : "−"}${Math.abs(p.b.ca - p.a.ca)}</span>` : (p.b.ca ?? "–")}</td>` : ""}${catsUsed.map(g => catCell(p, g)).join("")}</tr>`).join("")}</tbody></table></div>`;
   const keep = () => { try { localStorage.setItem(DEV_STORE, JSON.stringify([devFrom, devTo])); } catch (e) {} renderDevelopment(); };
   document.getElementById("devfrom").onchange = e => { devFrom = e.target.value; keep(); };
@@ -1911,7 +1934,20 @@ function renderAttributes() {
       (changed ? ". Your unsaved changes aren't in it: Save first to include them." : ""), false);
   };
   document.getElementById("wimport").onclick = async () => {
-    const r = await call(pywebview.api.import_weights);
+    const r = await pywebview.api.import_weights();
+    if (r && r.error) {  // checked before anything is imported: every problem in one pop-up, to fix the file in one go
+      const shade = document.createElement("div");
+      shade.style.cssText = "position:fixed;inset:0;z-index:10050;background:#000a;display:flex;align-items:center;justify-content:center";
+      shade.innerHTML = `<div style="max-width:560px;width:92vw;background:var(--pop,#121815);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:18px 20px;box-shadow:0 12px 30px #000c">
+        <h3 style="margin:0 0 10px;font:600 18px var(--head);letter-spacing:.03em;text-transform:uppercase;color:#f87171">Can't import this file</h3>
+        <div style="white-space:pre-wrap;line-height:1.55;font-size:14px">${esc(r.error)}</div>
+        <div class="sub" style="margin-top:10px">Nothing was changed. Fix the file (Notepad is fine) and import it again.</div>
+        <button style="display:block;margin:14px 0 0 auto;padding:7px 18px;border:0;border-radius:6px;background:var(--blue);color:#0f1412;font:600 14px var(--body);cursor:pointer">OK</button></div>`;
+      shade.querySelector("button").onclick = () => shade.remove();
+      shade.onclick = e => { if (e.target === shade) shade.remove(); };
+      document.body.append(shade);
+      return;
+    }
     if (!r || !r.result) return;
     edited = r.result.values; renderAttributes();
     fmNotice(`Loaded the attribute weights from ${r.result.file}. Check them, then Save.`, false);
@@ -1956,8 +1992,8 @@ let cmpEdit = [false, false];
 // who's better at the position now, who's younger and cheaper, and who's better at more positions
 function compareVerdict(A, B, at, positions) {
   const sur = p => esc(p.name.split(" ").pop()), a = A.scores[at], b = B.scores[at];
-  const now = a == null || b == null ? "" : Math.abs(a - b) < 0.05 ? `At ${esc(at)} they're level (${a.toFixed(1)}).`
-    : `At ${esc(at)} <b>${sur(a > b ? A : B)}</b> is better now (+${Math.abs(a - b).toFixed(1)}).`;
+  const now = a == null || b == null ? "" : Math.abs(a - b) < 0.05 ? `At ${esc(at)} they're level (${s1(a)}).`
+    : `At ${esc(at)} <b>${sur(a > b ? A : B)}</b> is better now (+${s1(Math.abs(a - b))}).`;
   const more = positions.filter(p => A.scores[p] != null && B.scores[p] != null), wa = more.filter(p => A.scores[p] > B.scores[p]).length, wb = more.filter(p => B.scores[p] > A.scores[p]).length;
   const extras = [A.age != null && B.age != null && A.age !== B.age ? `<b>${sur(A.age < B.age ? A : B)}</b> is ${Math.abs(A.age - B.age)} year${Math.abs(A.age - B.age) > 1 ? "s" : ""} younger` : "",
     A.wage != null && B.wage != null && A.wage !== B.wage ? `<b>${sur(A.wage < B.wage ? A : B)}</b> earns ${shortMoney(Math.abs(A.wage - B.wage))} p/w less` : "",
@@ -1979,7 +2015,7 @@ function renderCompare() {
   const at = chosen === "auto" ? auto : chosen;
   const keepAt = pos => { try { localStorage.setItem(COMPARE_AT, JSON.stringify({ pair, pos })); } catch (e) {} };
   const money = v => v == null ? "–" : shortMoney(v);
-  const f1 = v => v == null ? "–" : v.toFixed(1), pct = v => v == null ? "–" : FMT.pct(v);  // blanks: a keeper's Technical, an outfielder at GK
+  const f1 = v => v == null ? "–" : s1(v), pct = v => v == null ? "–" : FMT.pct(v);  // blanks: a keeper's Technical, an outfielder at GK
   const surname = p => p.name.split(" ").pop();
   const w = WEIGHTS[at] || {};
   const card = (p, i) => {
@@ -2006,7 +2042,7 @@ function renderCompare() {
   let body = "";
   if (A && B) {
     const better = (a, b) => a == null || b == null || a === b ? ["", ""] : a > b ? ["win", ""] : ["", "win"];
-    const diff = (a, b, f = v => v.toFixed(1)) => a == null || b == null ? `<td class="num dim">–</td>` :
+    const diff = (a, b, f = v => s1(v)) => a == null || b == null ? `<td class="num dim">–</td>` :
       `<td class="num ${b > a ? "t4" : b < a ? "t0" : "dim"}" title="${esc(surname(B))} minus ${esc(surname(A))}">${b === a ? "=" : (b > a ? "+" : "−") + f(Math.abs(b - a))}</td>`;
     // radar: the position's top attributes (by weight), both players on a 1-20 scale
     const axes = Object.entries(w).sort((x, y) => y[1] - x[1]).map(([a]) => a).slice(0, 8);
@@ -2169,6 +2205,7 @@ document.addEventListener("click", e => { if (!e.target.closest?.("th[data-full]
 window.addEventListener("resize", placeColTip);
 window.addEventListener("scroll", placeColTip, true);
 document.getElementById("body").addEventListener("click", e => {
+  if (!Array.isArray(DATA)) return;  // a page of tiles (Top lists…): no list of players under its names
   const icon = e.target.closest(".cmpic");
   if (icon) { if (!icon.classList.contains("full")) { fmCompareToggle(icon.dataset.name); render(); } return; }
   if (!getSelection().isCollapsed) return;  // leave a text selection alone: redrawing would lose it
@@ -2179,6 +2216,7 @@ document.getElementById("body").addEventListener("click", e => {
   if (e.target.closest(".pl")) showDetail(view[cur.r]);  // a name opens the profile
 });
 document.getElementById("body").addEventListener("dblclick", e => {
+  if (!Array.isArray(DATA)) return;
   const row = e.target.closest("tr");
   if (row && !row.classList.contains("morerow")) showDetail(view[row.rowIndex - 1]);
 });
@@ -2208,10 +2246,10 @@ function staffPlanHtml(d) {
   const coverOf = Object.fromEntries((d.jobs || []).filter(j => j.cover).map(j => [j.cover[0], j.name]));
   for (const j of (d.jobs || []).filter(j => !j.you)) {  // the manager's job is yours
     const y = j.cover, b = j.yours[0], l = j.lists, last = n => esc(n.split(" ").pop());
-    const busy = !y && b ? `${last(b[0])} (${b[1].toFixed(1)}) is your best here but covers ${esc(coverOf[b[0]] || "another job")}. ` : "";
-    if (!y) items.push({ cls: "act", job: j, text: busy + (l ? `Nobody free: <b>${esc(l[0])}</b> (${esc(l[1] || "free agent")}) is the best in the game, ${l[2].toFixed(1)}.` : "Nobody free here, and nobody in the game either.") });
-    else if (l && l[2] - y[1] >= 1) items.push({ cls: l[2] - y[1] >= 4 ? "big" : "warn", gain: l[2] - y[1], job: j, text: `Hire <b>${esc(l[0])}</b> (${esc(l[1] || "free agent")}, ${l[2].toFixed(1)}): <b>+${(l[2] - y[1]).toFixed(1)}</b> on ${last(y[0])} (${y[1].toFixed(1)}).` });
-    else if (y[1] < 11) items.push({ cls: "plan", job: j, text: `${last(y[0])} is weak here (${y[1].toFixed(1)}): ${l ? `the best in the game is ${l[2].toFixed(1)}.` : "look in Staff › Database."}` });
+    const busy = !y && b ? `${last(b[0])} (${s1(b[1])}) is your best here but covers ${esc(coverOf[b[0]] || "another job")}. ` : "";
+    if (!y) items.push({ cls: "act", job: j, text: busy + (l ? `Nobody free: <b>${xs(l[0])}</b> (${esc(l[1] || "free agent")}) is the best in the game, ${s1(l[2])}.` : "Nobody free here, and nobody in the game either.") });
+    else if (l && l[2] - y[1] >= 1) items.push({ cls: l[2] - y[1] >= 4 ? "big" : "warn", gain: l[2] - y[1], job: j, text: `Hire <b>${xs(l[0])}</b> (${esc(l[1] || "free agent")}, ${s1(l[2])}): <b>+${s1(l[2] - y[1])}</b> on ${last(y[0])} (${s1(y[1])}).` });
+    else if (y[1] < 11) items.push({ cls: "plan", job: j, text: `${last(y[0])} is weak here (${s1(y[1])}): ${l ? `the best in the game is ${s1(l[2])}.` : "look in Staff › Database."}` });
   }
   // who judges players for you (assistant, scouts, analysts, DoF): weak judging makes their reports and star ratings less reliable
   const JUDGES = /assistant manager|scout|recruitment|director of football|technical director/i;
@@ -2239,7 +2277,7 @@ function nameOptions(people, typed) {
     if (out.length >= 60) break;
   }
   return out.map(p => `<option value="${esc(p.name)}" label="${esc(`${p.club || "free agent"}${p.age != null ? ` · ${p.age}y` : ""}${
-    p.best ? ` · ${p.best} ${p.score != null ? p.score.toFixed(1) : ""}` : p.job ? ` · ${p.job}` : ""}`)}"></option>`).join("");
+    p.best ? ` · ${p.best} ${p.score != null ? s1(p.score) : ""}` : p.job ? ` · ${p.job}` : ""}`)}"></option>`).join("");
 }
 // Staff › Compare: the same data as Your staff (d.everyone, d.jobs), laid out like Players › Compare: two cards (picked with
 // the icon by a name in a staff list, x, + Compare, or typed), a verdict, then every job and every attribute side by side
@@ -2253,7 +2291,7 @@ function renderStaffCompare() {
   const jobName = Object.fromEntries((d.jobs || []).map(j => [j.role, j.name]));
   const bestJob = p => Object.entries(p.s).sort((x, y) => y[1] - x[1])[0] || null;  // [role, score]
   const mine = p => p.club === d.club, surname = p => p.name.split(" ").pop();
-  const f1 = v => v == null ? "–" : v.toFixed(1);
+  const f1 = v => v == null ? "–" : s1(v);
   const card = (p, i) => {
     if (!p || cmpEdit[i]) return `<div class="ccard c${i} empty"><input class="cfind" data-i="${i}" list="cnames" placeholder="Type a staff member's name…">
       <div class="sub">${p ? `Changing ${esc(p.name)}: pick someone else, or <a href="#" class="ccancel" data-i="${i}">keep him</a>.` :
@@ -2271,7 +2309,7 @@ function renderStaffCompare() {
     const shared = Object.keys(A.s).filter(r => B.s[r] != null), wa = shared.filter(r => A.s[r] > B.s[r]).length, wb = shared.filter(r => B.s[r] > A.s[r]).length;
     const ra = (bestJob(A) || [])[0], a = ra && A.s[ra], b = ra && B.s[ra];
     const at = ra && b != null ? (Math.abs(a - b) < 0.05 ? `At ${esc(jobName[ra] || ra)} (${esc(surname(A))}'s best job) they're level.` :
-      `At ${esc(jobName[ra] || ra)} (${esc(surname(A))}'s best job) <b>${esc(surname(a > b ? A : B))}</b> is better (+${Math.abs(a - b).toFixed(1)}).`) : "";
+      `At ${esc(jobName[ra] || ra)} (${esc(surname(A))}'s best job) <b>${esc(surname(a > b ? A : B))}</b> is better (+${s1(Math.abs(a - b))}).`) : "";
     const extras = [wa !== wb ? `<b>${esc(surname(wa > wb ? A : B))}</b> is better at ${Math.max(wa, wb)} of ${shared.length} jobs` : "",
       A.age != null && B.age != null && A.age !== B.age ? `<b>${esc(surname(A.age < B.age ? A : B))}</b> is ${Math.abs(A.age - B.age)} year${Math.abs(A.age - B.age) > 1 ? "s" : ""} younger` : ""].filter(Boolean);
     return at + (extras.length ? " " + extras.join("; ") + "." : "");
@@ -2284,7 +2322,7 @@ function renderStaffCompare() {
   if (A && B) {
     const better = (a, b) => a == null || b == null || a === b ? ["", ""] : a > b ? ["win", ""] : ["", "win"];
     const diff = (a, b) => a == null || b == null ? `<td class="num dim">–</td>` :
-      `<td class="num ${b > a ? "t4" : b < a ? "t0" : "dim"}" title="${esc(surname(B))} minus ${esc(surname(A))}">${Math.abs(b - a) < 0.05 ? "=" : (b > a ? "+" : "−") + Math.abs(b - a).toFixed(1)}</td>`;
+      `<td class="num ${b > a ? "t4" : b < a ? "t0" : "dim"}" title="${esc(surname(B))} minus ${esc(surname(A))}">${Math.abs(b - a) < 0.05 ? "=" : (b > a ? "+" : "−") + s1(Math.abs(b - a))}</td>`;
     const th = first => `<thead><tr><th>${first}</th><th class="num ca">${esc(surname(A))}</th><th class="num cb">${esc(surname(B))}</th><th class="num">±</th></tr></thead>`;
     const jobs = (d.jobs || []).filter(j => A.s[j.role] != null || B.s[j.role] != null);
     const jobsTable = `<table class="ctable">${th("Job")}<tbody>${jobs.map(j => { const a = A.s[j.role], b = B.s[j.role], [wa, wb] = better(a, b);
@@ -2323,13 +2361,35 @@ function renderStaffCompare() {
 // --- Squad › Depth, Youth, Contracts: DATA = squad_tabs() in score.py (save games fill contracts, ability, personality)
 const DEPTH_STORE = "fm:__SAVE__:depth";
 const NEED_SAVE = `<div class="sub">Read a save game (Menu → <b>Read save game…</b>) to fill this in.</div>`;
+// a contract's end; with no end date and no wage, FM's word for the deal: "amateur" at an amateur club (most of its
+// players are on such deals), else "non-contract"
+let AMATEUR_CLUBS = null;
+const amateurClubs = () => {
+  if (AMATEUR_CLUBS) return AMATEUR_CLUBS;
+  if (SITE.amateur) return AMATEUR_CLUBS = new Set(SITE.amateur);  // from score.py: every club in the game
+  const rows = Array.isArray(DATA) ? DATA : Object.values((DATA && (DATA.players || DATA.people)) || {}), by = {};
+  rows.forEach(r => { if (r && r.club) { const c = by[r.club] ||= [0, 0]; c[0]++; if (!r.contract && r.wage === 0) c[1]++; } });
+  return AMATEUR_CLUBS = new Set(Object.keys(by).filter(c => by[c][0] >= 8 && by[c][1] / by[c][0] >= 0.6));
+};
+const dealText = p => p.contract ? fmtDay(p.contract) : p.deal ? p.deal.toLowerCase() : p.wage === 0 ? (amateurClubs().has(p.club || (DATA && DATA.players && DATA.players[p.name] || {}).club) ? "amateur" : "non-contract") : "–";
 function monthsLeft(c) {  // months from FM's date (the last save game read) to a contract's end
   if (!c || !DATA.today) return null;
   const [y1, m1, d1] = DATA.today.split("-").map(Number), [y2, m2, d2] = c.split("-").map(Number);
   return (y2 - y1) * 12 + (m2 - m1) + (d2 - d1) / 30;
 }
 const pname = n => `<span class="pl" data-name="${esc(n)}">${esc(n)}</span>`;
-const sc = v => v == null ? `<span class="dim">–</span>` : `<b class="${stier(v)}">${v.toFixed(1)}</b>`;
+// someone this page has no profile for (another club's player, the best staff in the game): his name opens his profile
+// in Players › Database or Staff › Database (fmOpenElsewhere), which looks him up by the name in the link
+const xp = n => `<span class="pl xl" data-name="${esc(n)}" data-ext="p" title="open his profile">${esc(n)}</span>`;
+const xs = n => `<span class="pl xl" data-name="${esc(n)}" data-ext="s" title="open the profile">${esc(n)}</span>`;
+const xm = n => `<span class="pl xl" data-name="${esc(n)}" data-ext="m" title="open his profile">${esc(n)}</span>`;  // one of yours: Squad
+document.addEventListener("click", e => {
+  const el = e.target.closest(".xl");
+  if (!el) return;
+  e.stopPropagation(); e.preventDefault();
+  location.href = `${({ s: "staff", m: "squad" })[el.dataset.ext] || "elsewhere"}.html?open=${encodeURIComponent(el.dataset.name)}`;
+}, true);
+const sc = v => v == null ? `<span class="dim">–</span>` : `<b class="${stier(v)}">${s1(v)}</b>`;
 const warnChips = p => (p.warn || []).map(w => `<span class="chip warnchip">${esc(w)}</span>`).join("");
 function renderDepth() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
@@ -2349,7 +2409,7 @@ function renderDepth() {
       const left = monthsLeft(sp.contract), notes = [];
       let urgency = 0;
       if (!b) { notes.push(["act", "no backup"]); urgency = 3; }
-      else if (drop >= 1.5) { notes.push(["warn", `drop ${drop.toFixed(1)}`]); urgency = 2; }
+      else if (drop >= 1.5) { notes.push(["warn", `drop ${s1(drop)}`]); urgency = 2; }
       if (b && s.age >= 30 && b.age >= 30) { notes.push(["plan", "both 30+"]); urgency = Math.max(urgency, 1); }
       const sf = (d.players[s.name] || {}).mstats, bf = b ? (d.players[b.name] || {}).mstats : null;
       if (formWord(sf) === "out of form") { notes.push(["warn", "starter out of form"]); urgency = Math.max(urgency, 1); }
@@ -2368,7 +2428,7 @@ function renderDepth() {
   const mean = xs => xs.length ? xs.reduce((t, v) => t + v, 0) / xs.length : null;
   const lineRows = Object.entries(LINES).map(([line, ps]) => { const rs = rows.filter(r => ps.includes(r.pos));
     const a = mean(rs.map(r => r.s.v)), b = mean(rs.filter(r => r.b).map(r => r.b.v));
-    return rs.length ? `<tr><td><b>${line}</b></td><td class="num">${sc(a)}</td><td class="num">${b == null ? "–" : sc(b)}</td><td class="num ${a != null && b != null && a - b >= 1.2 ? "t0" : "dim"}">${a != null && b != null ? (a - b).toFixed(1) : "–"}</td></tr>` : ""; }).join("");
+    return rs.length ? `<tr><td><b>${line}</b></td><td class="num">${sc(a)}</td><td class="num">${b == null ? "–" : sc(b)}</td><td class="num ${a != null && b != null && a - b >= 1.2 ? "t0" : "dim"}">${a != null && b != null ? s1(a - b) : "–"}</td></tr>` : ""; }).join("");
   const ageOf = ps => mean(ps.map(p => p.age).filter(v => v != null));
   const xiAge = ageOf(f.players), secAge = ageOf(f.second || []);
   const old = f.players.filter(p => p.age >= 30).length, young = (f.second || []).filter(p => p.age <= 21).length;
@@ -2376,7 +2436,7 @@ function renderDepth() {
   const versatile = all.filter(p => p.loan !== "out").map(p => ({ p, at: POS_ORDER.filter(pos => p[pos] != null && p.score != null && p[pos] >= p.score - 0.7 && playsIt(p, pos)) }))
     .filter(x => x.at.length >= 3).sort((a, b) => b.at.length - a.at.length || b.p.score - a.p.score).slice(0, 6);
   const summary = `<div class="boxes">
-      ${box("The two elevens", `<div class="bignum"><div><b class="${stier(f.xi)}">${f.xi.toFixed(1)}</b><span>first XI</span></div><div><b class="${stier(f.depth)}">${f.depth == null ? "–" : f.depth.toFixed(1)}</b><span>second XI</span></div><div><b>${(mean(rows.filter(r => r.drop != null).map(r => r.drop)) ?? 0).toFixed(1)}</b><span>average drop</span></div>
+      ${box("The two elevens", `<div class="bignum"><div><b class="${stier(f.xi)}">${s1(f.xi)}</b><span>first XI</span></div><div><b class="${stier(f.depth)}">${f.depth == null ? "–" : s1(f.depth)}</b><span>second XI</span></div><div><b>${s1(mean(rows.filter(r => r.drop != null).map(r => r.drop)) ?? 0)}</b><span>average drop</span></div>
         <div><b>${(x => x == null ? "–" : Math.round(x))(mean(f.players.map(p => P[p.name]?.ca).filter(v => v != null)))}</b><span>first XI's CA</span></div>
         <div><b>${(x => x == null ? "–" : Math.round(x))(mean((f.second || []).map(p => P[p.name]?.ca).filter(v => v != null)))}</b><span>second XI's CA</span></div>
         <div><b>${rows.filter(r => !r.b).length}</b><span>slots with no backup</span></div></div>`)}
@@ -2388,7 +2448,7 @@ function renderDepth() {
   const count = k => rows.filter(r => r.notes.some(n => n[0] === k)).length;
   const avgDrop = rows.filter(r => r.drop != null).reduce((t, r, _, a) => t + r.drop / a.length, 0);
   main.innerHTML = `<div class="tile wide"><div class="ttitle">Cover in <span class="rankby">${select}</span>
-      <span class="sub">first XI ${f.xi.toFixed(1)} · second XI ${f.depth == null ? "–" : f.depth.toFixed(1)} · an average drop of ${avgDrop.toFixed(1)} from starter to backup</span></div>
+      <span class="sub">first XI ${s1(f.xi)} · second XI ${f.depth == null ? "–" : s1(f.depth)} · an average drop of ${s1(avgDrop)} from starter to backup</span></div>
     <div class="advice">${count("act") ? `<b class="rec act">${count("act")}</b> slot(s) with no backup. ` : ""}${count("warn") ? `<b class="rec warn">${count("warn")}</b> with a big drop to the backup. ` : ""}${count("plan") ? `<b class="rec plan">${count("plan")}</b> to plan for (age, contracts). ` : ""}${!count("act") && !count("warn") ? "Every slot has decent cover." : "Back to front; a name in the game that beats the backup is shown beside it. Click a heading to sort."}</div>
     ${summary}
     <table><thead><tr><th>Slot</th><th>Starter</th><th class="num">Age</th><th class="num">Score</th><th>Form</th><th>Contract</th><th>Backup</th><th class="num">Age</th><th class="num">Score</th><th class="num">Drop</th><th>Notes</th><th>Better in the game</th></tr></thead><tbody>
@@ -2396,9 +2456,9 @@ function renderDepth() {
       <td>${formChips((d.players[r.s.name] || {}).mstats)}</td>
       <td class="${left == null ? "dim" : left <= 6 ? "t0" : left <= 12 ? "t2" : ""}">${left == null ? "–" : leftText(left)}</td>
       <td>${r.b ? pname(r.b.name) + " " + warnChips(r.bp) : `<span class="dim">nobody</span>`}</td><td class="num">${r.b?.age ?? "–"}</td><td class="num">${r.b ? sc(r.b.v) : "–"}</td>
-      <td class="num ${r.drop == null ? "dim" : r.drop >= 1.5 ? "t0" : r.drop >= 0.8 ? "t2" : "t4"}">${r.drop == null ? "–" : r.drop.toFixed(1)}</td>
+      <td class="num ${r.drop == null ? "dim" : r.drop >= 1.5 ? "t0" : r.drop >= 0.8 ? "t2" : "t4"}">${r.drop == null ? "–" : s1(r.drop)}</td>
       <td class="notes">${r.notes.map(([k, t]) => `<span class="rec ${k}">${esc(t)}</span>`).join(" · ") || `<span class="dim">fine</span>`}</td>
-      <td class="wrap">${r.target ? `${esc(r.target.name)} <span class="sub">${esc(r.target.club || "")}, ${r.target.age ?? "–"}</span> ${sc(r.target.v)}` : `<span class="dim">–</span>`}</td></tr>`; }).join("")}
+      <td class="wrap">${r.target ? `${xp(r.target.name)} <span class="sub">${esc(r.target.club || "")}, ${r.target.age ?? "–"}</span> ${sc(r.target.v)}` : `<span class="dim">–</span>`}</td></tr>`; }).join("")}
     </tbody></table><div class="sub">Starters and backups are the formation's first and second XI (Formations). Warnings beside names come from a save game: low Consistency or Important Matches, high Injury Proneness.</div></div>`;
   document.getElementById("depthpick").onchange = e => { try { localStorage.setItem(DEPTH_STORE, e.target.value); } catch (err) {} renderDepth();
     notify(`Depth now shows ${e.target.value}.`, "Formation changed"); };
@@ -2436,9 +2496,23 @@ function renderYouth() {
       <td class="num">${p.ca ?? "–"}</td><td class="num">${pa(p)}</td><td class="num">${room(p) ?? "–"}</td>
       <td>${p.dev == null ? "–" : `<b class="${attrTier(p.dev)}">${devWord(p.dev)}</b> <span class="sub">${p.dev.toFixed(1)}</span>`}</td>
       <td class="num ${attrTier(p.traits.Professionalism ?? 0)}">${p.traits.Professionalism ?? "–"}</td><td class="num ${attrTier(p.traits.Ambition ?? 0)}">${p.traits.Ambition ?? "–"}</td>
-      <td class="num ${attrTier(p.det ?? 0)}">${p.det ?? "–"}</td><td>${p.contract ? fmtDay(p.contract) : "–"}</td>
+      <td class="num ${attrTier(p.det ?? 0)}">${p.det ?? "–"}</td><td>${dealText(p)}</td>
       <td class="notes">${flags(p).map(([k, t]) => `<span class="rec ${k}">${esc(t)}</span>`).join(" · ")}</td></tr>`).join("")}
-    </tbody></table></div>`;
+    </tbody></table></div>` + intakeTile(d.intakes);
+}
+// Squad › Youth's intakes (youth_intakes in score.py): each season's youngsters who arrived at 16 or under, and where they are now
+function intakeTile(I) {
+  if (!I || !I.since) return "";
+  const head = `<div class="tile wide"><div class="ttitle">Youth intakes <span class="sub">youngsters who arrived at 16 or under, by season, and what became of them · counted since your first save read (${esc(I.since)})</span></div>`;
+  if (!I.seasons.length) return head + `<div class="sub">None yet. Each youth intake (and any young signing) shows here from the next one after your first read: keep reading your saves through the season.</div></div>`;
+  const STATUS = { here: ["young", "at the club"], moved: ["plan", "moved on"], gone: ["warn", "no longer in the game"] };
+  return head + `<div class="boxes">${I.seasons.map(s => { const here = s.players.filter(p => p.status === "here").length;
+    return box(`${s.season} intake`, `<table class="dtable" style="width:100%"><thead><tr><th>Player</th><th class="num">Age</th><th class="num">Score</th><th class="num">PA</th><th>Now</th></tr></thead><tbody>
+      ${s.players.map(p => `<tr><td>${p.status === "here" ? pname(p.name) : esc(p.name)} <span class="sub">${esc(p.best || "")}</span></td><td class="num">${p.age ?? "–"}<span class="sub"> (${p.joined ?? "–"})</span></td>
+        <td class="num">${sc(p.score)}</td><td class="num">${p.pa > 0 ? p.pa : "–"}</td>
+        <td><span class="rec ${STATUS[p.status][0]}">${STATUS[p.status][1]}</span>${p.club ? ` <span class="sub">${esc(p.club)}</span>` : ""}</td></tr>`).join("")}</tbody></table>`,
+      `${s.players.length} arrived · ${here} still here`); }).join("")}</div>
+    <div class="sub">Age: now (and when he arrived).</div></div>`;
 }
 // Club › Contracts: wages against what each player brings: each one's wage against the middle wage of your players
 // within half a point of his score (what his level earns here); over- and underpaid, and the middle wage of each role
@@ -2505,12 +2579,28 @@ function wageStructure(people) {
         roles.map(([role, w, n]) => `<tr><td>${role}</td><td class="num">${n}</td><td class="num">${shortMoney(w)}</td></tr>`).join("")}</tbody></table>`, "a ceiling for new contracts")}
     </div></div>`;
 }
+// Contracts, Medical and Training's list: the first team or the youth teams, one at a time (kept per save). A player's
+// team comes from the save (First team, Under-21s, Under-18s, B team…); without it, his role.
+const SQUAD_STORE = "fm:__SAVE__:squadview";
+let squadView = "first";
+try { squadView = localStorage.getItem(SQUAD_STORE) || "first"; } catch (e) {}
+const isFirst = p => p.team ? p.team === "First team" : p.role !== "Youth";
+const inView = p => squadView === "first" ? isFirst(p) : !isFirst(p);
+const viewSwitch = all => `<span class="rankby"><span class="seg" id="sqview"><button data-v="first" class="${squadView === "first" ? "on" : ""}">First team (${all.filter(isFirst).length})</button>` +
+  `<button data-v="youth" class="${squadView === "youth" ? "on" : ""}">Youth (${all.filter(p => !isFirst(p)).length})</button></span></span>`;
+document.addEventListener("click", e => {  // the switch, on whichever page shows it: redraw that page
+  const b = e.target.closest("#sqview button");
+  if (!b) return;
+  squadView = b.dataset.v;
+  try { localStorage.setItem(SQUAD_STORE, squadView); } catch (err) {}
+  (DRAW[PAGE] || render)();
+});
 function renderContracts() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA, m = d.money || {};
   main.className = "tiles";
-  const people = Object.values(d.people), hasSave = people.some(p => p.contract);
-  const bill = people.filter(p => p.wage != null && p.loan !== "out").reduce((t, p) => t + p.wage, 0);
+  const all = Object.values(d.people), people = all.filter(inView), hasSave = all.some(p => p.contract);
+  const bill = all.filter(p => p.wage != null && p.loan !== "out").reduce((t, p) => t + p.wage, 0);
   const card2 = card;
   const money = m.transfer_budget != null ? `<div class="dcards">
       ${card2("Transfer budget", shortMoney(m.transfer_budget), "this season")}
@@ -2524,12 +2614,12 @@ function renderContracts() {
     const left = monthsLeft(p.contract);
     return { ...p, left, notes: contractAdvice(p, left, fair[p.name], (DATA.players[p.name] || {}).mstats), perPoint: p.wage != null && p.score ? p.wage / p.score : null };
   }).sort((a, b) => (a.left ?? 999) - (b.left ?? 999));
-  main.innerHTML = `<div class="tile wide"><div class="ttitle">Money</div>${money}</div>${wageStructure(people)}
+  main.innerHTML = `<div class="tile wide"><div class="ttitle">Money ${viewSwitch(all)} <span class="sub">the club's money; the wages and contracts below: ${squadView === "first" ? "the first team" : "the youth teams"}</span></div>${money}</div>${wageStructure(people)}
     <div class="tile wide"><div class="ttitle">Contracts <span class="sub">soonest to end first</span></div>${hasSave ? "" : NEED_SAVE}
     <table><thead><tr><th>Player</th><th class="num">Age</th><th>Role</th><th class="num">Score</th><th class="num">Wage p/w</th><th class="num">Per point</th><th class="num">Value</th><th>Contract</th><th class="num">Left</th><th>Advice</th></tr></thead><tbody>
     ${rows.map(p => `<tr><td>${pname(p.name)}${p.loan ? ` <span class="sub">loan ${esc(p.loan)}</span>` : ""}</td><td class="num">${p.age ?? "–"}</td><td>${esc(p.role)}</td><td class="num">${sc(p.score)}</td>
       <td class="num">${p.wage == null ? "–" : shortMoney(p.wage)}</td><td class="num">${p.perPoint == null ? "–" : shortMoney(p.perPoint)}</td>
-      <td class="num">${p.value == null ? "–" : shortMoney(p.value)}</td><td>${p.contract ? fmtDay(p.contract) : "–"}</td>
+      <td class="num">${p.value == null ? "–" : shortMoney(p.value)}</td><td>${dealText(p)}</td>
       <td class="num ${p.left == null ? "dim" : p.left <= 6 ? "t0" : p.left <= 12 ? "t2" : ""}">${p.left == null ? "–" : Math.max(0, Math.round(p.left))}</td>
       <td class="notes">${p.notes.map(([k, t, why]) => `<span class="rec ${k}">${esc(t)}</span>${why ? ` <span class="sub">${esc(why)}</span>` : ""}`).join(" · ")}</td></tr>`).join("")}
     </tbody></table><div class="sub"><b>Wage per point</b>: his weekly wage per point of his best position score: lower is better value.</div></div>`;
@@ -2572,7 +2662,7 @@ function renderClub() {
       <div class="dcards">${money}${card("Players", q.players, q.loaned_out ? `+ ${q.loaned_out} out on loan` : "")}${card("Average age", q.age != null ? q.age.toFixed(1) : "–")}
         ${card("Squad value", shortMoney(q.value))}${card("Players' wages", `${shortMoney(q.wages)} <span class="sub">p/w</span>`)}${card("Best eleven's CA", ca ?? "–", "average of your 11 highest")}
         ${card("Staff", d.staffCount)}</div></div>
-    ${d.xi ? `<div class="tile"><div class="ttitle">Best eleven <span class="sub">${esc(d.xi.name)} · ${d.xi.avg.toFixed(1)}${d.xi.weak ? ` · weakest: ${esc(d.xi.weak.pos)}` : ""}</span></div>
+    ${d.xi ? `<div class="tile"><div class="ttitle">Best eleven <span class="sub">${esc(d.xi.name)} · ${s1(d.xi.avg)}${d.xi.weak ? ` · weakest: ${esc(d.xi.weak.pos)}` : ""}</span></div>
       ${list(d.xi.players, p => `<tr><td class="dim">${esc(p.pos)}${p.side ? ` ${p.side}` : ""}</td><td>${pname(p.name)}</td><td class="num">${p.age}</td><td class="num">${sc(p.v)}</td></tr>`)}</div>` : ""}
     ${clubForm(d)}
     <div class="tile"><div class="ttitle">Injured <span class="sub">${d.injured.length}</span></div>
@@ -2625,7 +2715,7 @@ function routinesFor(p) {
       return { name, v, weak: weak.map(k => [k, a[k]]) };
     }).sort((x, y) => y.v - x.v);
 }
-// harvestgreen22's FM27 training test (Training excel, ver5, 15 Nov 2026; docs/training_schedule_test.csv): one
+// FM27 training testing (Training excel, ver5, 15 Nov 2026; docs/training_schedule_test.csv): one
 // 18-year-old (PA 150, every attribute 8; coaches 16, facilities 20) through a season of 100 matches under each team
 // schedule, individual focus Quickness. base: his CA gain with no training; gains: what each development session adds
 // to each attribute over no training; schedules: [schedule, CA gain] for every schedule tested.
@@ -2681,7 +2771,8 @@ function trainingGroups(rows) {
       week = busy ? `conditioning + ${b1} + recovery + in possession shape` : `conditioning + ${b1} + in possession shape + line of engagement`;
       test = sessionOf("conditioning + attacking ball work + line of engagement + in possession shape");
       core = ["conditioning", b1, b2]; tacticalS = ["in possession shape", "line of engagement"];
-      why.push("two tactical understanding sessions keep the tactic's effectiveness up (it won 13% more matches at 70 than at 30 in harvestgreen22's test) and wear off within weeks; more than two slow growth and raise injuries");
+      why.push("two tactical understanding sessions keep the tactic's effectiveness up (it wins clearly more matches high than low); more than two slow growth and raise injuries");
+      why.push("a tactical area trained once a week holds at about half its maximum; untrained, it halves in about two months, so keep the same ones each week");
       why.push(busy ? `busy: ${tired} starters played most of their last three matches or aren't fully fit, so a recovery session goes in` : "the load is fine: no recovery needed beyond match days");
       if (tact != null) why.push(`tactical ability ${tact.toFixed(1)} on average (the median of Anticipation, Decisions, Composure, Concentration, Versatility): ${tact >= 14 ? "quick to learn a tactic" : tact >= 11 ? "average" : "slow to learn a tactic: keep it simple"}`);
     } else if (youngest) {
@@ -2756,7 +2847,7 @@ function teamSchedule(rows) {
   const legend = `<div class="tlegend">${[["phys", "Physical"], ["ball", "Ball work, development"], ["tact", "Tactical understanding"], ["set", "Set pieces"], ["rest", "Rest"], ["match", "Match"]]
     .map(([k, l]) => `<span><i class="tses ${k}"></i>${l}</span>`).join("")}</div>`;
   const notes = `<div class="tsweek">${esc(g.week)}</div>
-    ${g.test != null ? `<div class="sub" style="margin:2px 0 8px">${bar(g.test)}+${g.test.toFixed(1)} CA a season in the test for a week like this</div>` : ""}
+    ${g.test != null ? `<div class="sub" style="margin:2px 0 8px">${bar(g.test)}+${g.test.toFixed(1)} CA a season in testing for a week like this</div>` : ""}
     <div class="sub"><b>Most needed:</b> ${g.gaps.map(esc).join(", ")}</div>
     <ul class="tswhy">${g.why.map(w => `<li>${esc(w)}</li>`).join("")}</ul>
     <div class="sub">This week: ${Object.entries(counts).map(([s, n]) => `${esc(title(s))} ×${n}`).join(", ")}.</div>`;
@@ -2767,7 +2858,7 @@ function teamSchedule(rows) {
         <li>No training: +${TRAIN_TEST.base.toFixed(1)}; a tactical, set-piece or bonding session alone: at most +${Math.max(...tactical).toFixed(1)}.</li>
         <li>Recovery: two a week cost nothing (+${(sing("conditioning + attacking ball work x2 + recovery x2") ?? 0).toFixed(1)}), three a little (+${(sing("conditioning + attacking ball work x2 + recovery x3") ?? 0).toFixed(1)}), seven a lot (+${(sing("conditioning + attacking ball work + recovery x7") ?? 0).toFixed(1)}).</li>
         <li>Best FM preset: ${esc(presets[0][0].replace(/^Preset-/, "").replace(/-/g, " › "))} (+${presets[0][1].toFixed(1)}); FM's automatic training loses about a third of a season's growth.</li>
-      </ul>`, "a season's CA gain in the test");
+      </ul>`, "a season's CA gain in testing");
   return `<div class="tile wide"><div class="ttitle">Training schedule <span class="rankby">${seg("tteam", groups.map(x => [x.label, `${x.label} (${x.rs.length})`]), g.label)}
       ${first ? seg("tmatches", [[1, "One match a week"], [2, "Two matches"]], matches) : ""}</span>
       <span class="sub">a week for FM's Training → Schedule, from what your players lack, how much they can still grow, minutes, form and load</span></div>
@@ -2827,9 +2918,9 @@ function renderTraining() {
   const ceiling = rows.filter(r => r.room != null && r.room <= 3).length;
   const chip = r => `<span class="chip">${esc(r.name)}</span>`;
   main.innerHTML = `${teamSchedule(rows)}
-    <div class="tile wide"><div class="ttitle">Every player <span class="sub">back to front · in FM one Training Focus at a time: set the first, switch to Next in about a month · click a heading to sort</span></div>
+    <div class="tile wide"><div class="ttitle">${(trainView.team || "First team") === "First team" ? "First team" : "Youth"}: every player <span class="sub">follows the switch above · back to front · in FM one Training Focus at a time: set the first, switch to Next in about a month · click a heading to sort</span></div>
     <table><thead><tr><th>Player</th><th class="num">Age</th><th>Position</th><th class="num">Score</th><th class="num">Room</th><th title="set it in FM: Training → Individual → Training Focus">Training Focus</th><th title="switch to it when the first stops paying, in about a month">Next</th><th>Because of</th><th>Note</th></tr></thead><tbody>
-    ${rows.map(r => `<tr><td>${pname(r.p.name)}</td><td class="num">${r.p.age ?? "–"}</td><td>${esc(r.p.best)}</td><td class="num">${sc(r.p.score)}</td>
+    ${rows.filter(r => (trainView.team || "First team") === "First team" ? isFirst(r.q) : !isFirst(r.q)).map(r => `<tr><td>${pname(r.p.name)}</td><td class="num">${r.p.age ?? "–"}</td><td>${esc(r.p.best)}</td><td class="num">${sc(r.p.score)}</td>
       <td class="num ${r.room == null ? "dim" : r.room >= 15 ? "t4" : r.room <= 3 ? "t0" : ""}">${r.room ?? "–"}</td>
       <td>${chip(r.rs[0])}</td><td>${chip(r.rs[1])}</td>
       <td class="sub">${r.rs[0].weak.map(([k, v]) => `${esc(k)} <b class="${attrTier(v)}">${v}</b>`).join(", ")}</td>
@@ -2840,7 +2931,7 @@ function renderTraining() {
 // ---- Squad › Season: DATA = season_page() in score.py: {seasons: {"2026/27": {game_date, competitions: {comp: {name: totals}}}}, players}
 // Every match of the season is in the save, so this is live as you play and the season report once it's over.
 const SEASON_STORE = "fm:__SAVE__:season";
-let seasonView = { season: null, comp: "first", per90: false };
+let seasonView = { season: null, comp: "all", per90: false };  // all competitions by default
 try { Object.assign(seasonView, JSON.parse(localStorage.getItem(SEASON_STORE) || "{}")); } catch (e) {}
 // who plays above or below his attributes: his rank by match rating against his rank by our score (270+ minutes)
 function levelBoxes(rows, rating, minMins) {
@@ -2874,7 +2965,16 @@ function renderSeason() {
     const a = tot[n] = tot[n] || {};
     for (const [k, v] of Object.entries(t)) a[k] = (a[k] || 0) + v;
   }
-  const rows = Object.entries(tot).map(([name, t]) => ({ name, t, p: d.players[name] || {} })).filter(r => r.t.apps);
+  const rows = Object.entries(tot).map(([name, t]) => ({ name, t, p: d.players[name] || {} }));
+  // every player of the squad these competitions are for, the ones who haven't played too (at zero): the first team for
+  // first-team competitions, the youth teams for youth ones, everyone for all
+  const want = seasonView.comp === "all" ? null : ["first", "youth"].includes(seasonView.comp) ? seasonView.comp : isYouth(seasonView.comp) ? "youth" : "first";
+  const firstT = p => p.team ? p.team === "First team" : (p.age ?? 99) > 18;
+  const ZERO = () => Object.fromEntries(["apps", "starts", "minutes", "goals", "assists", "xg", "passes", "passes_done", "prog_passes", "crosses", "crosses_done",
+    "headers", "headers_won", "pressures", "pressures_done", "poss_won", "dribbles", "distance", "mistakes", "rated", "rating", "conceded", "clean_sheets", "fouls"].map(k => [k, 0]));
+  for (const p of Object.values(d.players || {}))
+    if (p.loan !== "out" && !tot[p.name] && (want == null || (want === "first") === firstT(p))) rows.push({ name: p.name, t: ZERO(), p });
+  const used = rows.filter(r => r.t.apps).length;
   const per = (r, v) => seasonView.per90 ? (r.t.minutes ? v * 90 / r.t.minutes : 0) : v;
   const n2 = (v, dp = 2) => v == null ? "–" : v.toFixed(dp);
   const fmt = (r, v, dp = 0) => seasonView.per90 ? n2(per(r, v), 2) : (dp ? v.toFixed(dp) : v);
@@ -2892,7 +2992,7 @@ function renderSeason() {
       <span class="seg" id="per90"><button data-v="0" class="${seasonView.per90 ? "" : "on"}">Totals</button><button data-v="1" class="${seasonView.per90 ? "on" : ""}">Per 90</button></span></span>
       <span class="sub">from the save game, FM's date ${esc(fmtDay(S.game_date))} · every match of the season so far</span></div>
     <div class="bignum">
-      <div><b>${rows.length}</b><span>players used</span></div><div><b>${sum("goals")}</b><span>goals</span></div>
+      <div><b>${used}</b><span>players used, of ${rows.length}</span></div><div><b>${sum("goals")}</b><span>goals</span></div>
       <div><b>${sum("assists")}</b><span>assists</span></div><div><b>${sum("xg").toFixed(1)}</b><span>xG</span></div>
       <div><b>${(rows.reduce((t, r) => t + r.t.rating, 0) / Math.max(1, rows.reduce((t, r) => t + r.t.rated, 0))).toFixed(2)}</b><span>average rating</span></div>
       <div><b>${pct(sum("passes_done"), sum("passes"))}</b><span>passes completed</span></div></div></div>
@@ -2903,6 +3003,8 @@ function renderSeason() {
       ${box("Beating their xG", `<table class="dtable" style="width:100%">${top(r => r.t.goals - r.t.xg, r => "+" + (r.t.goals - r.t.xg).toFixed(1))}</table>`, "goals minus xG")}
       ${box("Most minutes", `<table class="dtable" style="width:100%">${top(r => r.t.minutes, r => r.t.minutes)}</table>`)}
       ${levelBoxes(rows, rating, mins90)}
+      ${box("Ball winners", `<table class="dtable" style="width:100%">${top(r => per(r, r.t.poss_won), r => fmt(r, r.t.poss_won))}</table>`, seasonView.per90 ? "possession won per 90" : "possession won")}
+      ${box("Progressive passers", `<table class="dtable" style="width:100%">${top(r => per(r, r.t.prog_passes), r => fmt(r, r.t.prog_passes))}</table>`, seasonView.per90 ? "per 90" : "passes that move the ball well forward")}
       ${(() => { const gk = rows.filter(r => r.p.best === "GK" && r.t.starts); return gk.length ? box("Keepers", `<table class="dtable" style="width:100%"><thead><tr><th>Keeper</th><th class="num">Starts</th><th class="num">Clean</th><th class="num">Let in /m</th></tr></thead><tbody>${
         gk.sort((a, b) => b.t.starts - a.t.starts).map(r => `<tr><td>${pname(r.name)}</td><td class="num">${r.t.starts}</td><td class="num"><b>${r.t.clean_sheets || 0}</b></td><td class="num">${r.t.apps ? ((r.t.conceded || 0) / r.t.apps).toFixed(2) : "–"}</td></tr>`).join("")}</tbody></table>`) : ""; })()}
     </div></div>
@@ -2978,7 +3080,7 @@ function renderMedical() {
   input.style.display = "none"; document.getElementById("count").style.display = "none";
   const main = document.getElementById("main"), d = DATA;
   main.className = "tiles";
-  const P = Object.values(d.people).filter(p => p.loan !== "out"), withState = P.filter(p => p.state);
+  const here = Object.values(d.people).filter(p => p.loan !== "out"), P = here.filter(inView), withState = P.filter(p => p.state);
   if (!withState.length && !P.some(p => p.injured)) { main.innerHTML = `<div class="tile wide"><div class="ttitle">Medical</div>${NEED_SAVE}</div>`; return; }
   const fit = p => p.state ? p.state.fitness : null, ex = p => p.state ? p.state.exercise : null, jad = p => p.state ? p.state.jadedness : null;
   const prone = p => p.traits["Injury Proneness"];
@@ -2990,13 +3092,22 @@ function renderMedical() {
   const starters = withState.filter(p => p.role === "Starter"), mean = xs => xs.length ? xs.reduce((t, v) => t + v, 0) / xs.length : null;
   const pct = v => v == null ? "–" : `${v.toFixed(0)}%`;
   const list = (ps, cols) => ps.length ? `<table class="dtable" style="width:100%"><tbody>${ps.map(cols).join("")}</tbody></table>` : `<span class="dim">Nobody.</span>`;
-  const notes = p => { const out = [];
-    if (p.injured) out.push(["act", `out until ${fmtDay(p.injured)}`]);
-    else if (fit(p) != null && fit(p) < 80) out.push(["warn", "rest him"]);
-    if (!p.injured && ex(p) != null && ex(p) < 60 && p.role === "Starter") out.push(["plan", "needs match practice"]);
-    if ((prone(p) ?? 0) >= 15) out.push(["warn", "breaks down easily"]);
-    return out.map(([k, t]) => `<span class="rec ${k}">${esc(t)}</span>`).join(" · "); };
-  main.innerHTML = `<div class="tile wide"><div class="ttitle">Medical <span class="sub">${P.length} players at the club · FM's date ${esc(fmtDay(d.today))}</span></div>
+  // the Everyone list's advice: the most pressing thing first, in words, with the number behind it
+  const jads = withState.map(p => jad(p) ?? 0).sort((a, b) => a - b), tiredLine = jads[Math.floor(jads.length * 0.8)] || 0;
+  const notes = p => { const out = [], f = fit(p), x = ex(p), j = jad(p), key = ["Starter", "Backup"].includes(p.role);
+    if (p.injured) {
+      const days = DATA_TODAY ? Math.round((new Date(p.injured) - new Date(DATA_TODAY)) / 864e5) : null;
+      out.push(["act", `out until ${fmtDay(p.injured)}${days != null && days > 0 ? ` (${days} days)` : ""}`, days != null && days > 21 ? "a long one: plan without him" : "back soon: ease him in"]);
+    } else if (f != null && f < 70) out.push(["act", "rest him", `fitness ${Math.round(f)}%: a few days off, no matches`]);
+    else if (f != null && f < 80) out.push(["warn", key ? "rest him a match" : "rest him", `fitness ${Math.round(f)}%`]);
+    else if (f != null && f < 90 && key) out.push(["plan", "light training", `fitness ${Math.round(f)}%: he plays, but not every game`]);
+    if (!p.injured && j != null && tiredLine > 0 && j >= tiredLine && (f ?? 100) >= 80) out.push(["warn", "tired", `jadedness ${Math.max(0, j)}: a rest or a short break`]);
+    if (!p.injured && x != null && x < 60 && key) out.push(["plan", "short of match practice", `${Math.round(x)}%: a reserve game or 30 minutes off the bench`]);
+    if ((prone(p) ?? 0) >= 15) out.push(["warn", "breaks down easily", `injury proneness ${prone(p)}: keep his load light`]);
+    if ((p.natfit ?? 20) <= 8 && (p.age ?? 0) >= 29) out.push(["plan", "low natural fitness", `${p.natfit} at ${p.age}: rotate him often`]);
+    if (!out.length && f != null && f >= 95 && (x ?? 100) >= 90) out.push(["young", "fit and sharp", "ready to play"]);
+    return out.map(([k, t, why]) => `<span class="rec ${k}">${esc(t)}</span>${why ? ` <span class="sub">${esc(why)}</span>` : ""}`).join(" · "); };
+  main.innerHTML = `<div class="tile wide"><div class="ttitle">Medical ${viewSwitch(here)} <span class="sub">${P.length} players · FM's date ${esc(fmtDay(d.today))}</span></div>
     <div class="bignum">
       <div><b class="${injured.length ? "t0" : "t4"}">${injured.length}</b><span>injured</span></div>
       <div><b class="${short.length > 3 ? "t2" : ""}">${short.length}</b><span>below 90% fitness</span></div>
@@ -3014,8 +3125,8 @@ function renderMedical() {
     <div class="tile wide"><div class="ttitle">Everyone <span class="sub">least fit first</span></div>
     <table><thead><tr><th>Player</th><th class="num">Age</th><th>Role</th><th class="num">Fitness</th><th class="num">Match exercise</th><th class="num">Jadedness</th><th class="num" title="hidden in FM">Injury proneness</th><th class="num">Natural Fitness</th><th>Notes</th></tr></thead><tbody>
     ${[...P].sort((a, b) => (a.injured ? -1 : 0) - (b.injured ? -1 : 0) || (fit(a) ?? 100) - (fit(b) ?? 100)).map(p => `<tr><td>${pname(p.name)}</td><td class="num">${p.age ?? "–"}</td><td>${esc(p.role)}</td>
-      <td class="num ${fit(p) == null ? "dim" : fit(p) >= 90 ? "t4" : fit(p) >= 80 ? "t2" : "t0"}">${pct(fit(p))}</td><td class="num">${pct(ex(p))}</td><td class="num">${jad(p) ?? "–"}</td>
-      <td class="num ${prone(p) == null ? "dim" : attrTier(21 - prone(p))}">${prone(p) ?? "–"}</td><td class="num ${p.natfit == null ? "dim" : attrTier(p.natfit)}">${p.natfit ?? "–"}</td><td>${notes(p)}</td></tr>`).join("")}
+      <td class="num ${fit(p) == null ? "dim" : fit(p) >= 90 ? "t4" : fit(p) >= 80 ? "t2" : "t0"}">${pct(fit(p))}</td><td class="num">${pct(ex(p))}</td><td class="num">${jad(p) == null ? "–" : Math.max(0, jad(p))}</td>
+      <td class="num ${prone(p) == null ? "dim" : attrTier(21 - prone(p))}">${prone(p) ?? "–"}</td><td class="num ${p.natfit == null ? "dim" : attrTier(p.natfit)}">${p.natfit ?? "–"}</td><td class="notes">${notes(p)}</td></tr>`).join("")}
     </tbody></table></div>`;
 }
 // ---- Club › Transfers: DATA = squad_tabs() in score.py: who could go, where to strengthen, and who in the game would ----
@@ -3048,7 +3159,7 @@ function renderTransfers() {
     if (ms.apps) why.push(`${ms.apps} apps, ${ms.minutes} min${ms.rating != null && ms.apps >= 3 ? `, rated ${ms.rating.toFixed(2)}` : ""}`);
     else if (p.loan !== "out") why.push("not played this season");
     if (wr != null && wr >= 1.5) why.push(`paid ×${wr.toFixed(1)} his level`);
-    if (left != null && left <= 18) why.push(left <= 6 ? `${left} months left: his fee is falling fast` : `${left} months left`);
+    if (left != null && left <= 18) why.push(left <= 6 ? `${Math.max(0, Math.round(left))} months left: his fee is falling fast` : `${Math.round(left)} months left`);
     if (p.age >= 30) why.push("his value only falls from here");
     if (room != null && room >= 15 && p.age <= 23) why.push(`but ${room} to grow: a loan may be better`);
     const at = p.best ? cover(p.best).filter(x => x.name !== p.name) : [];
@@ -3083,7 +3194,7 @@ function renderTransfers() {
     free.push({ ...t, pos, why, gain: t.v - backupAt(pos) });
   }
   free.sort((a, b) => b.gain - a.gain).splice(10);
-  const tgt = t => t ? `${esc(t.name)} <span class="sub">${esc(t.club || "")} · ${t.age ?? "–"} · ${t.value == null ? "–" : shortMoney(t.value)}${t.wage != null ? ` · ${shortMoney(t.wage)} p/w` : ""}</span> ${sc(t.v)}` : `<span class="dim">–</span>`;
+  const tgt = t => t ? `${xp(t.name)} <span class="sub">${esc(t.club || "")} · ${t.age ?? "–"} · ${t.value == null ? "–" : shortMoney(t.value)}${t.wage != null ? ` · ${shortMoney(t.wage)} p/w` : ""}</span> ${sc(t.v)}` : `<span class="dim">–</span>`;
   main.innerHTML = `<div class="tile wide"><div class="ttitle">Transfers <span class="sub">for ${esc(f.name)} (pick the formation on Squad › Depth)</span></div>
     <div class="bignum">
       <div><b>${budget == null ? "–" : shortMoney(budget)}</b><span>transfer budget</span></div>
@@ -3095,7 +3206,7 @@ function renderTransfers() {
     <div class="tile wide"><div class="ttitle">Where to strengthen <span class="sub">each slot: your starter, and the best in the game who'd beat him (or your backup); biggest gain first</span></div>
     <table><thead><tr><th>Slot</th><th>Starter</th><th class="num">Score</th><th>Backup</th><th class="num">Score</th><th>Best upgrade in the game</th><th class="num">Gain</th><th>Within your budgets</th><th>Advice</th></tr></thead><tbody>
     ${needs.map(n => `<tr><td><b>${esc(n.pos)}</b></td><td>${pname(n.s.name)}</td><td class="num">${sc(n.s.v)}</td><td>${n.b ? pname(n.b.name) : `<span class="t0">nobody</span>`}</td><td class="num">${n.b ? sc(n.b.v) : "–"}</td>
-      <td class="wrap">${tgt(n.best)}</td><td class="num ${n.gap >= 1 ? "t4" : n.gap > 0 ? "t3" : "dim"}">${n.gap > 0 ? "+" + n.gap.toFixed(1) : "–"}</td><td class="wrap">${tgt(n.cheap)}</td><td class="notes">${needHint(n)}</td></tr>`).join("")}
+      <td class="wrap">${tgt(n.best)}</td><td class="num ${n.gap >= 1 ? "t4" : n.gap > 0 ? "t3" : "dim"}">${n.gap > 0 ? "+" + s1(n.gap) : "–"}</td><td class="wrap">${tgt(n.cheap)}</td><td class="notes">${needHint(n)}</td></tr>`).join("")}
     </tbody></table><div class="sub">From the best players in the game at each position (Players › Database has everyone; use its Filter for more).</div></div>
     <div class="tile wide"><div class="ttitle">Could go <span class="sub">most valuable first · the advice, then why</span></div>
       ${sell.length ? `<div class="advice">${sellSummary(sell, needs, budget, room)}</div>
@@ -3103,10 +3214,44 @@ function renderTransfers() {
         <td class="dim">${esc(p.best || "–")}</td><td class="num">${sc(p.score)}</td><td class="num">${p.value == null ? "–" : shortMoney(p.value)}</td><td class="num">${p.wage == null ? "–" : shortMoney(p.wage)}</td>
         <td class="notes"><span class="rec ${k}">${esc(verdict)}</span>${why ? ` <span class="sub">${esc(why)}</span>` : ""}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">Nobody stands out.</div>`}</div>
     <div class="tile wide"><div class="ttitle">Bargains worth a look <span class="sub">better than your backup there: free agents, contracts ending within six months, or a fee within a fifth of your budget (${shortMoney(cheapFee)})</span></div>
-      ${free.length ? `<table><thead><tr><th>Player</th><th class="num">Age</th><th>Pos</th><th>Club</th><th class="num">Score</th><th class="num">vs backup</th><th class="num">Value</th><th class="num">Wage</th><th>Why</th></tr></thead><tbody>${free.map(t => `<tr><td>${esc(t.name)}</td><td class="num">${t.age ?? "–"}</td><td class="dim">${esc(t.pos)}</td><td class="dim">${esc(t.club || "–")}</td>
-        <td class="num">${sc(t.v)}</td><td class="num t4">+${t.gain.toFixed(1)}</td><td class="num">${t.value == null ? "–" : shortMoney(t.value)}</td><td class="num">${t.wage == null ? "–" : shortMoney(t.wage)}</td>
+      ${free.length ? `<table><thead><tr><th>Player</th><th class="num">Age</th><th>Pos</th><th>Club</th><th class="num">Score</th><th class="num">vs backup</th><th class="num">Value</th><th class="num">Wage</th><th>Why</th></tr></thead><tbody>${free.map(t => `<tr><td>${xp(t.name)}</td><td class="num">${t.age ?? "–"}</td><td class="dim">${esc(t.pos)}</td><td class="dim">${esc(t.club || "–")}</td>
+        <td class="num">${sc(t.v)}</td><td class="num t4">+${s1(t.gain)}</td><td class="num">${t.value == null ? "–" : shortMoney(t.value)}</td><td class="num">${t.wage == null ? "–" : shortMoney(t.wage)}</td>
         <td class="notes"><span class="rec ${t.why[0]}">${t.why[1]}</span>${t.contract && t.club !== "Free agent" ? ` <span class="sub">contract to ${fmtDay(t.contract)}</span>` : ""}</td></tr>`).join("")}</tbody></table>`
-      : `<div class="sub">None right now: nobody cheap beats your backups. Players › Top lists › Top bargains has young ones with potential.</div>`}</div>`;
+      : `<div class="sub">None right now: nobody cheap beats your backups. Players › Top lists › Top bargains has young ones with potential.</div>`}</div>`
+    + signingIdeas(d, needs, budget);
+}
+// Club › Transfers' signing ideas: five ways to strengthen, each a pick and two alternatives from the best in the game at
+// your positions with most to gain: an upgrade on the starter, an affordable step up on the backup, a successor for an
+// ageing starter, the best value for money and a free signing. Each prefers a position the others haven't taken, so
+// the ideas spread over the squad; all of them within reach (a fee within the budget, a wage your club already pays).
+function signingIdeas(d, needs, budget) {
+  const pool = pos => d.targets[pos] || [], inReach = t => t.club === "Free agent" || reachable(t);
+  const order = needs.map(n => n.pos);  // biggest gain first
+  const cheap = budget != null && budget > 0 ? budget * 0.25 : 5e6;
+  const CATS = [
+    ["Upgrade", "plan", "beats your starter, and within reach", n => pool(n.pos).filter(t => t.v > n.s.v + 0.05 && inReach(t)).sort((a, b) => b.v - a.v)],
+    ["Affordable", "young", `better than your backup for under ${shortMoney(cheap)}`, n => pool(n.pos).filter(t => t.v > (n.b ? n.b.v : 0) && t.club !== "Free agent" && (t.value ?? Infinity) <= cheap && inReach(t)).sort((a, b) => b.v - a.v)],
+    ["Successor", "warn", "23 or under with room to grow, for an ageing starter", n => ((d.people[n.s.name] || {}).age ?? 0) >= 29
+      ? pool(n.pos).filter(t => (t.age ?? 99) <= 23 && t.pa > 0 && t.ca != null && t.pa - t.ca >= 10 && inReach(t)).sort((a, b) => (b.pa - b.ca) + b.v - (a.pa - a.ca) - a.v) : []],
+    ["Best value", "plan", "the most score for the fee, near your starter's level", n => pool(n.pos).filter(t => t.v >= n.s.v - 0.5 && (t.value ?? 0) > 0 && inReach(t)).sort((a, b) => b.v / b.value - a.v / a.value)],
+    ["Free", "young", "a free agent, or six months or less left on his contract", n => pool(n.pos).filter(t => (t.club === "Free agent" || (monthsLeft(t.contract) ?? 99) <= 6) && t.v > (n.b ? n.b.v : 0)).sort((a, b) => b.v - a.v)],
+  ];
+  const used = new Set(), cards = [];
+  for (const [label, kind, why, pick] of CATS) {
+    const tried = order.map(pos => needs.find(n => n.pos === pos)).map(n => ({ n, list: pick(n) })).filter(x => x.list.length);
+    const choice = tried.find(x => !used.has(x.n.pos)) || tried[0];
+    if (!choice) continue;
+    used.add(choice.n.pos);
+    const [top, ...alts] = choice.list.slice(0, 3), n = choice.n;
+    const facts = t => `${esc(t.club || "–")} · ${t.age ?? "–"} · ${t.value == null ? "–" : shortMoney(t.value)}${t.wage != null ? ` · ${shortMoney(t.wage)} p/w` : ""}`;
+    cards.push(box(`${label} · ${n.pos}`, `<div class="sigpick">${xp(top.name)} <b class="${stier(top.v)}">${s1(top.v)}</b></div>
+      <div class="sub">${facts(top)}${top.pa > 0 && top.ca != null && top.pa - top.ca >= 10 && (top.age ?? 99) <= 23 ? ` · ${top.pa - top.ca} to grow` : ""}</div>
+      <div class="sub" style="margin:6px 0"><span class="rec ${kind}">${why}</span> · your starter ${esc(n.s.name.split(" ").pop())} ${s1(n.s.v)}</div>
+      ${alts.length ? `<table class="dtable" style="width:100%"><tbody>${alts.map(t => `<tr><td>${xp(t.name)} <span class="sub">${facts(t)}</span></td><td class="num">${sc(t.v)}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">No other within reach.</div>`}`,
+      "pick and alternatives"));
+  }
+  return cards.length ? `<div class="tile wide"><div class="ttitle">Signing ideas <span class="sub">five ways to strengthen, spread over the positions with most to gain · all within reach: a fee within your budget, a wage your club already pays</span></div>
+    <style>.sigpick{font:600 16px/1.3 var(--body)}</style><div class="boxes">${cards.join("")}</div></div>` : "";
 }
 // Club › Transfers: what to do at a slot, from its starter, backup and the best upgrades
 function needHint(n) {
@@ -3126,7 +3271,7 @@ function sellSummary(sell, needs, budget, room) {
   const top = needs.filter(n => n.gap >= 0.5 && n.best).slice(0, 2);
   const lines = [`Selling all ${sell.length} could bring in about <b>${shortMoney(fee * 0.8)}</b> (offers come in around four-fifths of value) and free <b>${shortMoney(wages)}</b> p/w.`];
   if (budget != null) lines.push(`With your budget that's <b>${shortMoney(budget + fee * 0.8)}</b> to spend${room != null ? ` and <b>${shortMoney(room + wages)}</b> p/w of wage room` : ""}.`);
-  if (top.length) lines.push(`Spend it first at ${top.map(n => `<b>${esc(n.pos)}</b> (${esc(n.best.name)}, +${n.gap.toFixed(1)})`).join(" and ")}.`);
+  if (top.length) lines.push(`Spend it first at ${top.map(n => `<b>${esc(n.pos)}</b> (${xp(n.best.name)}, +${s1(n.gap)})`).join(" and ")}.`);
   if (urgent.length) lines.push(`Act now on ${urgent.map(([p]) => esc(p.name)).join(", ")}: six months or less left, they can leave for nothing.`);
   return lines.join(" ");
 }
@@ -3150,11 +3295,11 @@ function renderTopLists() {
       <select id="topgroup">${Object.keys(d.lists).map(k => `<option${k === topView.group ? " selected" : ""}>${esc(k)}</option>`).join("")}</select>
       <span class="sub">${HINT[topView.list]}</span></div>
     <table><thead><tr><th class="num">#</th><th>Player</th><th>Club</th><th>Position</th><th class="num">Age</th><th class="num">Score</th><th class="num">vs Age</th><th class="num">CA</th><th class="num">PA</th><th class="num">Value</th></tr></thead><tbody>
-    ${rows.map((p, i) => `<tr class="${p.mine ? "mine" : ""}"><td class="num dim">${i + 1}</td><td>${pname(p.name)}</td><td>${esc(p.club || "–")}</td><td class="dim">${esc(p.position || p.best || "")}</td>
+    ${rows.map((p, i) => `<tr class="${p.mine ? "mine" : ""}"><td class="num dim">${i + 1}</td><td>${p.mine ? xm(p.name) : xp(p.name)}</td><td>${esc(p.club || "–")}</td><td class="dim">${esc(p.position || p.best || "")}</td>
       <td class="num">${p.age ?? "–"}</td><td class="num">${sc(p.score)}</td><td class="num">${p.vsAge == null ? "–" : FMT.pct(p.vsAge)}</td><td class="num">${p.ca ?? "–"}</td><td class="num">${pa(p)}</td>
       <td class="num">${p.value == null ? "–" : shortMoney(p.value)}</td></tr>`).join("") || `<tr><td colspan="10" class="sub">Nobody here yet.</td></tr>`}
     </tbody></table></div>
-    <div class="tile wide"><div class="ttitle">How scores spread <span class="sub">${esc(topView.group)} · ${g.count.toLocaleString()} players in the game, average ${g.avg != null ? g.avg.toFixed(1) : "–"}</span></div>
+    <div class="tile wide"><div class="ttitle">How scores spread <span class="sub">${esc(topView.group)} · ${g.count.toLocaleString()} players in the game, average ${g.avg != null ? s1(g.avg) : "–"}</span></div>
       <div class="tbhead"><span>Score</span><span><i class="tbw"></i>The game</span><span><i class="tbm"></i>${esc(d.managed)}</span></div>${bars}</div>`;
   const keep = () => { try { localStorage.setItem(TOP_STORE, JSON.stringify(topView)); } catch (e) {} renderTopLists(); };
   main.querySelectorAll("#toplist button").forEach(b => b.onclick = () => { topView.list = b.dataset.k; keep(); });
@@ -3222,12 +3367,12 @@ if (PAGE === "team_staff" && LINEUP) {
     const coverOf = Object.fromEntries(T.jobs.filter(j => j.cover).map(j => [j.cover[0], j.name]));
     const row = j => { const y = j.cover, b = j.yours[0], l = j.lists, d = y && l ? l[2] - y[1] : null;
       if (j.you) return `<tr><td title="${esc(j.name)}"><b>${esc(j.name)}</b></td><td><span class="sub">you</span></td>
-        <td class="dim">${b ? `${esc(b[0])} ${b[1].toFixed(1)}` : "–"}</td><td>${l ? `${esc(l[0])} <span class="sub">${esc(l[1] || "free agent")}</span> <b class="${stier(l[2])}">${l[2].toFixed(1)}</b>` : `<span class="dim">–</span>`}</td><td class="num dim">–</td></tr>`;
+        <td class="dim">${b ? `${xs(b[0])} ${s1(b[1])}` : "–"}</td><td>${l ? `${xs(l[0])} <span class="sub">${esc(l[1] || "free agent")}</span> <b class="${stier(l[2])}">${s1(l[2])}</b>` : `<span class="dim">–</span>`}</td><td class="num dim">–</td></tr>`;
       return `<tr><td title="${esc(j.name)}"><b>${esc(j.name)}</b></td>
-        <td>${y ? `${esc(y[0])} <b class="${stier(y[1])}">${y[1].toFixed(1)}</b>` : `<span class="t0">nobody free</span>`}</td>
-        <td class="dim">${b && (!y || b[0] !== y[0]) ? `${esc(b[0])} ${b[1].toFixed(1)} <span class="sub">· covers ${esc(coverOf[b[0]] || "–")}</span>` : b ? "same" : "–"}</td>
-        <td>${l ? `${esc(l[0])} <span class="sub">${esc(l[1] || "free agent")}</span> <b class="${stier(l[2])}">${l[2].toFixed(1)}</b>` : `<span class="dim">–</span>`}</td>
-        <td class="num ${d == null ? "dim" : d > 0.05 ? "t0" : "t4"}">${d == null ? "–" : (d > 0 ? "+" : "−") + Math.abs(d).toFixed(1)}</td></tr>`; };
+        <td>${y ? `${xs(y[0])} <b class="${stier(y[1])}">${s1(y[1])}</b>` : `<span class="t0">nobody free</span>`}</td>
+        <td class="dim">${b && (!y || b[0] !== y[0]) ? `${xs(b[0])} ${s1(b[1])} <span class="sub">· covers ${esc(coverOf[b[0]] || "–")}</span>` : b ? "same" : "–"}</td>
+        <td>${l ? `${xs(l[0])} <span class="sub">${esc(l[1] || "free agent")}</span> <b class="${stier(l[2])}">${s1(l[2])}</b>` : `<span class="dim">–</span>`}</td>
+        <td class="num ${d == null ? "dim" : d > 0.05 ? "t0" : "t4"}">${d == null ? "–" : (d > 0 ? "+" : "−") + s1(Math.abs(d))}</td></tr>`; };
     jobsTile.innerHTML = `<div class="ttitle">Your best at each job <span class="sub">one person per job, best fits first (like a formation's eleven); ± = how much better the best in the game is; red = worth a look</span></div>
       <table><thead><tr><th>Job</th><th>Covered by</th><th>Your best at it</th><th>Best in the game</th><th class="num">±</th></tr></thead><tbody>${T.jobs.map(row).join("")}</tbody></table>`;
     document.getElementById("main").before(jobsTile);
@@ -3273,8 +3418,8 @@ function filterSpec() {  // each tab's fields: range (min / max), choice (one), 
         { id: "job", label: "Job now", kind: "multi", wide: 1, opts: jobsNow.map(j => [j, j]), test: (r, v) => r.job === v },
         { id: "best", label: "Best at", kind: "multi", wide: 1, opts: jobCols.map(c => [c.key, c.title || c.label]), test: (r, v) => r.best === v },
       ],
-      Ability: [range("ca", "Current ability", r => r.ca), range("pa", "Potential ability", r => r.pa), range("score", "Best job score", r => r.score),
-        { kind: "group", label: "Score at a job" }, ...jobCols.map(c => range("j:" + c.key, c.title || c.label, r => r[c.key], { only: "min" }))],
+      Ability: [range("ca", "Current ability", r => r.ca), range("pa", "Potential ability", r => r.pa), range("score", "Best job score", r => r.score != null ? r.score * SC : null),
+        { kind: "group", label: "Score at a job" }, ...jobCols.map(c => range("j:" + c.key, c.title || c.label, r => r[c.key] != null ? r[c.key] * SC : null, { only: "min" }))],
       Attributes: [{ kind: "note", label: "FM's words as numbers: Elite 20 · Outstanding 18-19 · Very Good 15-17 · Good 12-14 · Average 10-11 · Competent 7-9 · Reasonable 4-6" },
         ...Object.entries(STAFF_GROUPS).flatMap(([g, ks]) => known(ks).length ? mins(g, known(ks)) : [])],
       "Tactical style": [{ kind: "note", label: "Hidden in FM, 1-20: how he'd set up a team, and run a club" },
@@ -3290,13 +3435,16 @@ function filterSpec() {  // each tab's fields: range (min / max), choice (one), 
       { id: "foot", label: "Foot", kind: "choice", opts: [["", "Any"], ["left", "Left", r => r.foot === "Left" || r.foot === "Either"], ["right", "Right", r => r.foot !== "Left"], ["either", "Both", r => r.foot === "Either"]] },
       { id: "fit", label: "Injury", kind: "choice", opts: [["", "Any"], ["fit", "Not injured", r => !r.injured], ["injured", "Injured", r => !!r.injured]] },
     ],
-    "Contract & value": [range("value", "Value", r => r.value, { money: 1 }), range("wage", "Wage p/w", r => r.wage, { money: 1 }),
+    "Contract & value": [...(SITE.reach && (SITE.reach.budget != null || SITE.reach.maxWage != null) ? [{ id: "reach", label: "Within reach", kind: "choice", wide: 1,
+        opts: [["", "Anyone"], ["yes", "Within reach", reachable], ["no", "Out of reach", r => !reachable(r)]] },
+        { kind: "note", label: "Within reach: a free agent, or a fee within your transfer budget and a wage no higher than your best-paid player's. Type reach in the search box for the same." }] : []),
+      range("value", "Value", r => r.value, { money: 1 }), range("wage", "Wage p/w", r => r.wage, { money: 1 }),
       range("contract", "Contract ends within", months, { only: "max", unit: "months" }),
       { kind: "note", label: "Money as 500k, 1.5m; a contract ending within 6 months means he can sign a pre-contract with you now." }],
-    Ability: [range("score", "Score at his best", r => r.score), range("vsAge", "vs Age", r => r.vsAge, { pct: 1, unit: "%" }),
+    Ability: [range("score", "Score at his best", r => r.score != null ? r.score * SC : null), range("vsAge", "vs Age", r => r.vsAge, { pct: 1, unit: "%" }),
       range("ca", "Current ability", r => r.ca), range("pa", "Potential ability", r => r.pa > 0 ? r.pa : null),
       range("room", "Room to grow (PA − CA)", r => r.ca != null && r.pa > 0 ? r.pa - r.ca : null),
-      { kind: "group", label: "Score at a position" }, ...POS_ORDER.filter(p => COLS.some(c => c.key === p)).map(p => range("p:" + p, p, r => r[p], { only: "min" }))],
+      { kind: "group", label: "Score at a position" }, ...POS_ORDER.filter(p => COLS.some(c => c.key === p)).map(p => range("p:" + p, p, r => r[p] != null ? r[p] * SC : null, { only: "min" }))],
     Attributes: CAT_ORDER.flatMap(g => known(ATTR_GROUPS[g]).length ? mins(g, known(ATTR_GROUPS[g])) : []),
     Personality: [{ kind: "note", label: "Hidden in FM, 1-20, from your save game. Lower is better for Dirtiness, Injury Proneness and Controversy." },
       { kind: "group", label: "Personality" }, ...PERSON_KEYS.map(k => range("h:" + k, k, r => r.hidden?.[k])),
@@ -3450,6 +3598,15 @@ filterInit();
 foldLong();
 sortableTables();
 compareTray();
+// a name clicked on another page (xp / xs): open his profile here, or find him with the search when he isn't listed
+{
+  const open = new URLSearchParams(location.search).get("open");
+  if (open && Array.isArray(DATA)) {
+    const row = DATA.find(r => r.name === open) || DATA.find(r => fold(r.name) === fold(open));
+    if (row) showDetail(row);
+    else { input.value = open; render(); notify(`${open} isn't among the players listed here: the search shows who matches.`, "Not listed"); }
+  }
+}
 // The app's bridge (pywebview.api) can arrive just after the page has drawn: draw the Attributes page again then
 window.addEventListener("pywebviewready", () => { if (PAGE === "attributes") renderAttributes(); });
 </script>

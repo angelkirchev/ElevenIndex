@@ -4,6 +4,7 @@ player and staff member in the game, the club's budgets. import_save is what the
 Goalkeepers and outfielders go to separate _gk and _outfield files; save.toml's last_batch names the newest.
 """
 import csv
+import os
 import re
 import time
 import tomllib
@@ -13,12 +14,12 @@ import score  # the data folder (ROOT), the weights and the scoring rules
 
 HERE = Path(__file__).parent
 
-META_ORDER = ["Name", "Club", "Age", "Position", "Preferred Foot", "Left Foot", "Wage", "Transfer Value", "Loan", "Team", "Contract", "Height", "Minutes", "Rating"]
+META_ORDER = ["Name", "Club", "Age", "Position", "Preferred Foot", "Left Foot", "Wage", "Transfer Value", "Loan", "Team", "Contract", "Deal", "Height", "Minutes", "Rating"]
 GK_CHECK = ["Handling", "Reflexes", "One on Ones", "Aerial Reach", "Command of Area"]  # outfielders show 1-5 here
 GK_ATTRS = set(GK_CHECK) | {"Communication", "Eccentricity", "Kicking", "Punching", "Rushing Out (Tendency)", "Throwing"}
 OUTFIELD_ONLY = {"Finishing", "Tackling", "Marking", "Heading", "Dribbling", "Crossing", "Long Shots", "Penalty Taking",
                  "Corners", "Free Kick Taking", "Long Throws", "Off The Ball"}
-STAFF_META_ORDER = ["Name", "Club", "Age", "Job", "Personality", "Born", "Wage", "Contract", "Reputation",
+STAFF_META_ORDER = ["Name", "Club", "Age", "Job", "Personality", "Born", "Wage", "Contract", "Deal", "Reputation",
                     "Current Ability", "Potential Ability", "Tactical style"]
 
 
@@ -54,7 +55,7 @@ def convert(rows, headers, club):
         for foot in ("Preferred Foot", "Left Foot"):  # the views now show Preferred Foot; older ones Left Foot
             if (r.get(foot) or "").strip() not in ("", "-"):
                 new[foot] = r[foot].strip()
-        for extra in ("Team", "Height", "Contract", "Familiarity", "Current Ability", "Potential Ability", "Reputation",
+        for extra in ("Team", "Height", "Contract", "Deal", "Familiarity", "Current Ability", "Potential Ability", "Reputation",
                       "Match Exercise", "Fitness", "Jadedness", "Injured until", "Traits", "Moves", "Born", "Left Foot Rating", "Right Foot Rating",
                       "Home Reputation", "World Reputation", *score.HIDDEN_COLS):
             # read from a save game: height in cm, the contract's end date, FM's hidden ability and attributes
@@ -96,10 +97,12 @@ def write_obs(obs_dir, name, new_rows, meta=META_ORDER, add_columns=False):
             rows[r["Name"]] = r
     cols = [c for c in meta if any(c in r for r in rows.values())]
     cols += sorted({k for r in rows.values() for k in r} - set(cols))
-    with open(path, "w", newline="", encoding="utf-8") as f:
+    tmp = path.with_name(path.name + ".tmp")  # written whole, then swapped in: a read cut short leaves no half file
+    with open(tmp, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, cols, restval="")
         w.writeheader()
         w.writerows(rows.values())
+    os.replace(tmp, path)
     return path
 
 
@@ -124,6 +127,18 @@ def same_club(a, b):
     return x == y or all(w in long for w in short)
 
 
+# leagues played in the calendar year (spring to autumn), whose season is the year itself rather than July to June
+CALENDAR_LEAGUES = re.compile(r"Eliteserien|OBOS|Allsvenskan|Superettan|Veikkausliiga|Ykkösliiga|Besta deild|Úrvalsdeild|Bestadeild|"
+                              r"League of Ireland|Premier Division \(Ireland\)|SSE Airtricity|Brasileir|Série [AB]|Liga Profesional|"
+                              r"Primera Nacional|Major League Soccer|MLS|USL|J1 League|J2 League|J\.League|K League|Super League \(China\)|"
+                              r"Chinese Super League|Primera División de Chile|Primera A \(Colombia\)|Liga 1 \(Peru\)|Uruguayan", re.I)
+
+
+def calendar_season(competitions):
+    """True when the club's league runs in the calendar year: its season is then the year (2027), not 2026/27."""
+    return any(CALENDAR_LEAGUES.search(c) for c in competitions)
+
+
 SAVE_LIST = "search-save-game"  # every other player in a save game: one list, the newest save's only
 
 
@@ -140,7 +155,7 @@ def import_save(path, save=None, everyone=None):
     cfg = tomllib.loads(save_toml.read_text(encoding="utf-8"))
     club = cfg["managed_club"]
     everyone = config.get("save_everyone", True) if everyone is None else everyone
-    got = fm_save.read(path, config.get("currency", "£"), everyone=everyone)
+    got = fm_save.read(path, config.get("currency", "€"), everyone=everyone)
     obs = save_toml.parent / "obs"
     if not any(obs.glob("*.csv")) if obs.is_dir() else True:
         # nothing read into this profile yet: the save game decides its club (whatever was typed at setup)
@@ -152,11 +167,31 @@ def import_save(path, save=None, everyone=None):
     elif not (same_club(club, got["club"]) or same_club(club, got["long"])):
         raise ValueError(f"This FM save is {got['long']}'s, but the game profile open here is {club}'s. "
                          f"Start a profile for {got['club']} (Menu → Manage… → New), then read it there.")
+    # the career's manager, for the app's "another career?" question before a read (app.career_warning), and whether
+    # it's women's football (vs Age then follows the save's own players, score.womens_vs_age)
+    text = new = save_toml.read_text(encoding="utf-8")
+    manager = got["manager"].replace(chr(92), "").replace(chr(34), "")
+    for key, value in (("manager", f'"{manager}"'), ("womens", "true" if got.get("womens") else "false")):
+        line = f"{key} = {value}"
+        if re.search(rf"(?m)^{key}\s*=", new):
+            new = re.sub(rf"(?m)^{key}\s*=.*$", lambda m: line, new, count=1)
+        else:
+            new = re.sub(r"(?m)^(managed_club\s*=.*)$", lambda m: m.group(1) + "\n" + line, new, count=1)
+    if new != text:
+        save_toml.write_text(new, encoding="utf-8")
     stamp = time.strftime("%Y-%m-%dT%H%M", time.localtime(path.stat().st_mtime))
     source = re.sub(r"[^a-z0-9]+", "-", club.lower()).strip("-")
     for r in got["players"] + got["staff"]:
         r["Club"] = club  # the club as this save names it
     written, skipped = [], []
+    import json
+    dates_file = save_toml.parent / score.FM_DATES  # FM's date in each save game read: the seasons it falls in
+    try:
+        dates = json.loads(dates_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        dates = {}
+    # the lists of everyone keep the newest game's, by FM's date (a save game read later can be an older game)
+    newer = lambda old: not old or (got["date"].isoformat(), stamp) >= (dates.get(old) or old[:10], old)
     if got["players"]:
         headers = list(dict.fromkeys(k for r in got["players"] for k in r))
         obs_dir = save_toml.parent / "obs"
@@ -170,7 +205,7 @@ def import_save(path, save=None, everyone=None):
     if got.get("others"):  # everyone else: replaces the previous save game's list (it's all in the newer one)
         obs_dir = save_toml.parent / "obs"
         newest = max((p.name[:15] for p in obs_dir.glob(f"*_{SAVE_LIST}_*.csv")), default="")
-        if stamp >= newest[:15]:
+        if newer(newest):
             for old in obs_dir.glob(f"*_{SAVE_LIST}_*.csv"):
                 old.unlink()
             # the app tells players apart by name: a namesake (of yours, or of another in the list) gets his club added
@@ -195,7 +230,7 @@ def import_save(path, save=None, everyone=None):
         staff_dir = save_toml.parent / "staff"
         staff_dir.mkdir(exist_ok=True)
         newest = max((p.name[:15] for p in staff_dir.glob(f"*_{SAVE_LIST}-staff.csv")), default="")
-        if stamp >= newest[:15]:
+        if newer(newest):
             for old in staff_dir.glob(f"*_{SAVE_LIST}-staff.csv"):
                 old.unlink()
             from collections import Counter
@@ -205,26 +240,25 @@ def import_save(path, save=None, everyone=None):
                     r["Name"] = f"{r['Name']} ({r['Club']})"
             p = write_obs(staff_dir, f"{stamp}_{SAVE_LIST}-staff.csv", got["others_staff"], STAFF_META_ORDER)
             written.append((p.name, len(got["others_staff"])))
-    import json
-    dates_file = save_toml.parent / score.FM_DATES  # FM's date in each save game read: the seasons it falls in
-    try:
-        dates = json.loads(dates_file.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        dates = {}
     dates[stamp] = got["date"].isoformat()
     dates_file.write_text(json.dumps(dates, indent=1, sort_keys=True), encoding="utf-8")
     if got.get("season_stats"):  # the season's match stats, one file a season (the newest read in it wins)
         d = got["date"]
-        start = d.year if d.month >= 7 else d.year - 1
+        comps = got["season_stats"].get("competitions", {})
+        if calendar_season(comps):  # a league played in the calendar year (Scandinavia, Brazil, MLS, Japan…)
+            start, label, file_name = d.year, str(d.year), str(d.year)
+        else:  # July to June: a new season from 1 July
+            start = d.year if d.month >= 7 else d.year - 1
+            label, file_name = f"{start}/{str(start + 1)[2:]}", f"{start}-{str(start + 1)[2:]}"
         stats_dir = save_toml.parent / "stats"
         stats_dir.mkdir(exist_ok=True)
-        stats_file = stats_dir / f"{start}-{str(start + 1)[2:]}.json"
+        stats_file = stats_dir / f"{file_name}.json"
         try:
             old = json.loads(stats_file.read_text(encoding="utf-8")).get("game_date", "")
         except (OSError, ValueError):
             old = ""
         if d.isoformat() >= old:
-            stats_file.write_text(json.dumps({"season": f"{start}/{str(start + 1)[2:]}", "game_date": d.isoformat(), "read": stamp,
+            stats_file.write_text(json.dumps({"season": label, "game_date": d.isoformat(), "read": stamp,
                                               "competitions": got["season_stats"].get("competitions", {}),
                                               "matches": got["season_stats"].get("matches", {})}, ensure_ascii=False), encoding="utf-8")
     money_file = save_toml.parent / "finances.json"

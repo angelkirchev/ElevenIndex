@@ -34,9 +34,18 @@ them over time. No mods, no exports. Everything runs locally; the user's data ne
   record+25/+27 after the three reputations at +19/21/23; staff at base+27/29), the 5 hidden attributes (`HIDDEN`),
   the 8 personality traits after the person block (`TRAITS`), the club's budgets (`finances` → `finances.json`, shown
   on Squad's info line). Hidden values are shown (CA/PA columns, "Hidden in FM" on a player's details), never scored.
+  Records: x+18 = 1 staff, 2 player, 3 a player who also carries staff data (player-coaches, older players: a player's
+  layout); a contract's job low byte 1 = player, 3 = player-coach (`PLAYER_JOBS`). A player-coach (record 3, contract job 3)
+  is also read as staff, Job "Player / Coach": his staff data sits inside the player record, laid out like a staff
+  record (`staff_block` finds it by its shape), with his contract and name from the player side (`add_staff`). An end year of 1900 = no end date
+  (amateur, non-contract: no guessing then). A club's professional status is the byte after its short name (1
+  professional, 2 semi-pro, 3 amateur): each deal's "Deal" column (`deal_kind`) is Full-time at a professional club,
+  else Part-time, or with no end and no wage Amateur at an amateur club, else Non-contract (a loanee's: his own club's). Doctors
+  (`DOCTOR_JOBS`) get no wage, end or type, as FM shows N/A for them.
+  Profiles show it as Type; older imports without it fall back on `AMATEUR_CLUBS` (SITE.amateur, `dealText`).
   Staff "Tct" = Tactical Knowledge, "TCo" = Tactical (coaching). With config.toml's `save_everyone` (on by default)
   a save import also files every other men's player in the save as one list (`search-save-game`, the newest save's
-  only; women's football left out by `womens_clubs`; namesakes get " (Club)"), plus fitness, match exercise and
+  only, from the manager's own football: men's or women's, by `womens_clubs`; namesakes get " (Club)"), plus fitness, match exercise and
   jadedness, the 15 position ratings (`Familiarity`) and staff tactical styles (`STAFF_PREFS`). ~15 s for a big save.
 - `score.py`: reads a save's observations, scores them, and writes `out/<save>/<page>.html` from `template.html`
   (every page but Research) and `charts.html` (Research), with `theme.css`, `logo.svg` and the fonts inlined
@@ -63,7 +72,7 @@ page has a line about its list at the strip's right (`with_info`).
 | 1 | club | Club › Overview | budgets, squad numbers, best XI, injured, contracts ending, best youngsters, staff cover (`club_page`) |
 | 1 | contracts | Club › Contracts | budgets (`finances.json`), wage bill, contracts soonest to end first, wage per score point |
 | 1 | medical | Club › Medical | injured, short of fitness, match practice, jadedness, injury-prone, everyone's condition (`renderMedical`) |
-| 1 | transfers | Club › Transfers | budgets, who could go, each slot's best upgrade in the game and within budget (`renderTransfers`) |
+| 1 | transfers | Club › Transfers | budgets, who could go, each slot's best upgrade in the game and within budget (`renderTransfers`), bargains, signing ideas by category (`signingIdeas`: upgrade, affordable, successor, value, free; within reach, `reachable`) |
 | 2 | squad | Squad › Lineup | a pitch for a formation (`pitchSlots`); click a position for everyone who plays it and the best in the game (`targets`); the squad table below |
 | 2 | formations | Squad › Formations | 26 formations ranked (`formations`); one on a pitch with its XI, backups and numbers |
 | 2 | depth | Squad › Depth | the two elevens, cover by line, ages, versatile players; each slot's starter, backup, drop, third choice, a better name in the game (`squad_tabs`) |
@@ -71,7 +80,7 @@ page has a line about its list at the strip's right (`with_info`).
 | 2 | development | Squad › Development | two seasons compared (CA too); 3+ seasons side by side (`seasonTable`) |
 | 2 | training | Squad › Training | each player's next FM27 individual routines (`ROUTINES`, `routinesFor`: weak attributes that count at his position, physical ones a little); the Team schedule (`teamSchedule`, `TRAIN_TEST`: harvestgreen22's training test ver5, `docs/training_schedule_test.csv`) |
 | 1 | season | Club › Season | your players' match stats this season by competition (`season_page`, saves/<save>/stats/<season>.json from `fm_save.match_stats`) |
-| 2 | youth | Squad › Youth | players 21 and under: CA, PA, room to grow, development factor |
+| 2 | youth | Squad › Youth | players 21 and under: CA, PA, room to grow, development factor; the intakes by year and what became of them (`youth_intakes`, ordered by FM's date) |
 | 3 | elsewhere | Players › Database | every player in the game but yours (best `SHOW_MAX`) |
 | 3 | toplists | Players › Top lists | the best, the most promising, bargains, by position group, with the score spread (`top_lists`) |
 | 3 | charts | Players › Research | per position, the game against your best; then one graph at a time |
@@ -89,7 +98,7 @@ A profile (`showDetail`) opens with a header card (`profileHeader`). A player's 
 Positions (FM's 15 ratings `fmRatingsHtml` + our scores), History (`historyHtml`: by season, two picked). A staff
 member's: Profile (`staffProfile`: attributes and tactical style as tables), Jobs, History.
 
-Every list of players or staff has **Filter** by the search box (`filterInit`): a pop-up with tabs (`filterSpec`; players:
+Search ignores accents (`fold`: Lourenco = Lourenço); `reach` (keyword and Filter) = a free agent, or a fee within the transfer budget and a wage no higher than your best-paid player's (`SITE.reach`). Every list of players or staff has **Filter** by the search box (`filterInit`): a pop-up with tabs (`filterSpec`; players:
 General, Contract & value, Ability, Attributes, Personality; staff: General, Ability, Attributes, Tactical style; both
 Presets), kept per page, shown as chips under the bar. `notify()` shows a notice for what you do (Compare, Filter,
 formation picked): the app's `fmNotice`, else its own.
@@ -106,9 +115,9 @@ score.py; bump `VERSION` with each release (tag `v<VERSION>`).
 
 ## Imports
 
-- **A save game** (`import_save`): the club comes from the save. A new profile has only a name (setup, Game profiles → New); its first save game read sets its club. A save of another club goes to that club's profile, made when there's none (`profile_for`); `same_club` takes partial names ("Tottenham" = "Tottenham Hotspur"). The start screen lists the newest save games with Read buttons. Snapshot time = the .fm file's
+- **A save game** (`import_save`): the club comes from the save. A save of the profile's club with another manager (save.toml's `manager`) or an FM date before the newest read asks first (`career_warning`: another career?; Read it anyway). The lists of everyone keep the newest game by FM's date. A new profile has only a name (setup, Game profiles → New); its first save game read sets its club. A save of another club goes to that club's profile, made when there's none (`profile_for`); `same_club` takes partial names ("Tottenham" = "Tottenham Hotspur"). The start screen lists the newest save games with Read buttons. Snapshot time = the .fm file's
   time. The newest save's list of everyone replaces the older one; a save with an older FM date doesn't replace the
-  budgets. Namesakes get " (Club)". Women's football is left out (`womens_clubs`).
+  budgets. Namesakes get " (Club)". Men's and women's club saves are read; the list of everyone holds the same football as the managed club (`womens_clubs`). A national team's save stops with `NotSupported` (`NATIONS`), a notice in the app.
 - Old exporter imports already on disk (First Team…, search-…) still count as snapshots and lists.
 
 ## Scoring
@@ -116,11 +125,12 @@ score.py; bump `VERSION` with each release (tag `v<VERSION>`).
 - **Position score** = Σ(attribute × weight) ÷ Σ(weights) over the attributes known, on the 1–20 scale (`weighted`), when
   those carry at least 85% of the position's weight (`MIN_KNOWN_WEIGHT`). Outfield players get every outfield
   position, keepers only GK.
-- **Over time** (`carry_forward`): an attribute keeps its newest known value; club, age, wage, value and loan come from the
+- **Over time** (`carry_forward`, in FM's date order: `by_fm`, `FM_ORDER`; a save game read later can be an older game): an attribute keeps its newest known value; club, age, wage, value and loan come from the
   newest observation that shows them.
 - **Best**: the highest score, among the positions FM says he plays when the Position column was exported
   (`fm_positions`), else among all.
-- **vs Age** = the best score ÷ the expected score at his age (`age_benchmark`, clamped to the table's ends).
+- **vs Age** = the best score ÷ the expected score at his age (`age_benchmark`, clamped to the table's ends). Women's football
+  (save.toml's `womens`, set by each read) scales the table by the save's median score at 24-30 against the men's (`womens_vs_age`).
 - **Foot**: Left when the left foot is Fairly Strong or better (`LEFT_FOOTED`), else Right.
 - **Staff**: FM's words → the middle of their 1–20 range (`[staff_words]`); job score = the same weighted average, every
   weighted attribute known. Each `[staff.<label>]` table is a job; `[staff_names]` gives its full name. How the staff
@@ -151,5 +161,5 @@ score.py; bump `VERSION` with each release (tag `v<VERSION>`).
   data with `git -C saves …`. Never put personal details or real save names in this repository.
 - score.py and import_export.py use only Python's standard library; app.py needs pywebview, build.py PyInstaller.
 - In TOML, quote keys with `/` or spaces: `[outfield."DL/DR"]`, `"First Touch" = 1`.
-- Shown as: scores `12.3`, vs Age `95%`.
+- Shown as: scores on a 1-100 scale `61.5` (inside, everything stays 1-20: `SC = 5`, `s1()` in template.html, charts.html scales its data at load; a typed or filtered score is read back ÷5), vs Age `95%`.
 - Test changes on a copy of a save (`ELEVENINDEX_HOME` pointing at a copy of the data folder).

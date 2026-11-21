@@ -129,6 +129,9 @@ try { history.scrollRestoration = "manual"; } catch (e) {}
 scrollTo(0, 0);
 // ---- the data: every player (yours flagged squad), each position's most important attributes ----
 const MARKET = __DATA__, SITE = __SITE__;
+// scores show on a 1-100 scale, as on every page: each player's scores ×5 once, here (attributes stay 1-20)
+const SC = 5;
+MARKET.players.forEach(p => { for (const k in p.scores) if (p.scores[k] != null) p.scores[k] *= SC; });
 const POSITIONS = MARKET.positions, PLAYERS = MARKET.players, CLUB = MARKET.managed;
 // Research › Staff (staff_research in score.py) draws on this page too: jobs for positions, the one who covers a job
 // (one person per job) as your best there, and no wages, ratings or attribute groups
@@ -144,7 +147,7 @@ function groupValue(p, pos, group) {
     total += w[a];
     if (p.attrs[a] != null) { known += w[a]; sum += p.attrs[a] * w[a]; }
   }
-  return total && known >= total / 2 ? sum / known : null;
+  return total && known >= total / 2 ? sum / known * SC : null;  // on the scores' 1-100 scale
 }
 
 // whom yours are compared with: the latest import, everyone imported, or your own squad by age

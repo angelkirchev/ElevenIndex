@@ -282,6 +282,16 @@ def name_teams(players):
             r["Team"] = label.get(r["Team"], "First team")
 
 
+class NotSupported(ValueError):
+    """A save ElevenIndex doesn't read yet: a national team's."""
+
+
+NOT_YET = ("ElevenIndex reads club saves, in men's and women's football. National teams aren't available yet: "
+           "they're on the way.")
+# national sides, to tell a national team's save from a club the reader can't find
+NATIONS = frozenset(['Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Anguilla', 'Argentina', 'Armenia', 'Aruba', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bermuda', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cambodia', 'Cameroon', 'Canada', 'Cape Verde', 'Cayman Islands', 'Central African Republic', 'Chad', 'Chile', 'China', 'China PR', 'Chinese Taipei', 'Colombia', 'Comoros', 'Congo', 'Congo DR', 'Cook Islands', 'Costa Rica', 'Croatia', 'Cuba', 'Curaçao', 'Cyprus', 'Czech Republic', 'Czechia', "Côte d'Ivoire", 'DR Congo', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'England', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Faroe Islands', 'Fiji', 'Finland', 'France', 'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Gibraltar', 'Greece', 'Grenada', 'Guam', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hong Kong', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Ivory Coast', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Korea Republic', 'Kosovo', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Macau', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Mauritania', 'Mauritius', 'Mexico', 'Moldova', 'Mongolia', 'Montenegro', 'Montserrat', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 'Nepal', 'Netherlands', 'New Caledonia', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Northern Ireland', 'Norway', 'Oman', 'Pakistan', 'Palestine', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Puerto Rico', 'Qatar', 'Republic of Ireland', 'Romania', 'Russia', 'Rwanda', 'Samoa', 'San Marino', 'Saudi Arabia', 'Scotland', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria', 'Tahiti', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad & Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Türkiye', 'UAE', 'USA', 'Uganda', 'Ukraine', 'United Arab Emirates', 'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Venezuela', 'Vietnam', 'Wales', 'Yemen', 'Zambia', 'Zimbabwe'])
+
+
 def club_teams(db, club_at, first_team):
     """The numbers of a club's teams: its record lists `[u8 count][first team][the others]` before its name; the
     others are referred to by number + 1."""
@@ -300,7 +310,7 @@ def club_teams(db, club_at, first_team):
 # --- people ---
 
 # the record's start, its index, its ID twice and its kind (1 or 2), all checked by the regex engine (fast)
-RECORD = re.compile(rb"(?=[\x00-\xff][\x00-\xff][\x00-\x0f]\x00\x00\x00[\x00-\xff]{4}([\x00-\xff]{4})\1[\x01\x02])", re.S)
+RECORD = re.compile(rb"(?=[\x00-\xff][\x00-\xff][\x00-\x0f]\x00\x00\x00[\x00-\xff]{4}([\x00-\xff]{4})\1[\x01-\x03])", re.S)
 POSITIONS = ["GK", "SW", "DL", "DC", "DR", "DM", "ML", "MC", "MR", "AML", "AMC", "AMR", "ST", "WBL", "WBR"]
 # the 54 attribute bytes (×5) after the position ratings; 41, 44, 47-49 are hidden ones (HIDDEN), 24-25 the feet
 ATTRIBUTES = {0: "Crossing", 1: "Dribbling", 2: "Finishing", 3: "Heading", 4: "Long Shots", 5: "Marking",
@@ -346,7 +356,7 @@ def records(db):
         if db[x] not in (0x00, 0x40) and not 0 < index - last <= 5:
             continue
         kind = db[x + 18]
-        if kind == 2:
+        if kind in (2, 3):  # 3: a player-coach (a player's record; his contract's job is 3)
             if all(1 <= v <= 20 for v in db[x + 49:x + 64]) and all(1 <= v <= 100 for v in db[x + 64:x + 118]):
                 last = index
                 yield x, "player"
@@ -355,6 +365,9 @@ def records(db):
             if k <= 30 and db[x + 40 + 7 * k] == 12:
                 last = index
                 yield x, "staff"
+
+
+TODAY = None  # read(): the save's date, for finding a contract's end date when it isn't where it usually is
 
 
 def contracts(db, start, stop, index1):
@@ -367,25 +380,56 @@ def contracts(db, start, stop, index1):
         if db[p + 6:p + 12] == bytes(6) and db[p + 18] == 0:
             year, day = u16(db, p - 41), u16(db, p - 43)
             ends = game_date(day, year) if 2000 <= year <= 2100 and 1 <= day & 0x1FF <= 366 else None
+            if ends is None and TODAY is not None and year != 1900:  # 1900: no end date (non-contract, amateur)
+                # a long-serving player's contract carries more (clauses, bonuses: dated entries) between its end date
+                # and here, up to ~400 bytes: the end date is then a date still to come followed by the date he joined
+                # (already past)
+                def joined_after(q):  # the date right after the one whose year is at q
+                    y2, d2 = u16(db, q + 4), u16(db, q + 2)
+                    return game_date(d2, y2) if 1990 <= y2 <= TODAY.year and 1 <= d2 & 0x1FF <= 366 else None
+                later = []
+                for q in range(max(start, p - 420), p - 4):
+                    y, d = u16(db, q), u16(db, q - 2)
+                    if TODAY.year <= y <= TODAY.year + 12 and 1 <= d & 0x1FF <= 366:
+                        e, j = game_date(d, y), joined_after(q)
+                        if e >= TODAY and j is not None and j <= TODAY:
+                            later.append(e)
+                ends = max(later) if later else None
             out.append((u16(db, p + 4), u32(db, p + 12), u16(db, p + 16), ends))
         p = db.find(ref, p + 1, stop)
     return out
 
 
+PLAYER_JOBS = {1, 3}  # a contract's job (low byte): 1 a player, 3 a player-coach
+
+
 def contract(db, start, stop, index1):
     """A player's contract (team, weekly wage in pounds, job, end date), or None: a free agent."""
-    return next((c for c in contracts(db, start, stop, index1) if c[2] & 0xFF == 1), None)
+    return next((c for c in contracts(db, start, stop, index1) if c[2] & 0xFF in PLAYER_JOBS), None)
+
+
+def staff_block(db, x, stop):
+    """A player-coach's staff data (laid out like a staff record's, from its start): inside his player record, after
+    the player part. Found by its shape: a staff member's ability, attributes 0-100 (most set) and his preferred job."""
+    for b in range(x + 118, min(stop, x + 4000) - 100):
+        if db[b + 31] not in STAFF_JOBS or ability(db, b + 27)[0] is None:
+            continue
+        vals = [db[b + i] for i in STAFF_X5]
+        if all(v <= 100 for v in vals) and sum(v > 0 for v in vals) >= 10:
+            return b
+    return None
 
 
 def staff_contracts(db, start, stop, index1):
     """A staff member's contracts (team, weekly wage in pounds, job code, end date)."""
-    return [c for c in contracts(db, start, stop, index1) if c[2] & 0xFF != 1]
+    return [c for c in contracts(db, start, stop, index1) if c[2] & 0xFF not in PLAYER_JOBS]
 
 
+DOCTOR_JOBS = {0x26, 0x2E}  # Chief Doctor, Doctor: FM shows no salary, end date or F/PT for them (like the board)
 # a staff contract's job (its low byte), as FM's Club Job column names it
 BOARD = {"Chairperson", "Director", "Owner", "President", "Board"}
 BOARD_CODES = {0x04, 0x06, 0x08, 0x42, 0x46}  # the board's job codes; a staff record's byte 31 is his preferred job
-STAFF_JOBS = {0x02: "Coach", 0x04: "Chairperson", 0x06: "Director", 0x26: "Chief Doctor", 0x2E: "Doctor", 0x42: "Owner", 0x46: "President", 0x08: "Board", 0x0A: "General Manager", 0x0C: "Physio", 0x0E: "Scout", 0x10: "Head Coach",
+STAFF_JOBS = {0x02: "Coach", 0x03: "Player / Coach", 0x04: "Chairperson", 0x06: "Director", 0x26: "Chief Doctor", 0x2E: "Doctor", 0x42: "Owner", 0x46: "President", 0x08: "Board", 0x0A: "General Manager", 0x0C: "Physio", 0x0E: "Scout", 0x10: "Head Coach",
               0x14: "Assistant Coach", 0x1A: "Fitness Coach", 0x22: "Goalkeeping Coach", 0x28: "Head of Sports Science",
               0x2C: "Chief Scout", 0x30: "Sports Scientist", 0x32: "Head Physio", 0x3A: "Recruitment Analyst",
               0x3C: "Performance Analyst", 0x3E: "Head Performance Analyst", 0x40: "Head of Youth Development",
@@ -463,22 +507,40 @@ def read(path, symbol="£", club=None, everyone=False):
     if not any((club or info["club"]) in c[:2] for c in names.values()):
         names = clubs(db)
     all_teams = teams(db)
-    for c, named in named_teams(db).items():  # second teams named in their own head
+    second = named_teams(db)
+    clubs_with_record = set(names)  # real clubs; a named second team has no club record of its own
+    for c, named in second.items():  # second teams named in their own head
         names.setdefault(c, named)
     want = club or info["club"]
     mine = [(cid, c) for cid, c in names.items() if want in (c[0], c[1])]
     first = {cid: t for t, (cid, _) in all_teams.items() if cid is not None}
     mine = [(cid, c) for cid, c in mine if cid in first]
+    if not mine:  # not in the club table's usual place (or only a namesake there): the whole database
+        names = clubs(db)
+        for c, named in named_teams(db).items():
+            names.setdefault(c, named)
+        mine = [(cid, c) for cid, c in names.items() if want in (c[0], c[1]) and cid in first]
     if not mine:
+        if want in NATIONS:
+            raise NotSupported(f"This save manages {want}, a national team. {NOT_YET}")
         raise ValueError(f"Couldn't find {want}'s teams in the save.")
+    # namesakes (a women's side, a second database entry): the original club, whose IDs are the small ones
+    mine.sort(key=lambda m: (m[0] >= 2_000_000_000, m[0]))
     cid, (long, short, at) = mine[0]
     team_ids = club_teams(db, at, first[cid])
     contract_teams = {team_ids[0]} | {t + 1 for t in team_ids[1:]}  # a contract names a team by its head's number + 1
-    playing = {i for t in team_ids if t in all_teams for i in all_teams[t][1]}  # record index + 1
-    team_no = {i: k for k, t in reversed(list(enumerate(team_ids))) if t in all_teams for i in all_teams[t][1]}  # index+1 -> 0 first team, 1… the others
-    elsewhere = {i for t, (_, members) in all_teams.items() if t not in team_ids for i in members}  # at other clubs
+    # the club's teams as their heads are numbered: the record names the others by number + 1, though for some clubs
+    # (Real Madrid) by the number itself; a youth team's head has no club ID
+    heads = [team_ids[0]] + [t if t in all_teams and all_teams[t][0] is None else t - 1 for t in team_ids[1:]]
+    playing = {i for t in heads if t in all_teams for i in all_teams[t][1]}  # record index + 1
+    team_no = {i: k for k, t in reversed(list(enumerate(heads))) if t in all_teams for i in all_teams[t][1]}  # index+1 -> 0 first team, 1… the others
+    plays_in = {i: c for t, (c, members) in all_teams.items() if c is not None for i in members}  # index+1 -> club of his team
+    in_youth = {i for t, (c, members) in all_teams.items() if c is None for i in members}  # in a youth team (no club ID)
+    elsewhere = {i for t, (_, members) in all_teams.items() if t not in heads for i in members}  # at other clubs
     rate = currency_rate(db, symbol)
     today = info["date"]
+    global TODAY
+    TODAY = today
     team_club = {t: c for t, (c, _) in all_teams.items() if c is not None}  # a first team (as contracts name it) -> club
     plays_for = {i: c for t, (c, members) in all_teams.items() if c is not None for i in members}  # index+1 -> club
     if everyone:  # every club's other teams (U21, U18, reserves): their players, and contracts naming them (+1)
@@ -488,23 +550,91 @@ def read(path, symbol="£", club=None, everyone=False):
                     team_club.setdefault(t + 1, c)
                     for i in all_teams.get(t, (None, []))[1]:
                         plays_for.setdefault(i, c)
+    # each club's professional status, the byte after its short name: 1 professional, 2 semi-pro, 3 amateur
+    status = {}
+    for c in clubs_with_record:
+        long_b = names[c][0].encode("utf-8")
+        a = names[c][2]
+        e = a + len(long_b) + 4 + u32(db, a + len(long_b))
+        if db[e] in (1, 2, 3):
+            status[c] = db[e]
+    def deal_kind(deal):
+        """FM's contract status: Full-time at a professional club, else Part-time; with no end date and no wage,
+        Amateur at an amateur club, else Non-contract. A loanee's is his own club's contract."""
+        if not deal:
+            return ""
+        st = status.get(cid if deal[0] in contract_teams else team_club.get(deal[0]))
+        if deal[3] is None and deal[1] == 0:
+            return "Amateur" if st == 3 else "Non-contract"
+        return {1: "Full-time", 2: "Part-time", 3: "Part-time"}.get(st, "")
+    def add_staff(base, end, index1, pc_deal=None, pc_who=None):
+        """A staff member from his staff data at base (a player-coach's: inside his player record, with his contract
+        and name from the player side)."""
+        deals = [pc_deal] if pc_deal else staff_contracts(db, base + 93, max(end, base + 2000), index1)
+        ours = any(d[0] in contract_teams for d in deals)
+        if not ours and not everyone:
+            return
+        who = pc_who or person(db, base + 100, max(end, base + 2000), lists)
+        if not who:
+            return
+        if not pc_deal:
+            deals = staff_contracts(db, base + 93, who["at"], index1)
+        deal = next((d for d in deals if d[0] in contract_teams), None) if ours else                 next((d for d in deals if team_club.get(d[0]) in names), None)
+        if ours and not deal:
+            return
+        ca, pa = ability(db, base + 27)
+        if not deal and (deals or not ca or ca < 60):
+            return
+        if (deal[2] & 0xFF if deal else db[base + 31]) in BOARD_CODES:
+            return  # the board (chairman, president, owner, director), working or out of work  # no club: kept when he's a real out-of-work coach (some ability), not a national side's
+        at_club = cid if ours else team_club[deal[0]] if deal else None
+        label = short if ours else names[at_club][1] if deal else "Free agent"
+        if not ours and label in (short, long):
+            label = f"{label} (another club)"
+        row = {"Name": who["name"], "Club": label, "Age": str(age_on(who["born"], today)),
+               "Job": (STAFF_JOBS.get(deal[2] & 0xFF) or STAFF_JOBS.get(db[base + 31], "")) if deal else "", "Born": who["born"].isoformat(),
+               "Reputation": str(u16(db, base + 23))}
+        if deal and deal[2] & 0xFF not in DOCTOR_JOBS:  # FM shows a doctor's (and the board's) salary, end and F/PT as N/A
+            row["Wage"] = f"{symbol}{money(deal[1] * rate)} p/w"
+            if deal[3]:
+                row["Contract"] = deal[3].isoformat()
+            row["Deal"] = deal_kind(deal)
+        if row["Job"] in BOARD:  # the board: FM's staff screen shows no attributes for them, and they coach nobody
+            return
+        row.update({a: staff_word(shown(db[base + i])) for i, a in STAFF_X5.items()})
+        row.update({a: staff_word(db[base + i]) for i, a in STAFF_RAW.items() if 1 <= db[base + i] <= 20})
+        if who["traits"].get("Adaptability"):  # the staff screen's Ada is the person's trait
+            row["Adaptability"] = staff_word(who["traits"]["Adaptability"])
+        if ca:
+            row.update({"Current Ability": str(ca), "Potential Ability": str(pa)})
+        row["Tactical style"] = ";".join(f"{a}:{db[base + o]}" for o, a in STAFF_PREFS.items() if 1 <= db[base + o] <= 20)
+        if ours:
+            staff.append(row)
+        else:
+            others_staff.append(row)
+            where_staff.append(at_club)
+
     players, staff, others = [], [], []
     mine_index = {}  # your players' record index + 1 -> name (their match stats)
     first_name, where = {}, []  # each player's first name number; each other's (club, record index + 1)
     others_staff, where_staff = [], []  # with everyone: every other club's staff, and their club
-    for x, kind in records(db):
+    # each record's own data runs to the next record: a player's grows with every season (history, stats), so a fixed
+    # window misses the name and contract of long-serving players (Sunderland in 2028: 5,906 bytes in)
+    recs = list(records(db))
+    for k, (x, kind) in enumerate(recs):
         index1 = u32(db, x + 6) + 1
-        stop = x + 6000
+        end = min(recs[k + 1][0] if k + 1 < len(recs) else len(db), x + 200_000)
+        stop = end
         if kind == "player":
-            near = contract(db, x + 118, x + 4000, index1)  # quick look before the slower name lookup
+            near = contract(db, x + 118, end, index1)  # quick look before the slower name lookup
             if not everyone and (near is None or near[0] != first[cid]) and index1 not in playing:
                 continue
-            who = person(db, x + 118, x + 4000, lists)
+            who = person(db, x + 118, end, lists)
             if not who:
                 continue
             first_name[index1] = u32(db, who["at"])
             # several contracts (a national team's too): the one with a club that has a name, else the first
-            deals = [c for c in contracts(db, x + 118, who["at"] + 600, index1) if c[2] & 0xFF == 1]
+            deals = [c for c in contracts(db, x + 118, who["at"] + 600, index1) if c[2] & 0xFF in PLAYER_JOBS]
             deal = next((c for c in deals if team_club.get(c[0]) in names), deals[0] if deals else None)
             ours = deal is not None and deal[0] == first[cid]
             if not ours and index1 not in playing:
@@ -532,61 +662,39 @@ def read(path, symbol="£", club=None, everyone=False):
                 if owner and at_club and owner != at_club and owner in names:
                     row["Loan"] = f"from {names[owner][1]}"
                 others.append(fill_player(row, db, x, who, deal, symbol, rate))
+                row["Deal"] = deal_kind(deal)
+                if db[x + 18] == 3 and deal and deal[2] & 0xFF == 3 and (b := staff_block(db, x, end)):
+                    add_staff(b, end, index1, deal, who)
                 row["Injured until"] = hurt[index1].isoformat() if index1 in hurt else ""
                 where.append((at_club, index1))
                 continue
-            loan = "out" if ours and (index1 not in playing or index1 in elsewhere) else "in" if not ours else ""
+            # a B team of its own (Castilla, Jong Ajax, Celtic B): its players are under contract to the club itself and
+            # to no other club, so they're the club's; a loan out has a second contract, with the club he's at
+            b_team = None
+            if ours and index1 not in playing:
+                b_club = plays_in.get(index1)
+                others_deals = [d for d in deals if team_club.get(d[0]) not in (cid, None)]
+                # a loan's second contract is a plain one (job 0x01); a B team's is the club's kind (0x0B01), same end
+                if all(d[2] >> 8 == 0x0B for d in others_deals):  # not loaned out
+                    if b_club is not None and b_club != cid:
+                        b_team = names[b_club][1] if b_club in names else "B team"
+                    elif b_club is None and index1 in in_youth:  # a youth team the club's record doesn't point to plainly
+                        b_team = "Youth"
+            loan = "" if b_team else "out" if ours and (index1 not in playing or index1 in elsewhere) else "in" if not ours else ""
             row = {"Name": who["name"], "Club": short, "Age": str(age_on(who["born"], today)),
                    "Position": fm_position_text(db[x + 49:x + 64]),
                    "Preferred Foot": foot_text(shown(db[x + 64 + LEFT_FOOT]), shown(db[x + 64 + RIGHT_FOOT])),
                    "Loan": loan, "Familiarity": ",".join(str(v) for v in db[x + 49:x + 64])}
-            row["Team"] = "" if loan == "out" else team_no.get(index1, 0)
+            row["Team"] = b_team if b_team else "" if loan == "out" else team_no.get(index1, 0)
             players.append(fill_player(row, db, x, who, deal, symbol, rate))
+            row["Deal"] = deal_kind(deal)
+            if db[x + 18] == 3 and deal and deal[2] & 0xFF == 3 and (b := staff_block(db, x, end)):
+                add_staff(b, end, index1, deal, who)
             mine_index[index1] = who["name"]
             row["Injured until"] = hurt[index1].isoformat() if index1 in hurt else ""
         else:
-            base = x + 7 * u16(db, x + 19)
-            deals = staff_contracts(db, base + 93, base + 2000, index1)
-            ours = any(d[0] in contract_teams for d in deals)
-            if not ours and not everyone:
-                continue
-            who = person(db, base + 100, base + 2000, lists)
-            if not who:
-                continue
-            deals = staff_contracts(db, base + 93, who["at"], index1)
-            deal = next((d for d in deals if d[0] in contract_teams), None) if ours else                 next((d for d in deals if team_club.get(d[0]) in names), None)
-            if ours and not deal:
-                continue
-            ca, pa = ability(db, base + 27)
-            if not deal and (deals or not ca or ca < 60):
-                continue
-            if (deal[2] & 0xFF if deal else db[base + 31]) in BOARD_CODES:
-                continue  # the board (chairman, president, owner, director), working or out of work  # no club: kept when he's a real out-of-work coach (some ability), not a national side's
-            at_club = cid if ours else team_club[deal[0]] if deal else None
-            label = short if ours else names[at_club][1] if deal else "Free agent"
-            if not ours and label in (short, long):
-                label = f"{label} (another club)"
-            row = {"Name": who["name"], "Club": label, "Age": str(age_on(who["born"], today)),
-                   "Job": (STAFF_JOBS.get(deal[2] & 0xFF) or STAFF_JOBS.get(db[base + 31], "")) if deal else "", "Born": who["born"].isoformat(),
-                   "Reputation": str(u16(db, base + 23))}
-            if deal:
-                row["Wage"] = f"{symbol}{money(deal[1] * rate)} p/w"
-                if deal[3]:
-                    row["Contract"] = deal[3].isoformat()
-            if row["Job"] in BOARD:  # the board: FM's staff screen shows no attributes for them, and they coach nobody
-                continue
-            row.update({a: staff_word(shown(db[base + i])) for i, a in STAFF_X5.items()})
-            row.update({a: staff_word(db[base + i]) for i, a in STAFF_RAW.items() if 1 <= db[base + i] <= 20})
-            if who["traits"].get("Adaptability"):  # the staff screen's Ada is the person's trait
-                row["Adaptability"] = staff_word(who["traits"]["Adaptability"])
-            if ca:
-                row.update({"Current Ability": str(ca), "Potential Ability": str(pa)})
-            row["Tactical style"] = ";".join(f"{a}:{db[base + o]}" for o, a in STAFF_PREFS.items() if 1 <= db[base + o] <= 20)
-            if ours:
-                staff.append(row)
-            else:
-                others_staff.append(row)
-                where_staff.append(at_club)
+            add_staff(x + 7 * u16(db, x + 19), end, index1)
+    mine_women = False
     if others or others_staff:  # leave out women's football: a men's club can't sign them (and the reverse)
         women, share = womens_clubs(db, first_name)
         mine_women = cid in women
@@ -601,7 +709,7 @@ def read(path, symbol="£", club=None, everyone=False):
         money_now = {k: round(v * rate) for k, v in money_now.items()}
     name_teams(players)
     return {"club": short, "long": long, "manager": info["manager"], "date": today, "players": players, "staff": staff,
-            "others": others, "others_staff": others_staff, "finances": money_now, "season_stats": season_stats}
+            "others": others, "others_staff": others_staff, "womens": mine_women, "finances": money_now, "season_stats": season_stats}
 
 
 # FM27's first-name list keeps a block of female names here; a club whose players mostly have one is a women's club.
@@ -716,7 +824,9 @@ FINANCES = re.compile(rb"(?=\x00\x00\x00\x01(.{4})(.{4})\2(.{4})(.{4}))", re.S)
 def finances(db, club_at):
     """The club's money, after its record: `… 00 00 00 01`, balance, transfer budget (twice), wage budget, wages paid
     (pounds; wages a week). {balance, transfer_budget, wage_budget, wages} or None."""
-    for m in FINANCES.finditer(db, club_at, club_at + 8000):
+    # the first money block after the club's record is its own; the record grows with each season (Sunderland in 2028:
+    # 7,749 bytes in), so the search runs well past where it used to stop
+    for m in FINANCES.finditer(db, club_at, club_at + 60_000):
         balance, budget, wage_budget, wages = (int.from_bytes(m.group(i), "little", signed=i == 1) for i in (1, 2, 3, 4))
         if 0 <= budget < 2_000_000_000 and 0 < wages < 100_000_000 and 0 < wage_budget < 100_000_000:
             # a month-end history: one 49-byte entry per month, the season's transfer budget in each; the last is newest

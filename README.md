@@ -89,9 +89,10 @@ the first time it installs pywebview, which the window needs. `python build.py` 
 <details>
 <summary><b>Where the scores come from</b></summary>
 
-A position score is the weighted average of a player's attributes on FM's 1–20 scale. Each attribute has one weight
+A position score is the weighted average of a player's attributes, shown on a 1–100 scale. Each attribute has one weight
 (1–20), multiplied at each position by FM's own CA cost there. The default weights come from **harvestgreen22**'s FM27
-attribute test, measuring how much each attribute wins matches
+attribute tests, measuring how much each attribute wins matches: the newest against the Premier League sides' own
+tactics ([FM-Arena](https://fm-arena.com/threads/fm27-new-player-attribute-1-4-8-12-16-20-test.276/)), after the first
 ([sortitoutsi](https://sortitoutsi.net/content/78219/fm27-attribute-test-tactical-understanding-training-system-preset-tactics-ai-reverse-engineering-engine-for-test#comment_910309),
 tabled by squirrel_plays on [FM-Arena](https://fm-arena.com/threads/player-attributes.59/)). Change them on the
 **Attributes** page. The save game reader (`fm_save.py`) is our own, written from the file itself.

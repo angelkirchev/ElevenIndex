@@ -70,13 +70,31 @@ def steam_folders():
     return out
 
 
-def fm_folders(config=None):
-    """Where FM27's save games can be: config.toml's games_dir, Documents (wherever Windows has put it, OneDrive's
-    too), the Public Documents, and Steam Cloud's folders."""
+def documents_folders():
+    """Every Documents folder FM may save into: wherever Windows has put this user's (OneDrive's too), the usual ones,
+    the Public Documents, and a Documents moved to another drive (D:/Documents, D:/Users/<you>/Documents…)."""
+    user = Path.home().name
     docs = [score.documents(), Path.home() / "OneDrive" / "Documents", Path.home() / "Documents",
             Path(os.environ.get("PUBLIC", r"C:\Users\Public")) / "Documents"]
+    if sys.platform == "win32":
+        for d in "CDEFGH":
+            root = Path(f"{d}:/")
+            if root.exists():
+                docs += [root / "Documents", root / "Users" / user / "Documents", root / "Users" / user / "OneDrive" / "Documents"]
+    return [d for d in dict.fromkeys(docs) if d.is_dir()]
+
+
+def fm_folders(config=None):
+    """Where FM27's save games can be: config.toml's games_dir, every Documents folder (FM's folder by any of its
+    names: "Football Manager 27", "Football Manager 2027"…), and Steam Cloud's folders."""
+    found = []
+    for d in documents_folders():
+        si = d / "Sports Interactive"
+        found.append(d / FM_TAIL)
+        if si.is_dir():  # FM's own folder, whatever this version calls it
+            found += [f / "games" for f in si.glob("Football Manager*") if re.search(r"(?<!\d)(27|2027)(?!\d)", f.name)]
     picked = [Path(config["games_dir"]).expanduser()] if (config or {}).get("games_dir") else []
-    return list(dict.fromkeys(picked + [d / FM_TAIL for d in docs] + steam_folders()))
+    return list(dict.fromkeys(picked + found + steam_folders()))
 
 
 def games_dir(config):
@@ -151,6 +169,13 @@ class App:
                 self.save = self.config["active_save"]
                 self.save_dir = score.ROOT / "saves" / self.save
         self.games = games_dir(self.config)
+        # the folder chosen before holds no save games any more, but another does: use that one from now on
+        if self.config.get("games_dir") and Path(self.config["games_dir"]) != self.games and fm_saves_in(self.games):
+            try:
+                score.set_setting("games_dir", str(self.games))
+                self.config["games_dir"] = str(self.games)
+            except OSError:
+                pass
         self.notice = None  # (text, is_error) to show once the page has reloaded
         self.lock = threading.Lock()  # one import at a time
         try:
@@ -180,28 +205,70 @@ class App:
         if not info:
             return ""
         club = info["club"]
+        import fm_save
+        if club in fm_save.NATIONS:  # a national team's save: not read yet (before any profile is made for it)
+            raise fm_save.NotSupported(f"This save manages {club}, a national team. {fm_save.NOT_YET}")
         here = score.ROOT / "saves" / (self.save or "")
         empty = not any((here / "obs").glob("*.csv"))
         if self.save and (empty or import_export.same_club(self.club_name() or "", club)):
             return ""
         match = next((s["name"] for s in self.saves() if import_export.same_club(s["club"] or "", club)), None)
         made = match is None
+        self.made_profile = None
         if made:
             name, n = slug(club) or "save", 2
             while (score.ROOT / "saves" / name).exists():
                 name, n = f"{slug(club)}-{n}", n + 1
             score.new_save(name, club, "")
             match = name
+            self.made_profile = (name, self.save)  # undone if the save turns out not to be readable (a women's club)
         score.set_active_save(match)
         self.config = score.load_config()
         self.save, self.save_dir = match, score.ROOT / "saves" / match
         self.window.set_title(window_title(match))
         return f" It's a {club} save, so it went to {'a new' if made else 'your'} {club} profile."
 
-    def import_now(self, path):
-        """Read an FM27 save game: your club, everyone else, the club's money (import_export.import_save)."""
+    def career_warning(self, path):
+        """Before a read: a save game of this profile's club that looks like another career (another manager, or an
+        FM date before the profile's newest read) gets a question first, so two careers don't mix in one profile.
+        Returns the question, or None (nothing read yet, another club's save, or the same career going on)."""
+        try:
+            cfg = score.load_toml(self.save_dir / "save.toml")
+            dates = json.loads((self.save_dir / score.FM_DATES).read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError):
+            return None
+        if not dates or not cfg.get("managed_club"):
+            return None
+        try:
+            import fm_save
+            data, sections = fm_save.open_save(path)
+            info = fm_save.summary(data, sections)
+        except Exception:
+            return None  # the read itself says what's wrong
+        if not import_export.same_club(cfg["managed_club"], info["club"]):
+            return None  # another club's save: it goes to that club's profile
+        newest, then = max(dates.values()), info["date"].isoformat()
+        other_manager = cfg.get("manager") and cfg["manager"] != info["manager"]
+        if not other_manager and then >= newest:
+            return None
+        nice = lambda d: f"{int(d[8:10])} {score.MONTHS[int(d[5:7]) - 1]} {d[:4]}"
+        why = (f"it's managed by {info['manager']}, this profile by {cfg['manager']}" if other_manager else
+               f"its FM date, {nice(then)}, is before this profile's newest read, {nice(newest)}")
+        return (f"{path.stem} may be another career: {why}. If it is, start a new profile for it (Menu → Manage… → New) "
+                f"so the two careers don't mix. If it's the same career (an older save, say), read it: the app goes by FM's date.")
+
+    def import_now(self, path, checked=False):
+        """Read an FM27 save game: your club, everyone else, the club's money (import_export.import_save). Unless
+        checked, a save that looks like another career asks first (career_warning)."""
+        if not checked and self.save_dir:
+            question = self.career_warning(path)
+            if question:
+                self.window.evaluate_js(f"window.fmNotice && fmNotice({json.dumps(question)}, false, {{title: 'Another career?', "
+                                        f"label: 'Read it anyway', run: () => pywebview.api.import_path({json.dumps(str(path))}, true)}})")
+                return
         self.show_notice(f"Reading {path.name}… Be patient: your save will be loaded soon.")
         moved = ""
+        self.made_profile = None
         try:
             with self.lock:
                 moved = self.profile_for(path)
@@ -210,6 +277,19 @@ class App:
                 out = score.write_pages(save, self.config, cfg, pages)
                 self.commit(f"{save}: {path.stem} (save game)")
         except (Exception, SystemExit) as e:  # score.py stops with SystemExit on bad data
+            import fm_save
+            if isinstance(e, fm_save.NotSupported):  # a women's club or a national team: say so, undo a profile made for it
+                made = getattr(self, "made_profile", None)
+                if made:
+                    shutil.rmtree(score.ROOT / "saves" / made[0], ignore_errors=True)
+                    if made[1]:
+                        score.set_active_save(made[1])
+                        self.config = score.load_config()
+                        self.save, self.save_dir = made[1], score.ROOT / "saves" / made[1]
+                        self.window.set_title(window_title(made[1]))
+                self.window.evaluate_js(f"window.fmNotice && fmNotice({json.dumps(str(e))}, false, "
+                                        f"{json.dumps({'title': 'Not available yet'})})")
+                return
             log_error(f"reading the save game {path.name}")
             return self.show_notice(f"Couldn't read {path.name}: {e}", error=True)
         mine = sum(n for name, n in written if "search-save-game" not in name and "-staff" not in name)
@@ -260,19 +340,24 @@ class App:
     def switch_save(self, name, notice=None, title="Save loaded"):
         if not (score.ROOT / "saves" / name / "save.toml").is_file():
             raise ValueError(f"There's no save called {name}.")
+        has_data = any((score.ROOT / "saves" / name / "obs").glob("*.csv"))
+        if not has_data:  # nothing to score: switch at once, without waiting for a read or rescore that holds the lock
+            score.set_active_save(name)
+            self.config = score.load_config()
+            self.save, self.save_dir = name, score.ROOT / "saves" / name
+            self.window.set_title(window_title(name))
+            self.notice = (notice or f"Now on {name}: no players yet.", False, title)
+            self.show_soon(html=screen("start", self.club_name(), saves=self.save_files(), folder=self.games))
+            return
         with self.lock:
             score.set_active_save(name)
             self.config = score.load_config()
             self.save, self.save_dir = name, score.ROOT / "saves" / name
             self.window.set_title(window_title(name))
-            if any((self.save_dir / "obs").glob("*.csv")):
-                cfg, pages = score.build(name, self.config)
-                out = score.write_pages(name, self.config, cfg, pages)
-                self.notice = (notice or f"Now on {self.club_name() or name} ({name}).", False, title)
-                self.show_soon(url=(out / START_PAGE).resolve().as_uri())
-            else:
-                self.notice = (notice or f"Now on {self.club_name() or name} ({name}): no players yet.", False, title)
-                self.show_soon(html=screen("start", self.club_name(), saves=self.save_files(), folder=self.games))
+            cfg, pages = score.build(name, self.config)
+            out = score.write_pages(name, self.config, cfg, pages)
+            self.notice = (notice or f"Now on {self.club_name() or name} ({name}).", False, title)
+            self.show_soon(url=(out / START_PAGE).resolve().as_uri())
 
     # A deleted save waits in saves/_deleted, where Saves… can restore it, for KEEP_DELETED_DAYS; then it's gone.
     KEEP_DELETED_DAYS = 14
@@ -404,12 +489,13 @@ class App:
                 "update": getattr(self, "update", None), "auto": self.auto_import(),
                 "folder": str(self.games), "count": len(self.save_files())}
 
-    def import_path(self, path):
-        """Read a save game picked in the menu, offered by the watcher or dropped on the window."""
+    def import_path(self, path, checked=False):
+        """Read a save game picked in the menu, offered by the watcher or dropped on the window (checked: the player
+        said it's the same career, after career_warning)."""
         f = Path(path)
         if f.suffix.lower() not in self.IMPORTABLE or not f.is_file():
             raise ValueError(f"Not an FM27 save game: {f.name}")
-        threading.Thread(target=self.import_now, args=(f,), daemon=True).start()
+        threading.Thread(target=self.import_now, args=(f, bool(checked)), daemon=True).start()
 
     def auto_import(self):
         return bool(self.config.get("auto_import", True))  # on unless turned off
@@ -437,7 +523,10 @@ class App:
                     if f.stat().st_size != size or f.stat().st_mtime != mtime:
                         continue
                     seen[f] = mtime
-                    if self.auto_import():
+                    # Auto-read only for the game you play: a save file already read into this profile. A save copied
+                    # in, a new one or another game only gets the notice with its Read button.
+                    played = {k.rsplit("@", 1)[0] for k in self.imported_list()[1]}
+                    if self.auto_import() and f.stem in played:
                         self.import_now(f)  # one after another: each read waits for the one before
                     else:
                         self.window.evaluate_js(f"window.fmNewExport && fmNewExport({json.dumps(f.stem)}, {json.dumps(str(f))})")
@@ -462,7 +551,7 @@ class App:
     def latest_release(self):
         """The latest version, from the website's version.json: (version, page). Only that small file is fetched;
         nothing is sent."""
-        req = urllib.request.Request(score.PROJECT_URL + "/version.json", headers={"User-Agent": "ElevenIndex"})
+        req = urllib.request.Request(score.PROJECT_URL + "/version.json", headers={"User-Agent": f"ElevenIndex/{score.VERSION}"})
         with urllib.request.urlopen(req, timeout=8) as r:
             data = json.load(r)
         return str(data.get("version", "")).lstrip("v"), data.get("url") or score.PROJECT_URL + "/#download"
@@ -541,7 +630,7 @@ class App:
     # --- theme (Menu → Theme…) -------------------------------------------------------------------------------------
 
     def themes(self):
-        return {"current": score.theme_of(self.config),
+        return {"current": score.theme_of(self.config), "currency": self.config.get("currency", "€"),
                 "themes": [{"name": n, "label": l, "bar": b, "accent": a} for n, l, b, a in score.THEMES]}
 
     def set_theme(self, name):
@@ -554,6 +643,13 @@ class App:
             self.config["theme"] = name
             if self.save:
                 score.stamp_theme(self.save, name)
+
+    def set_currency(self, symbol):
+        """Settings → Currency: the money FM's save is read in (the reader converts to it), from the next read on."""
+        if symbol not in ("£", "€", "$"):
+            raise ValueError("Pick £, € or $.")
+        score.set_setting("currency", symbol)
+        self.config["currency"] = symbol
 
     def new_save(self, club, division, name):
         club, division = club.strip(), division.strip()
@@ -758,6 +854,19 @@ class App:
             self.wait_loaded()
             self.window.evaluate_js("location.reload()")
 
+    def first_pages(self):
+        """No pages yet but data there: make them behind the start screen, saying so, then open the first tab."""
+        self.wait_loaded()
+        self.show_notice("Preparing your pages… A big save can take a minute.")
+        self.rescore_on_start()
+        page = score.ROOT / "out" / self.save / START_PAGE
+        if page.exists():
+            self.open_url(page.resolve().as_uri())
+        elif self.notice:
+            text, error, *_ = self.notice
+            self.notice = None
+            self.show_notice(text, error)
+
     def wait_loaded(self, timeout=15):
         """Until the window's first page has loaded (on_load), at most timeout seconds."""
         end = time.time() + timeout
@@ -812,7 +921,7 @@ class App:
     def setup(self, club, division, currency, exports, name, shortcut, read=""):
         """The setup page's Start: write config.toml, create the save, and open it; with read (a save game picked
         there), read it straight away."""
-        club, division, currency, exports = club.strip(), division.strip(), currency.strip() or "£", exports.strip()
+        club, division, currency, exports = club.strip(), division.strip(), currency.strip() or "€", exports.strip()
         name = slug(name) or slug(club)  # the club comes from the first save game read (import_save)
         if not name:
             raise ValueError("Give this game profile a name, e.g. Man Utd.")
@@ -844,12 +953,12 @@ class App:
         else:
             # rescore on every start, so a change of weights (or a newer version of the app) shows straight away. With
             # last time's pages there, the window opens on them at once and the rescoring runs behind it (a big save
-            # takes seconds); the page reloads if anything changed. The first time, the pages are made before it opens.
+            # takes seconds); the page reloads if anything changed. Without them (the first time, or after a read cut
+            # short) the window still opens at once, on the start screen, and the pages are made behind it: a big save
+            # can take a minute, and a window that never appears looks like an app that won't start.
             page = score.ROOT / "out" / self.save / START_PAGE  # the app opens on its first tab (Club › Overview)
             behind = page.exists()
-            if not behind:
-                self.rescore_on_start()
-            where = {"url": page.resolve().as_uri()} if page.exists() else {"html": screen("start", self.club_name(), saves=self.save_files(), folder=self.games)}
+            where = {"url": page.resolve().as_uri()} if behind else {"html": screen("start", self.club_name(), saves=self.save_files(), folder=self.games)}
             title = window_title(self.save)
         self.window = webview.create_window(title, js_api=MainApi(self), width=1400, height=900, **where)
         self.window.events.loaded += self.on_load
@@ -859,6 +968,8 @@ class App:
         threading.Thread(target=self.watch_load, daemon=True).start()
         if self.save is not None and behind:
             threading.Thread(target=self.rescore_on_start, args=(True,), daemon=True).start()
+        elif self.save is not None and any((score.ROOT / "saves" / self.save / "obs").glob("*.csv")):
+            threading.Thread(target=self.first_pages, daemon=True).start()
         self.window.events.closed += lambda: os._exit(0)  # closing the window ends the app
         # The XI mark in the title bar and taskbar, from source too (not Python's icon). Its own app ID keeps
         # Windows from grouping the window with other Python programs on the taskbar.
@@ -933,6 +1044,9 @@ class MainApi:
     def set_theme(self, name):
         return self._call(self._app.set_theme, name)
 
+    def set_currency(self, symbol):
+        return self._call(self._app.set_currency, symbol)
+
     def deleted_saves(self):
         try:
             return self._app.deleted_saves()
@@ -955,8 +1069,8 @@ class MainApi:
             log_error("menu")
             return {"current": "", "save": "", "saves": [], "recent": [], "update": None}
 
-    def import_path(self, path):
-        return self._call(self._app.import_path, path)
+    def import_path(self, path, checked=False):
+        return self._call(self._app.import_path, path, checked)
 
     def check_now(self):
         try:
@@ -1093,8 +1207,6 @@ eleven: read straight from your Football Manager 27 save games. All on your comp
 <label for="pname">Profile name: your club's name</label>
 <input id="pname" placeholder="e.g. Man Utd" autofocus>
 <div class="hint">One profile a club you manage. The club itself is read from your save game, so a typo does no harm.</div>
-<label for="currency">Currency FM shows wages in</label>
-<select id="currency"><option>£</option><option>€</option><option>$</option></select>
 <label for="exports">FM27's save games folder</label>
 <div class="row"><input id="exports"><button id="browse">Browse…</button></div>
 <div class="hint" id="found">Where FM keeps your saves (Documents › Sports Interactive › Football Manager 27 › games, or Steam's
@@ -1129,7 +1241,7 @@ $("exports").onchange = check;
 window.addEventListener("pywebviewready", check); check();
 async function go() {
   $("go").disabled = true; $("error").textContent = "Setting up…";
-  const r = await pywebview.api.setup("", "", $("currency").value, $("exports").value, $("pname").value,
+  const r = await pywebview.api.setup("", "", "€", $("exports").value, $("pname").value,  // the currency: Menu → Settings
                                       d.shortcut && $("shortcut").checked, "");
   if (r && r.error) { $("error").textContent = r.error; $("go").disabled = false; }
 }
@@ -1224,7 +1336,7 @@ def screen(kind, club="", detail="", body="", saves=None, folder=None):
             for f in (saves or [])[:6])
         where = esc(folder) if folder else "FM's games folder"
         body += f"""<div class="card saves"><h2>Your save games</h2>
-<div class="more" style="margin:0 0 8px">In <b>{where}</b> <button class="chg" onclick="window.pywebview&&pywebview.api.change_games_dir()">Change…</button></div>
+<div class="more" style="margin:0 0 8px">In <b>{where}</b> <button class="chg" onclick="window.pywebview&&pywebview.api.change_games_dir()">Change…</button><button class="chg" onclick="window.pywebview&&pywebview.api.pick_file()" title="any FM27 save game (.fm), wherever it is">Read another save game…</button></div>
 {f'<ul class="sgl">{rows}</ul>' if rows else '<p>None found here yet. Save your game in FM, or press <b>Change…</b> and pick the folder holding your .fm files.</p>'}
 </div>"""
         body += """<style>.card.saves{left:auto;right:40px;width:520px;max-height:calc(100% - 200px);overflow:auto}
@@ -1261,6 +1373,7 @@ TOOLBAR_JS = """(() => {
     '<path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="#0f1412" stroke-width="2" stroke-linecap="round"/></svg>Menu';
   m.style.cssText = "flex:none;align-self:center;display:flex;gap:7px;align-items:center;margin:4px 16px 4px 0;padding:4px 12px;border:0;" +
     "border-radius:6px;background:var(--accent-strong,#a9d93b);color:#0f1412;font:700 13px Inter,'Segoe UI',system-ui,sans-serif;cursor:pointer";
+  document.getElementById("fm-import-ph")?.remove();  // the page's stand-in (fmPlaceNav), so the Menu never blinks
   strip.prepend(m);
   const list = document.createElement("div");
   list.id = "fm-menu";
@@ -1319,7 +1432,7 @@ TOOLBAR_JS = """(() => {
   // Auto-read: one line with a switch; a click flips it, the menu stays open
   const autoRow = d => {
     const row = document.createElement("button");
-    const draw = () => { row.innerHTML = `<div style="flex:1"><div>Auto-read</div><div style="color:#9aa49f;font-size:12px;font-weight:400">${d.auto ? "each save in FM is read by itself" : "off: read each save yourself"}</div></div>` +
+    const draw = () => { row.innerHTML = `<div style="flex:1"><div>Auto-read</div><div style="color:#9aa49f;font-size:12px;font-weight:400">${d.auto ? "each save of the game you play is read by itself" : "off: read each save yourself"}</div></div>` +
       `<span style="flex:none;width:34px;height:18px;border-radius:999px;position:relative;background:${d.auto ? "#c5f04f" : "#2a332f"}">` +
       `<span style="position:absolute;top:2px;${d.auto ? "right:2px" : "left:2px"};width:14px;height:14px;border-radius:50%;background:${d.auto ? "#0f1412" : "#9aa49f"}"></span></span>`; };
     row.style.cssText = "display:flex;align-items:center;gap:10px;width:100%;padding:7px 12px;border:0;border-radius:6px;background:transparent;color:#f2efe7;font:500 14px Inter,'Segoe UI',sans-serif;text-align:left;cursor:pointer";
@@ -1347,8 +1460,8 @@ TOOLBAR_JS = """(() => {
     // 3. the app: a new version first when there is one, then Theme, Updates, About as three tiles
     if (d.update && d.update.version) list.append(item(`New version ${escH(d.update.version)}`, "download it from the website", () => window.fmOpen(d.update.url), true));
     const tiles = document.createElement("div");
-    tiles.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 2px 2px";
-    tiles.append(tile("Theme", "colours", () => window.fmTheme()),
+    tiles.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:8px 2px 2px";
+    tiles.append(tile("Settings", "theme, currency", () => window.fmTheme()),
       tile("Updates", "check now", async () => {
         window.fmNotice("Checking for a new version…", false);
         const r = await pywebview.api.check_now();
@@ -1357,7 +1470,8 @@ TOOLBAR_JS = """(() => {
         if (u.newer) window.fmNotice(`ElevenIndex ${u.latest} is out (you have ${u.current}).`, false, { title: "New version", label: "Download", run: () => window.fmOpen(u.url) });
         else window.fmNotice(`You have the latest version (${u.current}).`, false, { title: "Up to date", label: "Release notes", run: () => window.fmOpen(u.url) });
       }),
-      tile("About", "settings, guide", () => window.fmAbout()));
+      tile("About", "settings, guide", () => window.fmAbout()),
+      tile("Feedback", "a bug or an idea", () => window.fmOpen(""" + json.dumps(score.PROJECT_URL + "/feedback?v=" + VERSION) + """)));
     const foot = document.createElement("div");
     foot.style.cssText = "padding:8px 4px 2px;color:#6f7a75;font:500 11px Inter,'Segoe UI',sans-serif;text-align:center";
     foot.textContent = "ElevenIndex """ + VERSION + """ · M opens this menu";
@@ -1416,8 +1530,16 @@ TOOLBAR_JS = """(() => {
     x.onclick = () => shade.remove();
     return x;
   };
-  window.fmSaves = async () => {
-    document.getElementById("fm-saves")?.remove();
+  if (!document.getElementById("fm-anim")) {  // the panels' animations: a row folding away, a row arriving
+    const st = document.createElement("style"); st.id = "fm-anim";
+    st.textContent = "@keyframes fmIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}" +
+      ".fm-in{animation:fmIn .35s ease-out}.fm-out{transition:opacity .3s,max-height .35s,margin .35s,padding .35s;opacity:0;max-height:0!important;margin:0!important;padding-top:0!important;padding-bottom:0!important;overflow:hidden}" +
+      "@keyframes fmFlash{0%{background:#c5f04f33}100%{background:transparent}}.fm-flash{animation:fmFlash 1.2s ease-out}";
+    document.head.append(st);
+  }
+  const fold = el => new Promise(res => { el.style.maxHeight = el.offsetHeight + "px"; requestAnimationFrame(() => { el.classList.add("fm-out"); setTimeout(res, 340); }); });
+  window.fmSaves = async (flash) => {
+    const old = document.getElementById("fm-saves"), scroll = old?.querySelector("div")?.scrollTop || 0;
     const saves = await pywebview.api.saves();
     const shade = css(make("div"), "position:fixed;inset:0;z-index:10000;background:#000a;display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;font:14px Inter,'Segoe UI',system-ui,sans-serif");
     shade.id = "fm-saves";
@@ -1425,7 +1547,8 @@ TOOLBAR_JS = """(() => {
     shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
     const box = css(make("div"), "position:relative;background:#121815;color:#f2efe7;border:1px solid #2a332f;border-radius:10px;padding:20px 22px;width:500px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:0 8px 30px #000");
     const error = css(make("div"), "color:#f87171;min-height:1.2em;margin-top:8px");
-    const run = async (call) => { error.textContent = "Working…"; const r = await call(); if (r && r.error) error.textContent = r.error; else shade.remove(); };
+    const run = async (call) => { error.style.color = "#9aa49f"; error.textContent = "Working…"; const r = await call();
+      if (r && r.error) { error.style.color = "#f87171"; error.textContent = r.error; } else shade.remove(); };
 
     box.append(css(make("h3", "Game profiles"), "margin:0 0 10px;font-size:16px"));
     box.append(window.fmPanelX(shade));
@@ -1433,7 +1556,8 @@ TOOLBAR_JS = """(() => {
       const line = css(make("div"), "display:flex;gap:6px;align-items:stretch;margin:4px 0");
       const row = css(make("button"), "flex:1;display:flex;justify-content:space-between;gap:12px;min-width:0;padding:9px 12px;border-radius:6px;cursor:pointer;font:inherit;text-align:left;" +
         "border:1px solid " + (s.current ? "#c5f04f" : "#2a332f") + ";background:" + (s.current ? "#161c19" : "transparent") + ";color:#f2efe7");
-      row.append(make("span", s.club + "  (" + s.name + ")"), css(make("span", s.current ? "open now" : (s.date ? "up to " + s.date : "no players yet")), "color:#9aa49f;white-space:nowrap"));
+      row.append(make("span", (s.club || "club read from your first save game") + "  (" + s.name + ")"), css(make("span", s.current ? "open now" : (s.date ? "up to " + s.date : "no players yet")), "color:#9aa49f;white-space:nowrap"));
+      if (flash && s.name === flash) line.classList.add("fm-in", "fm-flash");
       line.append(row);
       if (!s.current) row.onclick = () => run(() => pywebview.api.switch_save(s.name));
       {
@@ -1448,10 +1572,12 @@ TOOLBAR_JS = """(() => {
             return;
           }
           clearTimeout(armed); armed = null;
+          del.disabled = true;
           const r = await pywebview.api.delete_save(s.name);
-          if (r && r.error) { error.textContent = r.error; del.textContent = "Delete"; return; }
+          if (r && r.error) { error.textContent = r.error; del.textContent = "Delete"; del.disabled = false; return; }
           if (s.current) { shade.remove(); return; }  // the app moves on to another save (or the setup page)
-          await window.fmSaves();
+          await fold(line);
+          await window.fmSaves(s.name);
           window.fmNotice(`${s.club} (${s.name}) is deleted. You can restore it from Menu → Manage… for 14 days.`, false, { title: "Save deleted" });
         };
         line.append(del);
@@ -1461,11 +1587,13 @@ TOOLBAR_JS = """(() => {
 
     // Deleted saves: restore one, for 14 days after it was deleted
     const deleted = await pywebview.api.deleted_saves();
-    if (deleted.length) {
-      box.append(css(make("h3", "Deleted saves"), "margin:20px 0 4px;font-size:16px"),
-        css(make("div", "Kept for 14 days after they're deleted, then removed for good. Delete now removes one straight away (click it twice)."), "color:#9aa49f;margin-bottom:6px"));
+    box.append(css(make("h3", "Deleted saves"), "margin:20px 0 4px;font-size:16px"));
+    if (!deleted.length) box.append(css(make("div", "None. A deleted profile waits here for 14 days, ready to restore."), "color:#9aa49f"));
+    {
+      if (deleted.length) box.append(css(make("div", "Kept for 14 days after they're deleted, then removed for good. Delete now removes one straight away (click it twice)."), "color:#9aa49f;margin-bottom:6px"));
       for (const s of deleted) {
         const line = css(make("div"), "display:flex;gap:8px;align-items:center;margin:6px 0;padding:8px 8px 8px 12px;border:1px dashed #2a332f;border-radius:6px");
+        if (flash && s.name === flash) line.classList.add("fm-in", "fm-flash");
         const who = css(make("div"), "flex:1;min-width:0;display:flex;flex-direction:column;gap:2px");
         who.append(css(make("span", (s.club || s.name) + "  (" + s.name + ")"), "color:#cfd6d1;overflow-wrap:anywhere"),
           css(make("span", "deleted " + s.deleted + " · gone " + s.gone), "color:#9aa49f;font-size:12px"));
@@ -1475,7 +1603,8 @@ TOOLBAR_JS = """(() => {
           restore.disabled = true;
           const r = await pywebview.api.restore_save(s.folder);
           if (r && r.error) { error.textContent = r.error; restore.disabled = false; return; }
-          await window.fmSaves();
+          await fold(line);
+          await window.fmSaves(r.result);
           window.fmNotice(`${s.club || s.name} is back in your saves as ${r.result}.`, false, { title: "Save restored" });
         };
         // Delete now: for good, without waiting the 14 days. The first click asks, a second within 5 s deletes.
@@ -1491,6 +1620,7 @@ TOOLBAR_JS = """(() => {
           clearTimeout(armed); armed = null; now.disabled = true;
           const r = await pywebview.api.remove_deleted(s.folder);
           if (r && r.error) { error.textContent = r.error; now.disabled = false; now.textContent = "Delete now"; return; }
+          await fold(line);
           await window.fmSaves();
           window.fmNotice(`${s.club || s.name} (${s.name}) is deleted for good.`, false, { title: "Deleted for good" });
         };
@@ -1529,7 +1659,7 @@ TOOLBAR_JS = """(() => {
     buttons.append(cancel, create);
     box.append(error, buttons);
     shade.append(box);
-    document.body.append(shade);
+    if (old) { old.replaceWith(shade); box.scrollTop = scroll; } else document.body.append(shade);  // a redraw: in place, same scroll
   };
   // Theme: five colour variations; a click changes the page at once and every page from then on
   window.fmTheme = async () => {
@@ -1541,8 +1671,9 @@ TOOLBAR_JS = """(() => {
     shade.onclick = e => { if (e.target === shade) shade.remove(); };
     shade.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") shade.remove(); });
     const box = css(make("div"), "position:relative;background:var(--pop,#121815);color:#f2efe7;border:1px solid var(--line,#2a332f);border-radius:10px;padding:20px 22px;width:360px;max-width:90vw;box-shadow:0 8px 30px #000");
-    box.append(css(make("h3", "Theme"), "margin:0 0 12px;font-size:16px"));
+    box.append(css(make("h3", "Settings"), "margin:0 0 12px;font-size:16px"));
     box.append(window.fmPanelX(shade));
+    box.append(css(make("div", "Theme"), "margin:4px 0 2px;color:#9aa49f;font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase"));
     const error = css(make("div"), "color:#f87171;min-height:1.2em;margin-top:6px");
     let current = r.current;
     const rows = r.themes.map(t => {
@@ -1561,6 +1692,23 @@ TOOLBAR_JS = """(() => {
       return b;
     });
     rows.forEach(b => { b.mark(); box.append(b); });
+    // Currency: the money the save game is read in (from the next read)
+    box.append(css(make("div", "Currency"), "margin:14px 0 6px;color:#9aa49f;font:700 10px/1 Inter,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase"));
+    const cur = css(make("div"), "display:flex;gap:6px");
+    let money = r.currency || "€";
+    const coins = ["€", "£", "$"].map(c => {
+      const b = css(make("button", c), "flex:1;padding:7px 0;border-radius:8px;cursor:pointer;background:transparent;color:#f2efe7;font:700 15px Inter,'Segoe UI',sans-serif");
+      b.mark = () => b.style.border = "1px solid " + (c === money ? "var(--blue,#c5f04f)" : "var(--line,#2a332f)");
+      b.onclick = async () => {
+        const res = await pywebview.api.set_currency(c);
+        if (res && res.error) { error.textContent = res.error; return; }
+        money = c; coins.forEach(x => x.mark());
+        window.fmNotice(`Money shows in ${c} from your next save game read.`, false, { title: "Currency changed" });
+      };
+      return b;
+    });
+    coins.forEach(b => { b.mark(); cur.append(b); });
+    box.append(cur, css(make("div", "Applies from the next save game you read."), "margin-top:6px;color:#9aa49f;font-size:12px"));
     const close = css(make("button", "Close"), "display:block;margin:10px 0 0 auto;padding:7px 16px;border:0;border-radius:6px;background:var(--line,#2a332f);color:#f2efe7;font:inherit;cursor:pointer");
     close.onclick = () => shade.remove();
     box.append(error, close);
