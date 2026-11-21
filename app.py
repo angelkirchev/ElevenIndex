@@ -548,10 +548,11 @@ class App:
         self.last_drop = (path, time.time())
         threading.Thread(target=self.import_now, args=(Path(path),), daemon=True).start()
 
-    def latest_release(self):
+    def latest_release(self, again=False):
         """The latest version, from the website's version.json: (version, page). Only that small file is fetched;
-        nothing is sent."""
-        req = urllib.request.Request(score.PROJECT_URL + "/version.json", headers={"User-Agent": f"ElevenIndex/{score.VERSION}"})
+        nothing is sent. again: a check after the first (every few hours, or Menu → Check for updates), which the
+        site doesn't count as an app start."""
+        req = urllib.request.Request(score.PROJECT_URL + "/version.json" + ("?again=1" if again else ""), headers={"User-Agent": f"ElevenIndex/{score.VERSION}"})
         with urllib.request.urlopen(req, timeout=8) as r:
             data = json.load(r)
         return str(data.get("version", "")).lstrip("v"), data.get("url") or score.PROJECT_URL + "/#download"
@@ -561,23 +562,31 @@ class App:
         ver = lambda v: tuple(int(x) for x in re.findall(r"\d+", v)[:3])
         return bool(tag) and ver(tag) > ver(VERSION)
 
+    UPDATE_EVERY = 6 * 3600  # while the app is open, look for a new version again every 6 hours
+
     def check_update(self):
-        """Once at start: a newer release gets a notice (offline or no answer: nothing)."""
+        """At start, then every UPDATE_EVERY while the app is open: a newer release gets a notice with its Download
+        button, once per version, in the app only (offline or no answer: nothing, and the next check tries again)."""
         time.sleep(4)
-        try:
-            tag, url = self.latest_release()
-        except Exception:
-            return
-        if self.newer(tag):
-            self.update = {"version": tag, "url": url}
-            if self.window is not None and self.save is not None:
-                self.update_shown = True
-                self.window.evaluate_js(f"window.fmUpdate && fmUpdate({json.dumps(self.update)}, true)")
+        announced, again = None, False
+        while True:
+            try:
+                tag, url = self.latest_release(again)
+                again = True
+            except Exception:
+                tag = None
+            if tag and self.newer(tag) and tag != announced:
+                self.update = {"version": tag, "url": url}
+                if self.window is not None and self.save is not None:
+                    announced = tag
+                    self.update_shown = True
+                    self.window.evaluate_js(f"window.fmUpdate && fmUpdate({json.dumps(self.update)}, true)")
+            time.sleep(self.UPDATE_EVERY)
 
     def check_now(self):
         """Menu → Check for updates: {current, latest, newer, url}."""
         try:
-            tag, url = self.latest_release()
+            tag, url = self.latest_release(again=True)
         except Exception:
             raise ValueError("Couldn't reach GitHub to check. Are you online? Try again later.")
         if self.newer(tag):
@@ -1813,5 +1822,27 @@ TOOLBAR_JS = """(() => {
 })()"""
 
 
+def start_failed():
+    """The app couldn't open its window: write why to app.log and say so in a Windows message box (the packaged app
+    has no console, and a click that seems to do nothing is the worst way to fail). The usual cause is a missing or
+    broken Microsoft Edge WebView2 Runtime, which the window is drawn with."""
+    log_error("starting the app")
+    if sys.platform != "win32":
+        raise
+    import ctypes
+    text = ("ElevenIndex couldn't open its window.\n\n"
+            "The usual cause is the Microsoft Edge WebView2 Runtime (Windows draws the app's window with it): "
+            "install or repair it from Microsoft's website (search \"WebView2 Runtime download\"), then start ElevenIndex again.\n\n"
+            "If your antivirus moved ElevenIndex.exe to quarantine, allow it and try again.\n\n"
+            f"Details are in {score.ROOT / 'app.log'}: send them with Feedback on the website if it keeps happening.")
+    try:
+        ctypes.windll.user32.MessageBoxW(None, text, f"ElevenIndex {score.VERSION}", 0x10)
+    except (AttributeError, OSError):
+        pass
+
+
 if __name__ == "__main__":
-    App().start()
+    try:
+        App().start()
+    except Exception:  # noqa: BLE001 (anything: the window never opened)
+        start_failed()
